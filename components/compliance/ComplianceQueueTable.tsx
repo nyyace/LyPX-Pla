@@ -23,7 +23,6 @@ interface Doc {
   expiryDate: Date;
   entityType: string;
   reviewedAt: Date | null;
-  notes: string | null;
   driver: { id: string; firstName: string; lastName: string } | null;
   vehicle: { id: string; plateNumber: string; make?: string; model?: string } | null;
 }

@@ -28,7 +28,6 @@ interface Doc {
   status: string;
   expiryDate: Date;
   reviewedAt: Date | null;
-  notes: string | null;
 }
 
 interface Props {
@@ -62,7 +61,6 @@ export function ComplianceDocumentList({ documents, entityType, entityId }: Prop
                   </span>
                 )}
               </p>
-              {doc.notes && <p className="text-xs text-gray-500 mt-0.5 italic">{doc.notes}</p>}
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className={`text-xs ${statusColors[doc.status]}`}>

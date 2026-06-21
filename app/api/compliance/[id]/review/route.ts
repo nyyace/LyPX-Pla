@@ -4,7 +4,7 @@ import { evaluateAndSyncDriverCompliance, evaluateAndSyncVehicleCompliance } fro
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { decision, notes } = await req.json();
+  const { decision, notes } = await req.json(); // notes stored in audit log only
 
   if (decision !== "verified" && decision !== "rejected") {
     return NextResponse.json({ error: "decision must be 'verified' or 'rejected'" }, { status: 400 });
@@ -20,7 +20,6 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         status: decision,
         reviewedBy: "admin",
         reviewedAt: new Date(),
-        notes: notes ?? null,
       },
     });
 
