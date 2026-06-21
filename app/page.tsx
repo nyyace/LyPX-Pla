@@ -1,4 +1,4 @@
-import { withAuth, getSignInUrl } from "@workos-inc/authkit-nextjs";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 
 export default async function RootPage() {
@@ -6,6 +6,5 @@ export default async function RootPage() {
 
   if (user) redirect("/dashboard");
 
-  const signInUrl = await getSignInUrl();
-  redirect(signInUrl);
+  redirect("/api/auth/signin");
 }

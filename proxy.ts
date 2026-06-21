@@ -1,9 +1,9 @@
-import { authkitMiddleware } from "@workos-inc/authkit-nextjs";
+import { authkitProxy } from "@workos-inc/authkit-nextjs";
 
-export default authkitMiddleware({
+export default authkitProxy({
   middlewareAuth: {
     enabled: true,
-    unauthenticatedPaths: ["/", "/callback"],
+    unauthenticatedPaths: ["/", "/callback", "/api/auth/signin"],
   },
 });
 
