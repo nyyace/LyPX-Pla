@@ -1,0 +1,171 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Tenant {
+  id                      String                     @id @default(cuid())
+  name                    String
+  tenantType              String                     // "operator" | "lypx_direct"
+  marketplaceParticipation Boolean                  @default(false)
+  createdAt               DateTime                   @default(now())
+
+  driverMemberships       OperatorDriverMembership[]
+}
+
+model Driver {
+  id               String                     @id @default(cuid())
+  identityHash     String                     @unique // hash of license_number + national_id, normalized per jurisdiction
+  firstName        String
+  lastName         String
+  phoneNumber      String
+  complianceStatus String                     @default("pending") // active | expiring_soon | suspended | pending
+  tier2Qualified   Boolean                    @default(false)
+  createdAt        DateTime                   @default(now())
+
+  documents        ComplianceDocument[]
+  memberships      OperatorDriverMembership[]
+  vehicleOwnerships VehicleOwnership[]
+  orders           Order[]
+}
+
+model OperatorDriverMembership {
+  id               String   @id @default(cuid())
+  tenantId         String
+  driverId         String
+  tier1Member      Boolean  @default(false)
+  relationshipType String   // "employed" | "contracted"
+  addedAt          DateTime @default(now())
+
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
+  driver           Driver   @relation(fields: [driverId], references: [id])
+
+  @@unique([tenantId, driverId])
+}
+
+model Vehicle {
+  id                   String               @id @default(cuid())
+  registeredByTenantId String
+  make                 String
+  model                String
+  plateNumber          String               @unique
+  // status is DERIVED from ownership + driver compliance — never set directly
+  status               String               @default("inactive") // active | inactive | suspended
+
+  documents            ComplianceDocument[]
+  ownership            VehicleOwnership[]
+  orders               Order[]
+}
+
+model VehicleOwnership {
+  id               String    @id @default(cuid())
+  vehicleId        String
+  driverId         String
+  relationshipType String    // "owned" | "contracted"
+  contractStatus   String?   // "active" | "expired" | "terminated" — null if owned
+  contractExpiry   DateTime?
+
+  vehicle          Vehicle   @relation(fields: [vehicleId], references: [id])
+  driver           Driver    @relation(fields: [driverId], references: [id])
+}
+
+// Polymorphic — attaches to Driver OR Vehicle
+model ComplianceDocument {
+  id                 String    @id @default(cuid())
+  entityType         String    // "driver" | "vehicle"
+  driverId           String?
+  vehicleId          String?
+  docType            String    // license | insurance | registration | inspection | background_check
+  expiryDate         DateTime
+  status             String    @default("pending_review") // verified | pending_review | expired | rejected
+  verificationMethod String    @default("manual")
+  uploadedAt         DateTime  @default(now())
+  reviewedBy         String?
+  reviewedAt         DateTime?
+  notes              String?
+
+  driver             Driver?   @relation(fields: [driverId], references: [id])
+  vehicle            Vehicle?  @relation(fields: [vehicleId], references: [id])
+}
+
+// Corporate Client account — ownership derived from AccountClaim
+model Account {
+  id               String           @id @default(cuid())
+  name             String
+  customerSegment  String           // hotel | mice | tdm | dmc | corporate_general
+  sourceType       String           // "operator_sourced" | "lypx_sourced"
+  createdAt        DateTime         @default(now())
+
+  claims           AccountClaim[]
+  takeoverRequests TakeoverRequest[]
+  orders           Order[]
+}
+
+model AccountClaim {
+  id                  String    @id @default(cuid())
+  accountId           String
+  claimingPartyType   String    // "operator" | "lypx_direct"
+  claimingPartyId     String?   // tenantId if operator; null if lypx_direct
+  status              String    @default("claimed") // claimed | won | expired | superseded
+  claimedAt           DateTime  @default(now())
+  expiryAt            DateTime  // claimedAt + 90 days
+  wonAt               DateTime?
+  firstTripOrderId    String?
+  lastTripCompletedAt DateTime?
+  protectionTier      String    @default("standard") // standard | long_term
+
+  account             Account   @relation(fields: [accountId], references: [id])
+}
+
+model TakeoverRequest {
+  id                     String    @id @default(cuid())
+  accountId              String
+  currentOwnerType       String
+  currentOwnerId         String?
+  requestingPartyType    String
+  requestingPartyId      String?
+  status                 String    @default("pending") // pending | conditional | approved | denied
+  score                  Int?
+  scoreBreakdown         Json?
+  rightToRespondInvoked  Boolean   @default(false)
+  rightToRespondDeadline DateTime?
+  requestedAt            DateTime  @default(now())
+  reviewedAt             DateTime?
+  decisionNotes          String?
+
+  account                Account   @relation(fields: [accountId], references: [id])
+}
+
+model Order {
+  id              String    @id @default(cuid())
+  accountId       String
+  driverId        String?
+  vehicleId       String?
+  tenantId        String
+  status          String    @default("booked") // booked | assigned | en_route | arrived | started | completed | cancelled
+  pickupTime      DateTime
+  pickupLocation  String
+  dropoffLocation String
+  notes           String?
+  createdAt       DateTime  @default(now())
+  completedAt     DateTime?
+
+  account         Account   @relation(fields: [accountId], references: [id])
+  driver          Driver?   @relation(fields: [driverId], references: [id])
+  vehicle         Vehicle?  @relation(fields: [vehicleId], references: [id])
+}
+
+// Immutable audit log
+model AuditLog {
+  id         String   @id @default(cuid())
+  entityType String   // "compliance" | "account_claim" | "order" | "takeover_request" | "driver" | "vehicle"
+  entityId   String
+  action     String
+  actorId    String?  // admin user ID, or "system"
+  metadata   Json?
+  createdAt  DateTime @default(now())
+}
