@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
+import { TakeoverButton } from "@/components/accounts/TakeoverButton";
 
 export default async function AccountDetailPage({
   params,
@@ -65,8 +66,13 @@ export default async function AccountDetailPage({
       {/* Active Claim */}
       {activeClaim && (
         <Card className="bg-gray-900 border-gray-800 mb-6">
-          <CardHeader className="pb-3">
+          <CardHeader className="pb-3 flex flex-row items-center justify-between">
             <CardTitle className="text-sm text-gray-300">Active Claim</CardTitle>
+            <TakeoverButton
+              accountId={account.id}
+              currentOwnerType={activeClaim.claimingPartyType}
+              currentOwnerId={activeClaim.claimingPartyId}
+            />
           </CardHeader>
           <CardContent className="space-y-2 text-sm">
             <div className="flex justify-between">
