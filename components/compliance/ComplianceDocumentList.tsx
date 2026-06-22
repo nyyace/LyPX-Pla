@@ -3,9 +3,9 @@
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { format } from "date-fns";
 import { AddDocumentDialog } from "./AddDocumentDialog";
 import { ReviewDocumentDialog } from "./ReviewDocumentDialog";
+import { formatTZDate, DEFAULT_TIMEZONE } from "@/lib/utils/date";
 
 const statusColors: Record<string, string> = {
   verified: "bg-green-900 text-green-300 border-green-700",
@@ -34,9 +34,10 @@ interface Props {
   documents: Doc[];
   entityType: "driver" | "vehicle";
   entityId: string;
+  timezone?: string;
 }
 
-export function ComplianceDocumentList({ documents, entityType, entityId }: Props) {
+export function ComplianceDocumentList({ documents, entityType, entityId, timezone = DEFAULT_TIMEZONE }: Props) {
   const [showAdd, setShowAdd] = useState(false);
   const [reviewing, setReviewing] = useState<Doc | null>(null);
 
@@ -54,10 +55,10 @@ export function ComplianceDocumentList({ documents, entityType, entityId }: Prop
             <div>
               <p className="text-sm text-white">{docTypeLabels[doc.docType] ?? doc.docType}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Expires {format(new Date(doc.expiryDate), "dd MMM yyyy")}
+                Expires {formatTZDate(doc.expiryDate, timezone)}
                 {doc.reviewedAt && (
                   <span className="ml-2 text-gray-600">
-                    · Reviewed {format(new Date(doc.reviewedAt), "dd MMM yyyy")}
+                    · Reviewed {formatTZDate(doc.reviewedAt, timezone)}
                   </span>
                 )}
               </p>
@@ -101,6 +102,7 @@ export function ComplianceDocumentList({ documents, entityType, entityId }: Prop
         <ReviewDocumentDialog
           doc={reviewing}
           onClose={() => setReviewing(null)}
+          timezone={timezone}
         />
       )}
     </div>

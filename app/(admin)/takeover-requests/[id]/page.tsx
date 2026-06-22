@@ -3,9 +3,11 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
 import { TakeoverScorecardForm } from "@/components/TakeoverScorecardForm";
 import { SCORECARD_CRITERIA } from "@/app/api/takeover-requests/[id]/route";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate } from "@/lib/utils/date";
 
 export default async function TakeoverRequestDetailPage({
   params,
@@ -13,6 +15,9 @@ export default async function TakeoverRequestDetailPage({
   params: { id: string };
 }) {
   const { id } = await params;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const request = await prisma.takeoverRequest.findUnique({
     where: { id },
     include: { account: true },
@@ -62,7 +67,7 @@ export default async function TakeoverRequestDetailPage({
           </div>
           <div className="flex justify-between">
             <span className="text-gray-500">Requested</span>
-            <span className="text-white">{format(new Date(request.requestedAt), "dd MMM yyyy")}</span>
+            <span className="text-white">{formatTZDate(request.requestedAt, tz)}</span>
           </div>
           {request.score != null && (
             <div className="flex justify-between">
@@ -74,9 +79,7 @@ export default async function TakeoverRequestDetailPage({
             <div className="flex justify-between">
               <span className="text-gray-500">Right to respond deadline</span>
               <span className="text-yellow-300">
-                {request.rightToRespondDeadline
-                  ? format(new Date(request.rightToRespondDeadline), "dd MMM yyyy")
-                  : "—"}
+                {formatTZDate(request.rightToRespondDeadline, tz)}
               </span>
             </div>
           )}

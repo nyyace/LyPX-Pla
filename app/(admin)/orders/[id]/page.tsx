@@ -3,8 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { format } from "date-fns";
 import { OrderActions } from "@/components/orders/OrderActions";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZ } from "@/lib/utils/date";
 
 const statusColors: Record<string, string> = {
   booked: "border-gray-700 text-gray-400",
@@ -22,6 +24,9 @@ export default async function OrderDetailPage({
   params: { id: string };
 }) {
   const { id } = await params;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const order = await prisma.order.findUnique({
     where: { id },
     include: {
@@ -42,7 +47,7 @@ export default async function OrderDetailPage({
         <div className="flex items-start justify-between">
           <div>
             <h1 className="text-2xl font-semibold text-white">
-              {format(new Date(order.pickupTime), "dd MMM yyyy HH:mm")}
+              {formatTZ(order.pickupTime, tz)}
             </h1>
             <Link href={`/accounts/${order.accountId}`} className="text-sm text-gray-400 hover:text-white">
               {order.account.name}
@@ -99,7 +104,7 @@ export default async function OrderDetailPage({
           {order.completedAt && (
             <div className="flex justify-between">
               <span className="text-gray-500">Completed</span>
-              <span className="text-white">{format(new Date(order.completedAt), "dd MMM yyyy HH:mm")}</span>
+              <span className="text-white">{formatTZ(order.completedAt, tz)}</span>
             </div>
           )}
         </CardContent>

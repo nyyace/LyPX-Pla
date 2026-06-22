@@ -9,7 +9,9 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate } from "@/lib/utils/date";
 
 const statusBadge: Record<string, string> = {
   pending: "border-yellow-700 text-yellow-300",
@@ -24,6 +26,9 @@ export default async function TakeoverRequestsPage({
   searchParams: { status?: string };
 }) {
   const params = await searchParams;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const status = params.status ?? "pending";
 
   const requests = await prisma.takeoverRequest.findMany({
@@ -93,7 +98,7 @@ export default async function TakeoverRequestsPage({
                   </Badge>
                 </TableCell>
                 <TableCell className="text-gray-500 text-xs">
-                  {format(new Date(r.requestedAt), "dd MMM yyyy")}
+                  {formatTZDate(r.requestedAt, tz)}
                 </TableCell>
               </TableRow>
             ))}

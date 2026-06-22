@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ComplianceDocumentList } from "@/components/compliance/ComplianceDocumentList";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate } from "@/lib/utils/date";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-900 text-green-300 border-green-700",
@@ -18,6 +21,9 @@ export default async function VehicleDetailPage({
   params: { id: string };
 }) {
   const { id } = await params;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const vehicle = await prisma.vehicle.findUnique({
     where: { id },
     include: {
@@ -64,6 +70,7 @@ export default async function VehicleDetailPage({
             documents={vehicle.documents}
             entityType="vehicle"
             entityId={vehicle.id}
+            timezone={tz}
           />
         </CardContent>
       </Card>
@@ -87,7 +94,7 @@ export default async function VehicleDetailPage({
                     </Link>
                     <p className="text-xs text-gray-500">
                       {o.relationshipType}
-                      {o.contractExpiry && ` · expires ${new Date(o.contractExpiry).toLocaleDateString()}`}
+                      {o.contractExpiry && ` · expires ${formatTZDate(o.contractExpiry, tz)}`}
                     </p>
                   </div>
                   <Badge

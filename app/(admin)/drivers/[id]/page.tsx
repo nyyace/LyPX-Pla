@@ -4,9 +4,10 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { format } from "date-fns";
 import { ComplianceDocumentList } from "@/components/compliance/ComplianceDocumentList";
 import { DriverActions } from "@/components/drivers/DriverActions";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-900 text-green-300 border-green-700",
@@ -15,19 +16,15 @@ const statusColors: Record<string, string> = {
   pending: "bg-gray-800 text-gray-400 border-gray-700",
 };
 
-const docStatusColors: Record<string, string> = {
-  verified: "bg-green-900 text-green-300 border-green-700",
-  pending_review: "bg-yellow-900 text-yellow-300 border-yellow-700",
-  expired: "bg-red-900 text-red-300 border-red-700",
-  rejected: "bg-red-900 text-red-300 border-red-700",
-};
-
 export default async function DriverDetailPage({
   params,
 }: {
   params: { id: string };
 }) {
   const { id } = await params;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const driver = await prisma.driver.findUnique({
     where: { id },
     include: {
@@ -77,6 +74,7 @@ export default async function DriverDetailPage({
             documents={driver.documents}
             entityType="driver"
             entityId={driver.id}
+            timezone={tz}
           />
         </CardContent>
       </Card>

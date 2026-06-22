@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addDays } from "date-fns";
+import { addDays, isExpired } from "@/lib/utils/date";
 
 const CLAIM_WINDOW_DAYS = 90;
 const LONG_TERM_PROTECTION_TRIPS = 10;
@@ -111,7 +111,7 @@ async function recalculateProtectionTier(claimId: string): Promise<void> {
 }
 
 // Expires all claims whose 90-day window has passed without a won trip.
-// Run nightly.
+// Run nightly at 16:00 UTC (00:00 SGT).
 export async function expireStaleClaimsJob(): Promise<void> {
   const now = new Date();
 

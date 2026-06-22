@@ -11,7 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus } from "lucide-react";
-import { format } from "date-fns";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZ } from "@/lib/utils/date";
 
 const statusColors: Record<string, string> = {
   booked: "border-gray-700 text-gray-400",
@@ -29,6 +31,9 @@ export default async function OrdersPage({
   searchParams: { status?: string };
 }) {
   const params = await searchParams;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const activeStatuses = ["booked", "assigned", "en_route", "arrived", "started"];
 
   const orders = await prisma.order.findMany({
@@ -98,7 +103,7 @@ export default async function OrdersPage({
               <TableRow key={o.id} className="border-gray-800 hover:bg-gray-900">
                 <TableCell className="text-gray-300 text-sm">
                   <Link href={`/orders/${o.id}`} className="text-white hover:underline">
-                    {format(new Date(o.pickupTime), "dd MMM HH:mm")}
+                    {formatTZ(o.pickupTime, tz)}
                   </Link>
                 </TableCell>
                 <TableCell className="text-gray-300 text-sm">{o.account.name}</TableCell>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -14,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ReviewDocumentDialog } from "./ReviewDocumentDialog";
-import { format } from "date-fns";
+import { formatTZDate, isExpired, DEFAULT_TIMEZONE } from "@/lib/utils/date";
 
 interface Doc {
   id: string;
@@ -30,6 +29,7 @@ interface Doc {
 interface Props {
   docs: Doc[];
   section: "pending" | "expired";
+  timezone?: string;
 }
 
 const docTypeLabels: Record<string, string> = {
@@ -40,7 +40,7 @@ const docTypeLabels: Record<string, string> = {
   background_check: "Background Check",
 };
 
-export function ComplianceQueueTable({ docs, section }: Props) {
+export function ComplianceQueueTable({ docs, section, timezone = DEFAULT_TIMEZONE }: Props) {
   const [reviewing, setReviewing] = useState<Doc | null>(null);
 
   if (docs.length === 0) {
@@ -91,12 +91,12 @@ export function ComplianceQueueTable({ docs, section }: Props) {
                     {docTypeLabels[doc.docType] ?? doc.docType}
                   </TableCell>
                   <TableCell className="text-sm">
-                    <span className={new Date(doc.expiryDate) < new Date() ? "text-red-400" : "text-gray-300"}>
-                      {format(new Date(doc.expiryDate), "dd MMM yyyy")}
+                    <span className={isExpired(doc.expiryDate) ? "text-red-400" : "text-gray-300"}>
+                      {formatTZDate(doc.expiryDate, timezone)}
                     </span>
                   </TableCell>
                   <TableCell className="text-gray-500 text-xs">
-                    {format(new Date(doc.reviewedAt ?? doc.expiryDate), "dd MMM yyyy")}
+                    {formatTZDate(doc.reviewedAt ?? doc.expiryDate, timezone)}
                   </TableCell>
                   <TableCell className="text-right">
                     {section === "pending" && (
@@ -118,7 +118,7 @@ export function ComplianceQueueTable({ docs, section }: Props) {
       </div>
 
       {reviewing && (
-        <ReviewDocumentDialog doc={reviewing} onClose={() => setReviewing(null)} />
+        <ReviewDocumentDialog doc={reviewing} onClose={() => setReviewing(null)} timezone={timezone} />
       )}
     </>
   );

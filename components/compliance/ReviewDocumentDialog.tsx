@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { format } from "date-fns";
+import { formatTZDate, DEFAULT_TIMEZONE } from "@/lib/utils/date";
 
 interface Doc {
   id: string;
@@ -23,9 +23,10 @@ interface Doc {
 interface Props {
   doc: Doc;
   onClose: () => void;
+  timezone?: string;
 }
 
-export function ReviewDocumentDialog({ doc, onClose }: Props) {
+export function ReviewDocumentDialog({ doc, onClose, timezone = DEFAULT_TIMEZONE }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -62,7 +63,7 @@ export function ReviewDocumentDialog({ doc, onClose }: Props) {
 
         <div className="text-sm text-gray-400 space-y-1">
           <p>Type: <span className="text-white">{doc.docType.replace("_", " ")}</span></p>
-          <p>Expires: <span className="text-white">{format(new Date(doc.expiryDate), "dd MMM yyyy")}</span></p>
+          <p>Expires: <span className="text-white">{formatTZDate(doc.expiryDate, timezone)}</span></p>
         </div>
 
         {error && (

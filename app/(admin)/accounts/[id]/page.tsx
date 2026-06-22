@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import { format } from "date-fns";
 import { TakeoverButton } from "@/components/accounts/TakeoverButton";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate, formatTZ, isExpired } from "@/lib/utils/date";
 
 export default async function AccountDetailPage({
   params,
@@ -13,6 +14,9 @@ export default async function AccountDetailPage({
   params: { id: string };
 }) {
   const { id } = await params;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const account = await prisma.account.findUnique({
     where: { id },
     include: {
@@ -81,12 +85,12 @@ export default async function AccountDetailPage({
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">Claimed</span>
-              <span className="text-white">{format(new Date(activeClaim.claimedAt), "dd MMM yyyy")}</span>
+              <span className="text-white">{formatTZDate(activeClaim.claimedAt, tz)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-500">90-day window expires</span>
-              <span className={new Date(activeClaim.expiryAt) < new Date() ? "text-red-400" : "text-white"}>
-                {format(new Date(activeClaim.expiryAt), "dd MMM yyyy")}
+              <span className={isExpired(activeClaim.expiryAt) ? "text-red-400" : "text-white"}>
+                {formatTZDate(activeClaim.expiryAt, tz)}
               </span>
             </div>
             <div className="flex justify-between">
@@ -98,7 +102,7 @@ export default async function AccountDetailPage({
             {activeClaim.wonAt && (
               <div className="flex justify-between">
                 <span className="text-gray-500">Won on</span>
-                <span className="text-white">{format(new Date(activeClaim.wonAt), "dd MMM yyyy")}</span>
+                <span className="text-white">{formatTZDate(activeClaim.wonAt, tz)}</span>
               </div>
             )}
           </CardContent>
@@ -117,7 +121,7 @@ export default async function AccountDetailPage({
                 <div key={o.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
                   <div>
                     <Link href={`/orders/${o.id}`} className="text-sm text-white hover:underline">
-                      {format(new Date(o.pickupTime), "dd MMM yyyy HH:mm")}
+                      {formatTZ(o.pickupTime, tz)}
                     </Link>
                     <p className="text-xs text-gray-500">
                       {o.driver ? `${o.driver.firstName} ${o.driver.lastName}` : "Unassigned"} ·{" "}
@@ -157,7 +161,7 @@ export default async function AccountDetailPage({
                     <Link href={`/takeover-requests/${r.id}`} className="text-sm text-white hover:underline">
                       {r.requestingPartyType} requesting from {r.currentOwnerType}
                     </Link>
-                    <p className="text-xs text-gray-500">{format(new Date(r.requestedAt), "dd MMM yyyy")}</p>
+                    <p className="text-xs text-gray-500">{formatTZDate(r.requestedAt, tz)}</p>
                   </div>
                   <Badge
                     variant="outline"

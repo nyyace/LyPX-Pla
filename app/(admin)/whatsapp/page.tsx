@@ -15,6 +15,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { WHATSAPP_TEMPLATES } from "@/lib/whatsapp/templates";
 import { CheckCircle } from "lucide-react";
+import { formatTZ, DEFAULT_TIMEZONE } from "@/lib/utils/date";
 
 interface Order {
   id: string;
@@ -26,6 +27,7 @@ interface Order {
 
 export default function WhatsAppPage() {
   const [orders, setOrders] = useState<Order[]>([]);
+  const [timezone, setTimezone] = useState(DEFAULT_TIMEZONE);
   const [selectedOrderId, setSelectedOrderId] = useState("");
   const [templateKey, setTemplateKey] = useState("");
   const [to, setTo] = useState("");
@@ -37,6 +39,9 @@ export default function WhatsAppPage() {
     fetch("/api/orders?status=booked")
       .then((r) => r.json())
       .then(setOrders);
+    fetch("/api/preferences")
+      .then((r) => r.json())
+      .then((d) => { if (d.timezone) setTimezone(d.timezone); });
   }, []);
 
   async function handleSend(e: React.FormEvent) {
@@ -111,7 +116,7 @@ export default function WhatsAppPage() {
             <SelectContent className="bg-gray-900 border-gray-700">
               {orders.map((o) => (
                 <SelectItem key={o.id} value={o.id}>
-                  {o.account.name} — {new Date(o.pickupTime).toLocaleDateString()}
+                  {o.account.name} — {formatTZ(o.pickupTime, timezone)}
                 </SelectItem>
               ))}
             </SelectContent>

@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/prisma";
-import { addDays, isBefore } from "date-fns";
+import { addDays, isExpired, isWithinDays } from "@/lib/utils/date";
 
 const EXPIRING_SOON_DAYS = 30;
 
@@ -10,11 +10,8 @@ export function deriveDriverStatus(
 ): "active" | "expiring_soon" | "suspended" | "pending" {
   if (docs.length === 0) return "pending";
 
-  const now = new Date();
-  const expiringSoonThreshold = addDays(now, EXPIRING_SOON_DAYS);
-
   const hasExpired = docs.some(
-    (d) => d.status === "verified" && isBefore(d.expiryDate, now)
+    (d) => d.status === "verified" && isExpired(d.expiryDate)
   );
   if (hasExpired) return "suspended";
 
@@ -24,8 +21,8 @@ export function deriveDriverStatus(
   const hasExpiringSoon = docs.some(
     (d) =>
       d.status === "verified" &&
-      !isBefore(d.expiryDate, now) &&
-      isBefore(d.expiryDate, expiringSoonThreshold)
+      !isExpired(d.expiryDate) &&
+      isWithinDays(d.expiryDate, EXPIRING_SOON_DAYS)
   );
   if (hasExpiringSoon) return "expiring_soon";
 
@@ -40,10 +37,8 @@ export function deriveVehicleStatus(
   vehicleDocs: Array<{ status: string; expiryDate: Date }>,
   driverStatuses: string[]
 ): "active" | "inactive" | "suspended" {
-  const now = new Date();
-
   const hasExpiredDoc = vehicleDocs.some(
-    (d) => d.status === "verified" && isBefore(d.expiryDate, now)
+    (d) => d.status === "verified" && isExpired(d.expiryDate)
   );
   const hasRejectedDoc = vehicleDocs.some((d) => d.status === "rejected");
   const primaryDriverSuspended = driverStatuses.some((s) => s === "suspended");
@@ -144,7 +139,7 @@ export async function evaluateAndSyncVehicleCompliance(
   ]);
 }
 
-// Full sweep — run nightly from a cron job or Railway scheduled task.
+// Full sweep — run nightly at 16:00 UTC (00:00 SGT).
 export async function runComplianceSweep(): Promise<void> {
   const drivers = await prisma.driver.findMany({ select: { id: true } });
   for (const d of drivers) {

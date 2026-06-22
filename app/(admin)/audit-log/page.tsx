@@ -8,8 +8,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { format } from "date-fns";
 import Link from "next/link";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZ } from "@/lib/utils/date";
 
 const entityColors: Record<string, string> = {
   compliance: "border-blue-700 text-blue-300",
@@ -18,6 +20,7 @@ const entityColors: Record<string, string> = {
   takeover_request: "border-purple-700 text-purple-300",
   driver: "border-gray-700 text-gray-400",
   vehicle: "border-gray-700 text-gray-400",
+  user_preference: "border-gray-700 text-gray-400",
 };
 
 export default async function AuditLogPage({
@@ -26,6 +29,9 @@ export default async function AuditLogPage({
   searchParams: { entityType?: string; page?: string };
 }) {
   const params = await searchParams;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const page = Math.max(1, parseInt(params.page ?? "1"));
   const limit = 50;
 
@@ -96,7 +102,7 @@ export default async function AuditLogPage({
             {logs.map((log) => (
               <TableRow key={log.id} className="border-gray-800 hover:bg-gray-900">
                 <TableCell className="text-gray-500 text-xs whitespace-nowrap">
-                  {format(new Date(log.createdAt), "dd MMM HH:mm:ss")}
+                  {formatTZ(log.createdAt, tz, { dateStyle: "medium", timeStyle: "medium" })}
                 </TableCell>
                 <TableCell>
                   <div>

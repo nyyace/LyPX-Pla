@@ -11,6 +11,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Plus } from "lucide-react";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate } from "@/lib/utils/date";
 
 const statusColors: Record<string, string> = {
   active: "bg-green-900 text-green-300 border-green-700",
@@ -25,6 +28,8 @@ export default async function DriversPage({
   searchParams: { status?: string; q?: string };
 }) {
   const params = await searchParams;
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
 
   const drivers = await prisma.driver.findMany({
     where: {
@@ -131,7 +136,7 @@ export default async function DriversPage({
                   {d._count.documents}
                 </TableCell>
                 <TableCell className="text-gray-500 text-xs">
-                  {new Date(d.createdAt).toLocaleDateString()}
+                  {formatTZDate(d.createdAt, tz)}
                 </TableCell>
               </TableRow>
             ))}

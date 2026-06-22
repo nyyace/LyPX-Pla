@@ -192,6 +192,17 @@ model Order {
 }
 
 // ─────────────────────────────────────────────
+// USER PREFERENCES
+// ─────────────────────────────────────────────
+
+model UserPreference {
+  id        String   @id @default(cuid())
+  userId    String   @unique // WorkOS user ID
+  timezone  String   @default("Asia/Singapore")
+  updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
 // AUDIT LOG
 // ─────────────────────────────────────────────
 

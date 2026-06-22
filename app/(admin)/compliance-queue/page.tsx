@@ -1,11 +1,12 @@
 import { prisma } from "@/lib/prisma";
-import { Badge } from "@/components/ui/badge";
-import { Card, CardContent } from "@/components/ui/card";
-import { format } from "date-fns";
-import { ReviewDocumentDialog } from "@/components/compliance/ReviewDocumentDialog";
 import { ComplianceQueueTable } from "@/components/compliance/ComplianceQueueTable";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
 
 export default async function ComplianceQueuePage() {
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const pending = await prisma.complianceDocument.findMany({
     where: { status: "pending_review" },
     orderBy: { uploadedAt: "asc" },
@@ -38,7 +39,7 @@ export default async function ComplianceQueuePage() {
         <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-3">
           Pending Review
         </h2>
-        <ComplianceQueueTable docs={pending} section="pending" />
+        <ComplianceQueueTable docs={pending} section="pending" timezone={tz} />
       </section>
 
       {expired.length > 0 && (
@@ -46,7 +47,7 @@ export default async function ComplianceQueuePage() {
           <h2 className="text-sm font-medium text-gray-400 uppercase tracking-wide mb-3">
             Recently Expired (verified docs past expiry)
           </h2>
-          <ComplianceQueueTable docs={expired} section="expired" />
+          <ComplianceQueueTable docs={expired} section="expired" timezone={tz} />
         </section>
       )}
     </div>

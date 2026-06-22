@@ -1,8 +1,14 @@
 import { prisma } from "@/lib/prisma";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { withAuth } from "@workos-inc/authkit-nextjs";
+import { getUserTimezone } from "@/lib/utils/timezone";
+import { formatTZDate, isExpired } from "@/lib/utils/date";
 
 export default async function DashboardPage() {
+  const { user } = await withAuth({ ensureSignedIn: true });
+  const tz = await getUserTimezone(user.id);
+
   const [
     totalDrivers,
     suspendedDrivers,
@@ -76,7 +82,7 @@ export default async function DashboardPage() {
                   </div>
                   <div className="flex items-center gap-3">
                     <span className="text-xs text-gray-500">
-                      expires {new Date(claim.expiryAt).toLocaleDateString()}
+                      expires {formatTZDate(claim.expiryAt, tz)}
                     </span>
                     <Badge variant="outline" className="text-xs border-yellow-600 text-yellow-400">
                       {claim.protectionTier}

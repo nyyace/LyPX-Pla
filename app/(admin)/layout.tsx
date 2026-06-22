@@ -12,6 +12,7 @@ import {
   ScrollText,
   LogOut,
   LayoutDashboard,
+  Settings,
 } from "lucide-react";
 
 const navItems = [
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/orders", label: "Orders", icon: ClipboardList },
   { href: "/whatsapp", label: "WhatsApp", icon: MessageSquare },
   { href: "/audit-log", label: "Audit Log", icon: ScrollText },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export default async function AdminLayout({
