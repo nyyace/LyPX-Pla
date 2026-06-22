@@ -23,6 +23,8 @@ model Tenant {
   driverMemberships        OperatorDriverMembership[]
   registeredVehicles       Vehicle[]
   orders                   Order[]
+  preference               TenantPreference?
+  users                    TenantUser[]
 }
 
 // ─────────────────────────────────────────────
@@ -223,6 +225,33 @@ model PhoneVerification {
   createdAt  DateTime  @default(now())
 
   @@index([phone])
+}
+
+// ─────────────────────────────────────────────
+// TENANT PREFERENCES (operator settings)
+// ─────────────────────────────────────────────
+
+model TenantPreference {
+  id           String   @id @default(cuid())
+  tenantId     String   @unique
+  accentColour String   @default("#E5A93C")
+  timezone     String   @default("Asia/Singapore")
+  updatedAt    DateTime @updatedAt
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+}
+
+// Maps WorkOS user IDs to operator tenants
+model TenantUser {
+  id       String @id @default(cuid())
+  userId   String // WorkOS user ID
+  tenantId String
+  role     String @default("dispatcher") // "admin" | "dispatcher"
+
+  tenant   Tenant @relation(fields: [tenantId], references: [id])
+
+  @@unique([userId, tenantId])
+  @@index([userId])
 }
 
 // ─────────────────────────────────────────────

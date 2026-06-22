@@ -4,12 +4,76 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ─── LyPX Design Tokens ─── */
+:root {
+  /* Brand palette — fixed, never change */
+  --bg:            #0F0F11;
+  --surface:       #1B1B1F;
+  --surface-raised:#202024;
+  --border:        #2C2C35;
+  --text:          #FFFFFF;
+  --text-dim:      #8A8A93;
+  --text-faint:    #55555E;
+  --green:         #4CAF6D;
+  --red:           #D9534F;
+
+  /* Gold (admin accent — fixed) */
+  --gold:          #E5A93C;
+  --gold-dim:      #3A2F1A;
+
+  /* Accent (operator theming — same as gold by default, overridden at runtime) */
+  --accent:        #E5A93C;
+  --accent-dim:    #3A2F1A;
+
+  /* Fonts */
+  --font-ui:       var(--font-inter, 'Inter'), sans-serif;
+  --font-mono:     var(--font-roboto-mono, 'Roboto Mono'), monospace;
+  --font-brand:    var(--font-plus-jakarta, 'Plus Jakarta Sans'), sans-serif;
+
+  /* ─── shadcn/ui var remapping ─── */
+  --background:      #0F0F11;
+  --foreground:      #FFFFFF;
+  --card:            #1B1B1F;
+  --card-foreground: #FFFFFF;
+  --popover:         #202024;
+  --popover-foreground: #FFFFFF;
+  --primary:         #E5A93C;
+  --primary-foreground: #1A1305;
+  --secondary:       #202024;
+  --secondary-foreground: #FFFFFF;
+  --muted:           #1B1B1F;
+  --muted-foreground:#8A8A93;
+  --accent-ui:       #202024;
+  --accent-foreground:#FFFFFF;
+  --destructive:     #D9534F;
+  --destructive-foreground: #FFFFFF;
+  --input:           #2C2C35;
+  --ring:            #E5A93C;
+  --radius:          0.375rem;
+
+  /* sidebar */
+  --sidebar:         #1B1B1F;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #E5A93C;
+  --sidebar-primary-foreground: #1A1305;
+  --sidebar-accent:  #202024;
+  --sidebar-accent-foreground: #FFFFFF;
+  --sidebar-border:  #2C2C35;
+  --sidebar-ring:    #E5A93C;
+
+  /* chart — not used in this project, map to greens */
+  --chart-1: #4CAF6D;
+  --chart-2: #E5A93C;
+  --chart-3: #7FC8F8;
+  --chart-4: #C9A0F5;
+  --chart-5: #D9534F;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-mono);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -28,7 +92,7 @@
   --color-border: var(--border);
   --color-destructive: var(--destructive);
   --color-accent-foreground: var(--accent-foreground);
-  --color-accent: var(--accent);
+  --color-accent: var(--accent-ui);
   --color-muted-foreground: var(--muted-foreground);
   --color-muted: var(--muted);
   --color-secondary-foreground: var(--secondary-foreground);
@@ -43,88 +107,285 @@
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
   --radius-xl: calc(var(--radius) * 1.4);
-  --radius-2xl: calc(var(--radius) * 1.8);
-  --radius-3xl: calc(var(--radius) * 2.2);
-  --radius-4xl: calc(var(--radius) * 2.6);
-}
-
-:root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
+    box-sizing: border-box;
   }
   body {
-    @apply bg-background text-foreground;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    -webkit-font-smoothing: antialiased;
   }
   html {
-    @apply font-sans;
+    font-family: var(--font-ui);
   }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-faint); }
 }
+
+/* ─── LyPX UI Primitives ─── */
+
+/* Monospace: applies to all numeric/ref/clock elements */
+.mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+}
+
+/* Brand mark */
+.brand-mark {
+  font-family: var(--font-brand);
+  font-weight: 800;
+  font-size: 18px;
+  letter-spacing: 0.3px;
+  background: linear-gradient(90deg, #10B981, #06B6D4, #3B82F6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  line-height: 1;
+}
+
+/* Topbar */
+.lypx-topbar {
+  height: 56px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 24px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+/* Nav tabs */
+.lypx-navtabs {
+  height: 42px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 20px;
+  background: var(--bg);
+  flex-shrink: 0;
+}
+
+.lypx-tab {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text-dim);
+  text-decoration: none;
+  padding: 0 14px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  white-space: nowrap;
+}
+.lypx-tab:hover { color: var(--text); }
+.lypx-tab.active {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+  font-weight: 600;
+}
+
+/* Panel title */
+.panel-title {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+/* Count badge */
+.count-badge {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--accent);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+}
+
+/* Live dot */
+.live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 0 rgba(76,175,109,0.6);
+  animation: lypx-pulse 2s infinite;
+  flex-shrink: 0;
+}
+.live-dot-amber {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #E5A93C;
+  box-shadow: 0 0 0 0 rgba(229,169,60,0.6);
+  animation: lypx-pulse-amber 2s infinite;
+  flex-shrink: 0;
+}
+@keyframes lypx-pulse {
+  0%   { box-shadow: 0 0 0 0 rgba(76,175,109,0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(76,175,109,0); }
+  100% { box-shadow: 0 0 0 0 rgba(76,175,109,0); }
+}
+@keyframes lypx-pulse-amber {
+  0%   { box-shadow: 0 0 0 0 rgba(229,169,60,0.45); }
+  70%  { box-shadow: 0 0 0 6px rgba(229,169,60,0); }
+  100% { box-shadow: 0 0 0 0 rgba(229,169,60,0); }
+}
+
+/* Booking card */
+.booking-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.booking-card:hover {
+  border-color: #3D3D47;
+  transform: translateY(-1px);
+}
+.booking-card.unassigned {
+  border-left: 3px solid var(--accent);
+  animation: lypx-pulse-border 2s infinite;
+}
+@keyframes lypx-pulse-border {
+  0%, 100% { border-left-color: var(--accent); }
+  50%       { border-left-color: rgba(229,169,60,0.4); }
+}
+
+/* Tier chips */
+.tier-chip {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  padding: 3px 7px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  color: var(--text-dim);
+}
+.tier-VVV { color: #C9A0F5; border-color: #3a2f4a; }
+.tier-AVF { color: #7FC8F8; border-color: #23384a; }
+.tier-NVE { color: #8BD3A8; border-color: #243b2d; }
+
+/* Assign button */
+.assign-btn {
+  background: var(--accent);
+  color: #1A1305;
+  border: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  padding: 7px 14px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: filter 0.15s ease, transform 0.1s ease;
+  font-family: var(--font-ui);
+}
+.assign-btn:hover { filter: brightness(1.08); }
+.assign-btn:active { transform: scale(0.97); }
+
+/* Progress wheel */
+.wheel {
+  --pct: 0%;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: conic-gradient(var(--accent) var(--pct), var(--surface-raised) 0);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: filter 0.15s ease;
+  position: relative;
+}
+.wheel:hover { filter: brightness(1.15); }
+.wheel::after {
+  content: "";
+  position: absolute;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--bg);
+}
+.wheel-label {
+  position: relative;
+  z-index: 2;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+}
+.wheel.done .wheel-label { color: var(--green); }
+.wheel.done {
+  background: conic-gradient(var(--green) 100%, var(--surface-raised) 0);
+}
+
+/* Grid table */
+.grid-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+.grid-table thead th {
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  text-transform: uppercase;
+  color: var(--text-faint);
+  padding: 0 14px 12px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.grid-table tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease;
+}
+.grid-table tbody tr:hover { background: var(--surface); }
+.grid-table td {
+  padding: 13px 14px;
+  font-size: 13px;
+  vertical-align: middle;
+}
+
+/* Flash animation for wheel click */
+@keyframes flashPulse {
+  0%   { box-shadow: 0 0 0 0 rgba(229,169,60,0.5); }
+  100% { box-shadow: 0 0 0 8px rgba(229,169,60,0); }
+}
+.flash { animation: flashPulse 0.4s ease; }
+
+/* Status chips */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  letter-spacing: 0.2px;
+}
+.chip-green   { color: #4CAF6D; background: rgba(76,175,109,0.12); border-color: rgba(76,175,109,0.25); }
+.chip-amber   { color: #E5A93C; background: rgba(229,169,60,0.12); border-color: rgba(229,169,60,0.25); }
+.chip-red     { color: #D9534F; background: rgba(217,83,79,0.12); border-color: rgba(217,83,79,0.25); }
+.chip-blue    { color: #7FC8F8; background: rgba(127,200,248,0.12); border-color: rgba(127,200,248,0.25); }
+.chip-purple  { color: #C9A0F5; background: rgba(201,160,245,0.12); border-color: rgba(201,160,245,0.25); }
+.chip-dim     { color: var(--text-dim); background: var(--surface-raised); border-color: var(--border); }
