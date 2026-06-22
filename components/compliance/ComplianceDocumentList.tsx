@@ -15,11 +15,13 @@ const statusColors: Record<string, string> = {
 };
 
 const docTypeLabels: Record<string, string> = {
+  nric: "NRIC / Identity Document",
   license: "Driver License",
   insurance: "Insurance",
   registration: "Vehicle Registration",
   inspection: "Inspection Certificate",
   background_check: "Background Check",
+  rental_agreement: "Rental Agreement",
 };
 
 interface Doc {
@@ -27,7 +29,9 @@ interface Doc {
   docType: string;
   status: string;
   expiryDate: Date;
+  issuedDate?: Date | null;
   reviewedAt: Date | null;
+  file?: { fileName: string; mimeType: string } | null;
 }
 
 interface Props {
@@ -55,13 +59,24 @@ export function ComplianceDocumentList({ documents, entityType, entityId, timezo
             <div>
               <p className="text-sm text-white">{docTypeLabels[doc.docType] ?? doc.docType}</p>
               <p className="text-xs text-gray-500 mt-0.5">
-                Expires {formatTZDate(doc.expiryDate, timezone)}
+                {doc.issuedDate && <>Issued {formatTZDate(doc.issuedDate, timezone)} · </>}
+                {doc.docType !== "nric" && <>Expires {formatTZDate(doc.expiryDate, timezone)}</>}
                 {doc.reviewedAt && (
                   <span className="ml-2 text-gray-600">
                     · Reviewed {formatTZDate(doc.reviewedAt, timezone)}
                   </span>
                 )}
               </p>
+              {doc.file && (
+                <a
+                  href={`/api/compliance/${doc.id}/file`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-400 hover:text-blue-300 mt-0.5 inline-block"
+                >
+                  View {doc.file.mimeType === "application/pdf" ? "PDF" : "image"} ↗
+                </a>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Badge variant="outline" className={`text-xs ${statusColors[doc.status]}`}>

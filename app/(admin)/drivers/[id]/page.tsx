@@ -29,7 +29,10 @@ export default async function DriverDetailPage({
   const driver = await prisma.driver.findUnique({
     where: { id },
     include: {
-      documents: { orderBy: { expiryDate: "asc" } },
+      documents: {
+        orderBy: { expiryDate: "asc" },
+        include: { file: { select: { fileName: true, mimeType: true } } },
+      },
       memberships: { include: { tenant: true } },
       vehicleOwnerships: { include: { vehicle: true } },
     },

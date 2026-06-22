@@ -27,7 +27,10 @@ export default async function VehicleDetailPage({
   const vehicle = await prisma.vehicle.findUnique({
     where: { id },
     include: {
-      documents: { orderBy: { expiryDate: "asc" } },
+      documents: {
+        orderBy: { expiryDate: "asc" },
+        include: { file: { select: { fileName: true, mimeType: true } } },
+      },
       ownership: {
         include: { driver: true },
       },

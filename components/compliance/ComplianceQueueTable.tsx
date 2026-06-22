@@ -33,11 +33,13 @@ interface Props {
 }
 
 const docTypeLabels: Record<string, string> = {
+  nric: "NRIC",
   license: "Driver License",
   insurance: "Insurance",
   registration: "Vehicle Registration",
   inspection: "Inspection Certificate",
   background_check: "Background Check",
+  rental_agreement: "Rental Agreement",
 };
 
 export function ComplianceQueueTable({ docs, section, timezone = DEFAULT_TIMEZONE }: Props) {

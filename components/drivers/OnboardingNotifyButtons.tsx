@@ -1,20 +1,25 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ChevronDown, ChevronUp } from "lucide-react";
 
 interface Props {
   driverId: string;
 }
 
 export function OnboardingNotifyButtons({ driverId }: Props) {
-  const [loading, setLoading] = useState<"approved" | "rejected" | null>(null);
+  const router = useRouter();
+  const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState<string | null>(null);
+  const [showInfoForm, setShowInfoForm] = useState(false);
+  const [infoMessage, setInfoMessage] = useState("");
 
-  async function notify(notification: "approved" | "rejected") {
+  async function notify(notification: string, extra?: object) {
     setLoading(notification);
     setError(null);
     setSent(null);
@@ -22,18 +27,26 @@ export function OnboardingNotifyButtons({ driverId }: Props) {
     const res = await fetch(`/api/drivers/${driverId}/notify`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ notification }),
+      body: JSON.stringify({ notification, ...extra }),
     });
 
     const data = await res.json();
     setLoading(null);
 
     if (!res.ok) {
-      setError(data.error ?? "Send failed");
+      setError(data.error ?? "Action failed");
       return;
     }
 
-    setSent(notification === "approved" ? "Approval notification sent" : "Rejection notification sent");
+    if (notification === "approved") setSent("Driver approved and notified via WhatsApp");
+    if (notification === "request_info") {
+      setSent("Info request sent via WhatsApp");
+      setShowInfoForm(false);
+      setInfoMessage("");
+    }
+    if (notification === "rejected") setSent("Rejection notification sent");
+
+    router.refresh();
   }
 
   return (
@@ -49,14 +62,25 @@ export function OnboardingNotifyButtons({ driverId }: Props) {
           {sent}
         </div>
       )}
-      <div className="flex gap-2">
+
+      <div className="flex flex-wrap gap-2">
         <Button
           size="sm"
           onClick={() => notify("approved")}
           disabled={!!loading}
           className="bg-green-700 hover:bg-green-600 text-xs h-7"
         >
-          {loading === "approved" ? "Sending..." : "Notify Approved"}
+          {loading === "approved" ? "Approving..." : "✓ Approve"}
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={() => { setShowInfoForm(!showInfoForm); setSent(null); }}
+          disabled={!!loading}
+          className="border-yellow-700 text-yellow-300 hover:bg-yellow-950 text-xs h-7"
+        >
+          {showInfoForm ? <ChevronUp size={12} className="mr-1" /> : <ChevronDown size={12} className="mr-1" />}
+          Request More Info
         </Button>
         <Button
           size="sm"
@@ -65,9 +89,30 @@ export function OnboardingNotifyButtons({ driverId }: Props) {
           disabled={!!loading}
           className="text-xs h-7"
         >
-          {loading === "rejected" ? "Sending..." : "Notify Rejected"}
+          {loading === "rejected" ? "Rejecting..." : "Reject"}
         </Button>
       </div>
+
+      {showInfoForm && (
+        <div className="space-y-2 p-3 bg-gray-800 rounded-md border border-yellow-900">
+          <p className="text-xs text-gray-400">Describe what the driver needs to resubmit or clarify:</p>
+          <Textarea
+            value={infoMessage}
+            onChange={(e) => setInfoMessage(e.target.value)}
+            placeholder="e.g. Your license photo is too blurry. Please resubmit a clear photo of the front of your driving licence."
+            className="bg-gray-900 border-gray-700 text-white text-xs resize-none"
+            rows={3}
+          />
+          <Button
+            size="sm"
+            onClick={() => notify("request_info", { message: infoMessage })}
+            disabled={!!loading || !infoMessage.trim()}
+            className="bg-yellow-700 hover:bg-yellow-600 text-xs h-7"
+          >
+            {loading === "request_info" ? "Sending..." : "Send Request"}
+          </Button>
+        </div>
+      )}
     </div>
   );
 }

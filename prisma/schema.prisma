@@ -31,15 +31,17 @@ model Tenant {
 
 model Driver {
   id               String   @id @default(cuid())
-  identityHash     String   @unique // hash of normalized license_number + national_id
-  firstName        String
-  lastName         String
-  phoneNumber      String
-  complianceStatus String   @default("pending") // pending | active | expiring_soon | suspended
-  tier2Qualified   Boolean  @default(false)
-  sourceType       String   @default("operator_added") // "operator_added" | "self_submitted"
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  identityHash      String   @unique // hash of normalized license_number + national_id
+  firstName         String
+  lastName          String
+  phoneNumber       String
+  licenseNumber     String?
+  licenseIssuedDate DateTime?
+  complianceStatus  String   @default("pending") // pending | active | expiring_soon | suspended
+  tier2Qualified    Boolean  @default(false)
+  sourceType        String   @default("operator_added") // "operator_added" | "self_submitted"
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   documents         ComplianceDocument[]
   memberships       OperatorDriverMembership[]
@@ -68,6 +70,7 @@ model Vehicle {
   model                String
   plateNumber          String   @unique
   status               String   @default("inactive") // active | inactive | suspended — DERIVED
+  insuranceCompany     String?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -96,8 +99,9 @@ model ComplianceDocument {
   entityType         String    // "driver" | "vehicle"
   driverId           String?
   vehicleId          String?
-  docType            String    // license | insurance | registration | inspection | background_check
+  docType            String    // license | nric | insurance | registration | inspection | background_check | rental_agreement
   expiryDate         DateTime
+  issuedDate         DateTime?
   status             String    @default("pending_review") // verified | pending_review | expired | rejected
   verificationMethod String    @default("manual")
   uploadedAt         DateTime  @default(now())
@@ -106,10 +110,24 @@ model ComplianceDocument {
 
   driver  Driver?  @relation(fields: [driverId], references: [id])
   vehicle Vehicle? @relation(fields: [vehicleId], references: [id])
+  file    DocumentFile?
 
   @@index([expiryDate])
   @@index([driverId])
   @@index([vehicleId])
+}
+
+// Stores uploaded file binary — separate model to avoid loading blobs in normal queries
+model DocumentFile {
+  id                   String             @id @default(cuid())
+  complianceDocumentId String             @unique
+  fileName             String
+  mimeType             String
+  size                 Int
+  data                 Bytes
+  uploadedAt           DateTime           @default(now())
+
+  document ComplianceDocument @relation(fields: [complianceDocumentId], references: [id])
 }
 
 // ─────────────────────────────────────────────
