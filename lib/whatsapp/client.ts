@@ -12,6 +12,8 @@ export interface SendTemplateParams {
   templateKey: TemplateKey;
   components?: object[];
   orderId?: string;
+  entityType?: string;
+  entityId?: string;
   actorId?: string;
 }
 
@@ -20,6 +22,8 @@ export async function sendWhatsAppTemplate({
   templateKey,
   components = [],
   orderId,
+  entityType,
+  entityId,
   actorId = "admin",
 }: SendTemplateParams): Promise<{ messageId: string }> {
   const template = WHATSAPP_TEMPLATES[templateKey];
@@ -56,8 +60,8 @@ export async function sendWhatsAppTemplate({
 
   await prisma.auditLog.create({
     data: {
-      entityType: "order",
-      entityId: orderId ?? "none",
+      entityType: entityType ?? "order",
+      entityId: entityId ?? orderId ?? "none",
       action: "whatsapp_sent",
       actorId,
       metadata: { templateKey, to, messageId },

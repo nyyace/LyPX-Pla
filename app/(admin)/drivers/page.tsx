@@ -131,6 +131,9 @@ export default async function DriversPage({
                 </TableCell>
                 <TableCell className="text-gray-400 text-sm">
                   {d.tier2Qualified ? "Yes" : "—"}
+                  {d.sourceType === "self_submitted" && (
+                    <Badge variant="outline" className="ml-2 text-xs border-purple-700 text-purple-300">Self</Badge>
+                  )}
                 </TableCell>
                 <TableCell className="text-gray-400 text-sm">
                   {d._count.documents}

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { ComplianceDocumentList } from "@/components/compliance/ComplianceDocumentList";
 import { DriverActions } from "@/components/drivers/DriverActions";
+import { OnboardingNotifyButtons } from "@/components/drivers/OnboardingNotifyButtons";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 
@@ -56,11 +57,29 @@ export default async function DriverDetailPage({
             {driver.tier2Qualified && (
               <Badge variant="outline" className="border-blue-700 text-blue-300">Tier 2</Badge>
             )}
+            {driver.sourceType === "self_submitted" && (
+              <Badge variant="outline" className="border-purple-700 text-purple-300">Self-submitted</Badge>
+            )}
           </div>
         </div>
       </div>
 
       <DriverActions driverId={driver.id} tier2Qualified={driver.tier2Qualified} />
+
+      {driver.sourceType === "self_submitted" && (
+        <Card className="bg-gray-900 border-purple-900 mt-4">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm text-purple-300">Self-Submitted Driver</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-xs text-gray-500 mb-3">
+              This driver registered via the public onboarding portal. After reviewing their documents,
+              notify them of the outcome via WhatsApp.
+            </p>
+            <OnboardingNotifyButtons driverId={driver.id} />
+          </CardContent>
+        </Card>
+      )}
 
       <Separator className="my-6 bg-gray-800" />
 
