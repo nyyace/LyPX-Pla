@@ -6,26 +6,28 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Upload, X, FileText } from "lucide-react";
+import { CheckCircle, Upload, X, FileText, ChevronDown, ChevronUp } from "lucide-react";
 
-type Step = "phone" | "otp" | "driver" | "vehicle" | "success";
-
-const STEPS: Step[] = ["phone", "otp", "driver", "vehicle"];
-const STEP_LABELS = ["Phone", "Verify", "Driver", "Vehicle"];
+type Step = "phone" | "otp" | "form" | "success";
+const STEPS: Step[] = ["phone", "otp", "form"];
+const STEP_LABELS = ["Phone", "Verify", "Details"];
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
 const MAX_SIZE = 5 * 1024 * 1024;
+const TODAY = new Date().toISOString().split("T")[0];
 
 function FileField({
   label,
   hint,
   file,
   onChange,
+  required = true,
 }: {
   label: string;
   hint?: string;
   file: File | null;
   onChange: (f: File | null) => void;
+  required?: boolean;
 }) {
   const ref = useRef<HTMLInputElement>(null);
 
@@ -33,7 +35,7 @@ function FileField({
     const f = e.target.files?.[0] ?? null;
     if (!f) return onChange(null);
     if (!ALLOWED_TYPES.includes(f.type)) {
-      alert("Only images (JPG, PNG, WEBP) and PDF are accepted.");
+      alert("Only images (JPG, PNG, WEBP, HEIC) and PDF are accepted.");
       e.target.value = "";
       return;
     }
@@ -47,33 +49,23 @@ function FileField({
 
   return (
     <div className="space-y-1.5">
-      <Label className="text-gray-300 text-sm">{label}</Label>
+      <Label className="text-gray-300 text-sm">
+        {label}{required && <span className="text-red-400 ml-0.5">*</span>}
+      </Label>
       {hint && <p className="text-xs text-gray-600">{hint}</p>}
-      <input
-        ref={ref}
-        type="file"
-        accept="image/*,application/pdf"
-        onChange={handleChange}
-        className="hidden"
-      />
+      <input ref={ref} type="file" accept="image/*,application/pdf" onChange={handleChange} className="hidden" />
       {file ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-800 bg-green-950">
           <FileText size={14} className="text-green-400 flex-shrink-0" />
           <span className="text-xs text-green-300 truncate flex-1">{file.name}</span>
-          <button
-            type="button"
-            onClick={() => { onChange(null); if (ref.current) ref.current.value = ""; }}
-            className="text-gray-500 hover:text-red-400 flex-shrink-0"
-          >
+          <button type="button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ""; }}
+            className="text-gray-500 hover:text-red-400 flex-shrink-0">
             <X size={12} />
           </button>
         </div>
       ) : (
-        <button
-          type="button"
-          onClick={() => ref.current?.click()}
-          className="w-full flex items-center gap-2 px-3 py-3 rounded-md border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 transition-colors text-xs"
-        >
+        <button type="button" onClick={() => ref.current?.click()}
+          className="w-full flex items-center gap-2 px-3 py-3 rounded-md border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 transition-colors text-xs">
           <Upload size={14} />
           Click to upload image or PDF
         </button>
@@ -82,39 +74,51 @@ function FileField({
   );
 }
 
+function SectionHeader({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-xs text-gray-500 uppercase tracking-wide font-medium border-b border-gray-800 pb-2 mb-4">
+      {children}
+    </p>
+  );
+}
+
 export default function OnboardPage() {
   const [step, setStep] = useState<Step>("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Phone
+  // Phone / OTP
   const [phone, setPhone] = useState("");
   const [verificationId, setVerificationId] = useState("");
   const [testCode, setTestCode] = useState<string | null>(null);
-
-  // OTP
   const [otp, setOtp] = useState("");
 
-  // Driver details
+  // Section 1 — Personal
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
-  const [nric, setNric] = useState("");
-  const [licenseNumber, setLicenseNumber] = useState("");
-  const [licenseIssuedDate, setLicenseIssuedDate] = useState("");
+  const [nricNumber, setNricNumber] = useState("");
+
+  // Section 2 — Driving credentials
+  const [drivingLicenceNumber, setDrivingLicenceNumber] = useState("");
+  const [drivingLicenceIssuedDate, setDrivingLicenceIssuedDate] = useState("");
+  const [vocationalLicenceNumber, setVocationalLicenceNumber] = useState("");
+  const [vocationalLicenceExpiryDate, setVocationalLicenceExpiryDate] = useState("");
+
+  // Section 3 — Document uploads (all required)
   const [nricFile, setNricFile] = useState<File | null>(null);
-  const [licenseFile, setLicenseFile] = useState<File | null>(null);
+  const [drivingLicenceFile, setDrivingLicenceFile] = useState<File | null>(null);
+  const [vocationalLicenceFile, setVocationalLicenceFile] = useState<File | null>(null);
+  const [vocationalLicenceExpiryFile, setVocationalLicenceExpiryFile] = useState<File | null>(null);
 
-  // Vehicle details
-  const [plateNumber, setPlateNumber] = useState("");
-  const [isOwned, setIsOwned] = useState(false);
-  const [rentalEndDate, setRentalEndDate] = useState("");
-  const [insuranceCompany, setInsuranceCompany] = useState("");
-  const [insuranceExpiry, setInsuranceExpiry] = useState("");
-  const [vehicleRegFile, setVehicleRegFile] = useState<File | null>(null);
+  // Section 4 — Vehicle (optional)
+  const [vehicleExpanded, setVehicleExpanded] = useState(false);
+  const [vehicleMake, setVehicleMake] = useState("");
+  const [vehicleModel, setVehicleModel] = useState("");
+  const [vehiclePlate, setVehiclePlate] = useState("");
+  const [vehicleRelationship, setVehicleRelationship] = useState<"owned" | "rented">("owned");
+  const [vehicleLogCardFile, setVehicleLogCardFile] = useState<File | null>(null);
   const [rentalAgreementFile, setRentalAgreementFile] = useState<File | null>(null);
-  const [insuranceFile, setInsuranceFile] = useState<File | null>(null);
 
-  // Result
   const [isResubmission, setIsResubmission] = useState(false);
 
   function setErr(msg: string) { setError(msg); setLoading(false); }
@@ -150,33 +154,40 @@ export default function OnboardPage() {
     const data = await res.json();
     setLoading(false);
     if (!res.ok) return setErr(data.error ?? "Verification failed");
-    setStep("driver");
+    setStep("form");
   }
 
-  // ── Step 3: Driver details validation ────────────────────────────────────
-  function submitDriver(e: React.FormEvent) {
+  // ── Step 3: Submit full form ───────────────────────────────────────────────
+  async function submitForm(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (!firstName.trim() || !lastName.trim()) return setErr("Name is required");
-    if (!nric.trim()) return setErr("NRIC / ID number is required");
-    if (!licenseNumber.trim()) return setErr("Driver license number is required");
-    if (!licenseIssuedDate) return setErr("License issued date is required");
-    if (!nricFile) return setErr("NRIC / ID document upload is required");
-    if (!licenseFile) return setErr("Driver license document upload is required");
-    setStep("vehicle");
-  }
 
-  // ── Step 4: Vehicle details + final submit ────────────────────────────────
-  async function submitVehicle(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!plateNumber.trim()) return setErr("Vehicle plate number is required");
-    if (!isOwned && !rentalEndDate) return setErr("Rental agreement end date is required");
-    if (!insuranceCompany.trim()) return setErr("Insurance company is required");
-    if (!insuranceExpiry) return setErr("Insurance expiry date is required");
-    if (!vehicleRegFile) return setErr("Vehicle registration document upload is required");
-    if (!isOwned && !rentalAgreementFile) return setErr("Rental agreement document upload is required");
-    if (!insuranceFile) return setErr("Insurance document upload is required");
+    // Section 1 validation
+    if (!firstName.trim() || !lastName.trim()) return setErr("First and last name are required");
+    if (!nricNumber.trim()) return setErr("NRIC / Passport number is required");
+
+    // Section 2 validation
+    if (!drivingLicenceNumber.trim()) return setErr("Driving licence number is required");
+    if (!drivingLicenceIssuedDate) return setErr("Driving licence issued date is required");
+    if (drivingLicenceIssuedDate >= TODAY) return setErr("Driving licence issued date must be in the past");
+    if (!vocationalLicenceNumber.trim()) return setErr("Vocational licence number is required");
+    if (!vocationalLicenceExpiryDate) return setErr("Vocational licence expiry date is required");
+    if (vocationalLicenceExpiryDate <= TODAY) return setErr("Vocational licence must not be expired — please contact admin");
+
+    // Section 3 validation
+    if (!nricFile) return setErr("NRIC / Passport document upload is required");
+    if (!drivingLicenceFile) return setErr("Driving licence document upload is required");
+    if (!vocationalLicenceFile) return setErr("Vocational licence document upload is required");
+    if (!vocationalLicenceExpiryFile) return setErr("Vocational licence expiry page upload is required");
+
+    // Section 4 validation (vehicle is optional, but if expanded, validate)
+    if (vehicleExpanded) {
+      if (!vehiclePlate.trim()) return setErr("Vehicle plate number is required");
+      if (!vehicleLogCardFile) return setErr("Vehicle log card upload is required");
+      if (vehicleRelationship === "rented" && !rentalAgreementFile) {
+        return setErr("Rental agreement upload is required for rented vehicles");
+      }
+    }
 
     setLoading(true);
 
@@ -184,19 +195,26 @@ export default function OnboardPage() {
     form.append("verificationId", verificationId);
     form.append("firstName", firstName.trim());
     form.append("lastName", lastName.trim());
-    form.append("nric", nric.trim());
-    form.append("licenseNumber", licenseNumber.trim());
-    form.append("licenseIssuedDate", licenseIssuedDate);
+    form.append("nricNumber", nricNumber.trim().toUpperCase());
+    form.append("drivingLicenceNumber", drivingLicenceNumber.trim().toUpperCase());
+    form.append("drivingLicenceIssuedDate", drivingLicenceIssuedDate);
+    form.append("vocationalLicenceNumber", vocationalLicenceNumber.trim().toUpperCase());
+    form.append("vocationalLicenceExpiryDate", vocationalLicenceExpiryDate);
     form.append("nricFile", nricFile!);
-    form.append("licenseFile", licenseFile!);
-    form.append("plateNumber", plateNumber.trim());
-    form.append("isOwned", String(isOwned));
-    if (!isOwned) form.append("rentalEndDate", rentalEndDate);
-    form.append("insuranceCompany", insuranceCompany.trim());
-    form.append("insuranceExpiry", insuranceExpiry);
-    form.append("vehicleRegFile", vehicleRegFile!);
-    if (!isOwned && rentalAgreementFile) form.append("rentalAgreementFile", rentalAgreementFile);
-    form.append("insuranceFile", insuranceFile!);
+    form.append("drivingLicenceFile", drivingLicenceFile!);
+    form.append("vocationalLicenceFile", vocationalLicenceFile!);
+    form.append("vocationalLicenceExpiryFile", vocationalLicenceExpiryFile!);
+
+    if (vehicleExpanded && vehiclePlate.trim()) {
+      form.append("vehicleMake", vehicleMake.trim());
+      form.append("vehicleModel", vehicleModel.trim());
+      form.append("vehiclePlate", vehiclePlate.trim().toUpperCase());
+      form.append("vehicleRelationship", vehicleRelationship);
+      form.append("vehicleLogCardFile", vehicleLogCardFile!);
+      if (vehicleRelationship === "rented" && rentalAgreementFile) {
+        form.append("rentalAgreementFile", rentalAgreementFile);
+      }
+    }
 
     const res = await fetch("/api/onboarding/submit", { method: "POST", body: form });
     const data = await res.json();
@@ -296,178 +314,164 @@ export default function OnboardPage() {
         </Card>
       )}
 
-      {/* ── Step 3: Driver details ──────────────────────────────────────── */}
-      {step === "driver" && (
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Driver Information</CardTitle>
-            <p className="text-sm text-gray-500">All fields and documents are required.</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submitDriver} className="space-y-5">
-              {/* Personal details */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-gray-300">First name</Label>
-                  <Input value={firstName} onChange={(e) => setFirstName(e.target.value)}
-                    required className="bg-gray-800 border-gray-700 text-white" />
+      {/* ── Step 3: Full form ───────────────────────────────────────────── */}
+      {step === "form" && (
+        <form onSubmit={submitForm} className="space-y-6">
+
+          {/* Section 1 — Personal Information */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardContent className="pt-5">
+              <SectionHeader>Personal Information</SectionHeader>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-gray-300 text-sm">First name <span className="text-red-400">*</span></Label>
+                    <Input value={firstName} onChange={(e) => setFirstName(e.target.value)}
+                      required className="bg-gray-800 border-gray-700 text-white" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-gray-300 text-sm">Last name <span className="text-red-400">*</span></Label>
+                    <Input value={lastName} onChange={(e) => setLastName(e.target.value)}
+                      required className="bg-gray-800 border-gray-700 text-white" />
+                  </div>
                 </div>
                 <div className="space-y-1.5">
-                  <Label className="text-gray-300">Last name</Label>
-                  <Input value={lastName} onChange={(e) => setLastName(e.target.value)}
-                    required className="bg-gray-800 border-gray-700 text-white" />
+                  <Label className="text-gray-300 text-sm">NRIC / Passport No. <span className="text-red-400">*</span></Label>
+                  <Input value={nricNumber} onChange={(e) => setNricNumber(e.target.value.toUpperCase())}
+                    placeholder="S1234567A" required
+                    className="bg-gray-800 border-gray-700 text-white font-mono" />
                 </div>
               </div>
+            </CardContent>
+          </Card>
 
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">NRIC / FIN No.</Label>
-                <Input value={nric}
-                  onChange={(e) => setNric(e.target.value.toUpperCase())}
-                  placeholder="S1234567A" required
-                  className="bg-gray-800 border-gray-700 text-white font-mono" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">Driver License No.</Label>
-                <Input value={licenseNumber}
-                  onChange={(e) => setLicenseNumber(e.target.value.toUpperCase())}
-                  placeholder="SG12345678" required
-                  className="bg-gray-800 border-gray-700 text-white font-mono" />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">License Issued Date</Label>
-                <Input type="date" value={licenseIssuedDate}
-                  onChange={(e) => setLicenseIssuedDate(e.target.value)}
-                  max={new Date().toISOString().split("T")[0]}
-                  required className="bg-gray-800 border-gray-700 text-white" />
-              </div>
-
-              {/* Document uploads */}
-              <div className="border-t border-gray-800 pt-4 space-y-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Documents</p>
-                <FileField
-                  label="NRIC / Identity Document"
-                  hint="Upload a clear photo or scan of your NRIC / FIN card"
-                  file={nricFile}
-                  onChange={setNricFile}
-                />
-                <FileField
-                  label="Driver License"
-                  hint="Upload a clear photo or scan of your driving licence (front)"
-                  file={licenseFile}
-                  onChange={setLicenseFile}
-                />
-              </div>
-
-              <Button type="submit" className="w-full">Continue to Vehicle Details</Button>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Step 4: Vehicle details ─────────────────────────────────────── */}
-      {step === "vehicle" && (
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader>
-            <CardTitle className="text-white">Vehicle Information</CardTitle>
-            <p className="text-sm text-gray-500">All fields and documents are required.</p>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={submitVehicle} className="space-y-5">
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">Vehicle Registration Plate</Label>
-                <Input value={plateNumber}
-                  onChange={(e) => setPlateNumber(e.target.value.toUpperCase())}
-                  placeholder="SBA1234A" required
-                  className="bg-gray-800 border-gray-700 text-white font-mono" />
-              </div>
-
-              {/* Ownership toggle */}
-              <div className="flex items-center gap-3 p-3 rounded-md bg-gray-800 border border-gray-700">
-                <input
-                  type="checkbox"
-                  id="isOwned"
-                  checked={isOwned}
-                  onChange={(e) => {
-                    setIsOwned(e.target.checked);
-                    if (e.target.checked) {
-                      setRentalEndDate("");
-                      setRentalAgreementFile(null);
-                    }
-                  }}
-                  className="w-4 h-4 accent-white"
-                />
-                <label htmlFor="isOwned" className="text-sm text-gray-300 cursor-pointer">
-                  I own this vehicle (skip rental agreement)
-                </label>
-              </div>
-
-              {!isOwned && (
+          {/* Section 2 — Driving Credentials */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardContent className="pt-5">
+              <SectionHeader>Driving Credentials</SectionHeader>
+              <div className="space-y-4">
                 <div className="space-y-1.5">
-                  <Label className="text-gray-300">Rental Agreement End Date</Label>
-                  <Input type="date" value={rentalEndDate}
-                    onChange={(e) => setRentalEndDate(e.target.value)}
-                    min={new Date().toISOString().split("T")[0]}
-                    required={!isOwned}
+                  <Label className="text-gray-300 text-sm">Driving Licence No. <span className="text-red-400">*</span></Label>
+                  <Input value={drivingLicenceNumber} onChange={(e) => setDrivingLicenceNumber(e.target.value.toUpperCase())}
+                    placeholder="SXXXXXXXX" required
+                    className="bg-gray-800 border-gray-700 text-white font-mono" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-gray-300 text-sm">Driving Licence Issued Date <span className="text-red-400">*</span></Label>
+                  <Input type="date" value={drivingLicenceIssuedDate}
+                    onChange={(e) => setDrivingLicenceIssuedDate(e.target.value)}
+                    max={TODAY} required
                     className="bg-gray-800 border-gray-700 text-white" />
                 </div>
+                <div className="space-y-1.5">
+                  <Label className="text-gray-300 text-sm">Vocational Licence No. (PDVL / TDVL) <span className="text-red-400">*</span></Label>
+                  <Input value={vocationalLicenceNumber} onChange={(e) => setVocationalLicenceNumber(e.target.value.toUpperCase())}
+                    placeholder="PDVL/TDVL number" required
+                    className="bg-gray-800 border-gray-700 text-white font-mono" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label className="text-gray-300 text-sm">Vocational Licence Expiry Date <span className="text-red-400">*</span></Label>
+                  <Input type="date" value={vocationalLicenceExpiryDate}
+                    onChange={(e) => setVocationalLicenceExpiryDate(e.target.value)}
+                    min={TODAY} required
+                    className="bg-gray-800 border-gray-700 text-white" />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 3 — Document Uploads */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardContent className="pt-5">
+              <SectionHeader>Document Uploads</SectionHeader>
+              <div className="space-y-5">
+                <FileField label="NRIC / Passport"
+                  hint="Upload a clear photo or scan of your NRIC / Passport"
+                  file={nricFile} onChange={setNricFile} />
+                <FileField label="Driving Licence"
+                  hint="Upload a clear photo or scan of your driving licence (front)"
+                  file={drivingLicenceFile} onChange={setDrivingLicenceFile} />
+                <FileField label="Vocational Licence"
+                  hint="Upload your PDVL or TDVL document"
+                  file={vocationalLicenceFile} onChange={setVocationalLicenceFile} />
+                <FileField label="Vocational Licence — Expiry Page"
+                  hint="Upload the page clearly showing your vocational licence expiry date"
+                  file={vocationalLicenceExpiryFile} onChange={setVocationalLicenceExpiryFile} />
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Section 4 — Vehicle (optional, expandable) */}
+          <Card className="bg-gray-900 border-gray-800">
+            <CardContent className="pt-5">
+              <button
+                type="button"
+                onClick={() => setVehicleExpanded((v) => !v)}
+                className="w-full flex items-center justify-between text-left"
+              >
+                <SectionHeader>Vehicle Information (Optional)</SectionHeader>
+                {vehicleExpanded ? <ChevronUp size={16} className="text-gray-500 flex-shrink-0 -mt-3" /> : <ChevronDown size={16} className="text-gray-500 flex-shrink-0 -mt-3" />}
+              </button>
+
+              {!vehicleExpanded && (
+                <p className="text-xs text-gray-600 -mt-2">Tap to add your vehicle details and log card</p>
               )}
 
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">Insurance Company</Label>
-                <Input value={insuranceCompany}
-                  onChange={(e) => setInsuranceCompany(e.target.value)}
-                  placeholder="e.g. NTUC Income, FWD, Tokio Marine"
-                  required className="bg-gray-800 border-gray-700 text-white" />
-              </div>
+              {vehicleExpanded && (
+                <div className="space-y-4 mt-2">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-gray-300 text-sm">Vehicle Make</Label>
+                      <Input value={vehicleMake} onChange={(e) => setVehicleMake(e.target.value)}
+                        placeholder="e.g. Toyota" className="bg-gray-800 border-gray-700 text-white" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-gray-300 text-sm">Vehicle Model</Label>
+                      <Input value={vehicleModel} onChange={(e) => setVehicleModel(e.target.value)}
+                        placeholder="e.g. Camry" className="bg-gray-800 border-gray-700 text-white" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-gray-300 text-sm">Vehicle Plate No. <span className="text-red-400">*</span></Label>
+                    <Input value={vehiclePlate} onChange={(e) => setVehiclePlate(e.target.value.toUpperCase())}
+                      placeholder="SBA1234A"
+                      className="bg-gray-800 border-gray-700 text-white font-mono" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-gray-300 text-sm">Vehicle Ownership <span className="text-red-400">*</span></Label>
+                    <div className="flex gap-3">
+                      {(["owned", "rented"] as const).map((rel) => (
+                        <button key={rel} type="button"
+                          onClick={() => { setVehicleRelationship(rel); if (rel === "owned") setRentalAgreementFile(null); }}
+                          className={`flex-1 py-2 rounded-md border text-sm font-medium transition-colors ${
+                            vehicleRelationship === rel
+                              ? "border-white bg-white text-gray-950"
+                              : "border-gray-700 text-gray-400 hover:border-gray-500"
+                          }`}>
+                          {rel.charAt(0).toUpperCase() + rel.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <FileField label="Vehicle Log Card"
+                    hint="Upload your vehicle log card"
+                    file={vehicleLogCardFile} onChange={setVehicleLogCardFile}
+                    required={vehicleExpanded} />
+                  {vehicleRelationship === "rented" && (
+                    <FileField label="Rental Agreement"
+                      hint="Upload a copy of your vehicle rental / hire agreement"
+                      file={rentalAgreementFile} onChange={setRentalAgreementFile}
+                      required={vehicleRelationship === "rented"} />
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
 
-              <div className="space-y-1.5">
-                <Label className="text-gray-300">Insurance Expiry Date</Label>
-                <Input type="date" value={insuranceExpiry}
-                  onChange={(e) => setInsuranceExpiry(e.target.value)}
-                  min={new Date().toISOString().split("T")[0]}
-                  required className="bg-gray-800 border-gray-700 text-white" />
-              </div>
-
-              {/* Vehicle document uploads */}
-              <div className="border-t border-gray-800 pt-4 space-y-4">
-                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">Documents</p>
-                <FileField
-                  label="Vehicle Registration Document"
-                  hint="Upload your vehicle log card or registration certificate"
-                  file={vehicleRegFile}
-                  onChange={setVehicleRegFile}
-                />
-                {!isOwned && (
-                  <FileField
-                    label="Rental Agreement"
-                    hint="Upload a copy of your vehicle rental / hire agreement"
-                    file={rentalAgreementFile}
-                    onChange={setRentalAgreementFile}
-                  />
-                )}
-                <FileField
-                  label="Insurance Certificate"
-                  hint="Upload your vehicle insurance certificate or cover note"
-                  file={insuranceFile}
-                  onChange={setInsuranceFile}
-                />
-              </div>
-
-              <div className="flex gap-3">
-                <Button type="button" variant="outline"
-                  className="border-gray-700 text-gray-300"
-                  onClick={() => { setStep("driver"); setError(null); }}>
-                  Back
-                </Button>
-                <Button type="submit" disabled={loading} className="flex-1">
-                  {loading ? "Submitting..." : "Submit Application"}
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? "Submitting..." : "Submit Application"}
+          </Button>
+        </form>
       )}
 
       {/* ── Success ─────────────────────────────────────────────────────── */}

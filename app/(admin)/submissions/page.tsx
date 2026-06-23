@@ -77,7 +77,7 @@ export default async function SubmissionsPage() {
                         href={`/submissions/${s.id}`}
                         className="text-white hover:underline text-sm font-medium"
                       >
-                        {s.fullName}
+                        {s.firstName} {s.lastName}
                       </Link>
                       <p className="text-xs text-gray-500 mt-0.5">{s.nricNumber}</p>
                     </TableCell>

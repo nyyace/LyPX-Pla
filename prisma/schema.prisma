@@ -271,22 +271,36 @@ model UserPreference {
 // ─────────────────────────────────────────────
 
 model DriverSubmission {
-  id                  String    @id @default(cuid())
-  driverId            String    @unique
-  submittedAt         DateTime  @default(now())
-  fullName            String
-  nricNumber          String
-  phoneNumber         String
-  licenceNumber       String
-  vehicleMake         String?
-  vehicleModel        String?
-  vehiclePlate        String?
-  vehicleRelationship String?
-  adminNotes          String?
-  flagReason          String?
-  rejectionReason     String?
-  reviewedBy          String?
-  reviewedAt          DateTime?
+  id                          String    @id @default(cuid())
+  driverId                    String    @unique
+  submittedAt                 DateTime  @default(now())
+
+  // Personal details
+  firstName                   String
+  lastName                    String
+  nricNumber                  String
+  phoneNumber                 String    // OTP-verified at submission
+
+  // Driving credentials
+  drivingLicenceNumber        String
+  drivingLicenceIssuedDate    DateTime
+
+  // Vocational licence
+  vocationalLicenceNumber     String
+  vocationalLicenceExpiryDate DateTime  // cross-checked against upload
+
+  // Vehicle (optional)
+  vehicleMake                 String?
+  vehicleModel                String?
+  vehiclePlate                String?
+  vehicleRelationship         String?   // "owned" | "rented"
+
+  // Admin review
+  adminNotes                  String?
+  flagReason                  String?
+  rejectionReason             String?
+  reviewedBy                  String?
+  reviewedAt                  DateTime?
 
   driver Driver @relation(fields: [driverId], references: [id])
 }

@@ -30,9 +30,17 @@ interface Props {
 }
 
 const DOC_TYPE_LABELS: Record<string, string> = {
-  nric: "NRIC", license: "Driver License", insurance: "Insurance",
-  registration: "Vehicle Registration", inspection: "Inspection Certificate",
-  background_check: "Background Check", rental_agreement: "Rental Agreement",
+  nric: "NRIC / Passport",
+  license: "Driver Licence",
+  driving_licence: "Driving Licence",
+  vocational_licence: "Vocational Licence",
+  vocational_licence_expiry: "Vocational Licence (Expiry Page)",
+  insurance: "Insurance",
+  registration: "Vehicle Log Card",
+  vehicle_log_card: "Vehicle Log Card",
+  inspection: "Inspection Certificate",
+  background_check: "Background Check",
+  rental_agreement: "Rental Agreement",
 };
 
 function StatusChip({ doc }: { doc: Doc }) {

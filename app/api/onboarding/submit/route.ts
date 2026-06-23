@@ -5,17 +5,12 @@ import { uploadToR2, makeR2Key } from "@/lib/r2";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
 
 const ALLOWED_MIMES = [
-  "image/jpeg",
-  "image/jpg",
-  "image/png",
-  "image/webp",
-  "image/heic",
-  "application/pdf",
+  "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf",
 ];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 
-function makeIdentityHash(licenseNumber: string, nric: string): string {
-  const normalized = `${licenseNumber.trim().toUpperCase()}::${nric.trim().toUpperCase()}`;
+function makeIdentityHash(drivingLicenceNumber: string, nricNumber: string): string {
+  const normalized = `${drivingLicenceNumber.trim().toUpperCase()}::${nricNumber.trim().toUpperCase()}`;
   return createHash("sha256").update(normalized).digest("hex");
 }
 
@@ -37,10 +32,9 @@ async function validateFile(
     return NextResponse.json({ error: `${fieldLabel} must be under 5 MB` }, { status: 400 });
   }
   if (!ALLOWED_MIMES.includes(f.type)) {
-    return NextResponse.json({ error: `${fieldLabel}: only images (JPG, PNG, WEBP) and PDF are accepted` }, { status: 400 });
+    return NextResponse.json({ error: `${fieldLabel}: only images and PDF accepted` }, { status: 400 });
   }
-  const buffer = Buffer.from(await f.arrayBuffer());
-  return { buffer, filename: f.name, mimeType: f.type };
+  return { buffer: Buffer.from(await f.arrayBuffer()), filename: f.name, mimeType: f.type };
 }
 
 function isNextResponse(v: unknown): v is NextResponse {
@@ -54,7 +48,6 @@ export async function POST(req: Request) {
   if (!verificationId) {
     return NextResponse.json({ error: "Phone verification required" }, { status: 400 });
   }
-
   const verification = await prisma.phoneVerification.findUnique({ where: { id: verificationId } });
   if (!verification?.verifiedAt) {
     return NextResponse.json({ error: "Phone not verified" }, { status: 400 });
@@ -63,94 +56,88 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Verification session expired — please restart" }, { status: 400 });
   }
 
-  // ── Driver fields ──────────────────────────────────────────────────────────
+  // ── Personal fields ────────────────────────────────────────────────────────
   const firstName = (form.get("firstName") as string | null)?.trim();
   const lastName = (form.get("lastName") as string | null)?.trim();
-  const nric = (form.get("nric") as string | null)?.trim().toUpperCase();
-  const licenseNumber = (form.get("licenseNumber") as string | null)?.trim().toUpperCase();
-  const licenseIssuedDateRaw = form.get("licenseIssuedDate") as string | null;
+  const nricNumber = (form.get("nricNumber") as string | null)?.trim().toUpperCase();
 
-  if (!firstName || !lastName || !nric || !licenseNumber || !licenseIssuedDateRaw) {
-    return NextResponse.json({ error: "All driver details are required" }, { status: 400 });
+  if (!firstName || !lastName || !nricNumber) {
+    return NextResponse.json({ error: "Personal details are required" }, { status: 400 });
   }
 
-  const licenseIssuedDate = new Date(licenseIssuedDateRaw);
-  if (isNaN(licenseIssuedDate.getTime())) {
-    return NextResponse.json({ error: "Invalid license issued date" }, { status: 400 });
+  // ── Driving credentials ───────────────────────────────────────────────────
+  const drivingLicenceNumber = (form.get("drivingLicenceNumber") as string | null)?.trim().toUpperCase();
+  const drivingLicenceIssuedDateRaw = form.get("drivingLicenceIssuedDate") as string | null;
+  const vocationalLicenceNumber = (form.get("vocationalLicenceNumber") as string | null)?.trim().toUpperCase();
+  const vocationalLicenceExpiryDateRaw = form.get("vocationalLicenceExpiryDate") as string | null;
+
+  if (!drivingLicenceNumber || !drivingLicenceIssuedDateRaw || !vocationalLicenceNumber || !vocationalLicenceExpiryDateRaw) {
+    return NextResponse.json({ error: "Driving credential fields are required" }, { status: 400 });
   }
 
-  // ── Driver document files ──────────────────────────────────────────────────
-  const nricFileResult = await validateFile(form.get("nricFile"), "NRIC document", true);
+  const drivingLicenceIssuedDate = new Date(drivingLicenceIssuedDateRaw);
+  const vocationalLicenceExpiryDate = new Date(vocationalLicenceExpiryDateRaw);
+
+  if (isNaN(drivingLicenceIssuedDate.getTime()) || isNaN(vocationalLicenceExpiryDate.getTime())) {
+    return NextResponse.json({ error: "Invalid date format" }, { status: 400 });
+  }
+  if (drivingLicenceIssuedDate >= new Date()) {
+    return NextResponse.json({ error: "Driving licence issued date must be in the past" }, { status: 400 });
+  }
+  if (vocationalLicenceExpiryDate <= new Date()) {
+    return NextResponse.json({ error: "Vocational licence is expired — contact admin" }, { status: 400 });
+  }
+
+  // ── Required document files ───────────────────────────────────────────────
+  const nricFileResult = await validateFile(form.get("nricFile"), "NRIC / Passport document", true);
   if (isNextResponse(nricFileResult)) return nricFileResult;
 
-  const licenseFileResult = await validateFile(form.get("licenseFile"), "Driver license document", true);
-  if (isNextResponse(licenseFileResult)) return licenseFileResult;
+  const drivingLicenceFileResult = await validateFile(form.get("drivingLicenceFile"), "Driving licence document", true);
+  if (isNextResponse(drivingLicenceFileResult)) return drivingLicenceFileResult;
 
-  // ── Vehicle fields ─────────────────────────────────────────────────────────
-  const plateNumber = (form.get("plateNumber") as string | null)?.trim().toUpperCase();
-  const vehicleMake = (form.get("vehicleMake") as string | null)?.trim();
-  const vehicleModel = (form.get("vehicleModel") as string | null)?.trim();
-  const isOwned = form.get("isOwned") === "true";
-  const rentalEndDateRaw = form.get("rentalEndDate") as string | null;
-  const insuranceCompany = (form.get("insuranceCompany") as string | null)?.trim();
-  const insuranceExpiryRaw = form.get("insuranceExpiry") as string | null;
+  const vocationalLicenceFileResult = await validateFile(form.get("vocationalLicenceFile"), "Vocational licence document", true);
+  if (isNextResponse(vocationalLicenceFileResult)) return vocationalLicenceFileResult;
 
-  if (!plateNumber) {
-    return NextResponse.json({ error: "Vehicle plate number is required" }, { status: 400 });
-  }
-  if (!insuranceCompany || !insuranceExpiryRaw) {
-    return NextResponse.json({ error: "Insurance details are required" }, { status: 400 });
-  }
+  const vocationalLicenceExpiryFileResult = await validateFile(form.get("vocationalLicenceExpiryFile"), "Vocational licence expiry page", true);
+  if (isNextResponse(vocationalLicenceExpiryFileResult)) return vocationalLicenceExpiryFileResult;
 
-  let rentalEndDate: Date | null = null;
-  if (!isOwned) {
-    if (!rentalEndDateRaw) {
-      return NextResponse.json({ error: "Rental agreement end date is required" }, { status: 400 });
-    }
-    rentalEndDate = new Date(rentalEndDateRaw);
-  }
+  // ── Vehicle fields (optional) ─────────────────────────────────────────────
+  const vehiclePlate = (form.get("vehiclePlate") as string | null)?.trim().toUpperCase() || null;
+  const vehicleMake = (form.get("vehicleMake") as string | null)?.trim() || null;
+  const vehicleModel = (form.get("vehicleModel") as string | null)?.trim() || null;
+  const vehicleRelationship = (form.get("vehicleRelationship") as string | null) ?? "owned";
+  const hasVehicle = !!vehiclePlate;
 
-  const insuranceExpiry = new Date(insuranceExpiryRaw);
-  if (isNaN(insuranceExpiry.getTime())) {
-    return NextResponse.json({ error: "Invalid insurance expiry date" }, { status: 400 });
-  }
+  const vehicleLogCardFileResult = hasVehicle
+    ? await validateFile(form.get("vehicleLogCardFile"), "Vehicle log card", true)
+    : null;
+  if (isNextResponse(vehicleLogCardFileResult)) return vehicleLogCardFileResult;
 
-  // ── Vehicle document files ─────────────────────────────────────────────────
-  const vehicleRegFileResult = await validateFile(form.get("vehicleRegFile"), "Vehicle registration document", true);
-  if (isNextResponse(vehicleRegFileResult)) return vehicleRegFileResult;
-
-  const rentalAgreementFileResult = await validateFile(form.get("rentalAgreementFile"), "Rental agreement", !isOwned);
+  const rentalAgreementFileResult = hasVehicle && vehicleRelationship === "rented"
+    ? await validateFile(form.get("rentalAgreementFile"), "Rental agreement", true)
+    : null;
   if (isNextResponse(rentalAgreementFileResult)) return rentalAgreementFileResult;
 
-  const insuranceFileResult = await validateFile(form.get("insuranceFile"), "Insurance document", true);
-  if (isNextResponse(insuranceFileResult)) return insuranceFileResult;
-
   const phone = verification.phone;
-  const identityHash = makeIdentityHash(licenseNumber, nric);
+  const identityHash = makeIdentityHash(drivingLicenceNumber!, nricNumber!);
 
-  // ── Existing driver check (resubmission) ───────────────────────────────────
   const existingDriver = await prisma.driver.findUnique({ where: { identityHash } });
   const isResubmission = !!existingDriver;
 
-  // ── Upload all files to R2 before DB transaction ───────────────────────────
-  // Use a placeholder driverId key segment for new drivers; replaced after driver creation below.
-  // For simplicity, upload to R2 using identityHash as temporary namespace — key is stable across
-  // resubmissions for the same driver since hash is deterministic.
-  const driverR2Prefix = existingDriver?.id ?? `pending/${identityHash.slice(0, 12)}`;
+  // ── Upload driver files to R2 before transaction ──────────────────────────
+  const driverPrefix = existingDriver?.id ?? `pending/${identityHash.slice(0, 12)}`;
 
-  const nricKey = nricFileResult ? makeR2Key(driverR2Prefix, "nric", nricFileResult.filename) : null;
-  const licenseKey = licenseFileResult ? makeR2Key(driverR2Prefix, "license", licenseFileResult.filename) : null;
+  const nricKey = nricFileResult ? makeR2Key(driverPrefix, "nric", nricFileResult.filename) : null;
+  const drivingLicenceKey = drivingLicenceFileResult ? makeR2Key(driverPrefix, "driving_licence", drivingLicenceFileResult.filename) : null;
+  const vocationalLicenceKey = vocationalLicenceFileResult ? makeR2Key(driverPrefix, "vocational_licence", vocationalLicenceFileResult.filename) : null;
+  const vocationalLicenceExpiryKey = vocationalLicenceExpiryFileResult ? makeR2Key(driverPrefix, "vocational_licence_expiry", vocationalLicenceExpiryFileResult.filename) : null;
 
-  const r2Uploads: Promise<void>[] = [];
-  if (nricFileResult && nricKey) {
-    r2Uploads.push(uploadToR2(nricKey, nricFileResult.buffer, nricFileResult.mimeType));
-  }
-  if (licenseFileResult && licenseKey) {
-    r2Uploads.push(uploadToR2(licenseKey, licenseFileResult.buffer, licenseFileResult.mimeType));
-  }
-
-  // We need the vehicle id for R2 keys — allocate after DB writes, so upload vehicle docs inside tx
-  await Promise.all(r2Uploads);
+  await Promise.all([
+    nricFileResult && nricKey ? uploadToR2(nricKey, nricFileResult.buffer, nricFileResult.mimeType) : null,
+    drivingLicenceFileResult && drivingLicenceKey ? uploadToR2(drivingLicenceKey, drivingLicenceFileResult.buffer, drivingLicenceFileResult.mimeType) : null,
+    vocationalLicenceFileResult && vocationalLicenceKey ? uploadToR2(vocationalLicenceKey, vocationalLicenceFileResult.buffer, vocationalLicenceFileResult.mimeType) : null,
+    vocationalLicenceExpiryFileResult && vocationalLicenceExpiryKey ? uploadToR2(vocationalLicenceExpiryKey, vocationalLicenceExpiryFileResult.buffer, vocationalLicenceExpiryFileResult.mimeType) : null,
+  ].filter(Boolean) as Promise<void>[]);
 
   let resultDriverId: string;
 
@@ -164,11 +151,9 @@ export async function POST(req: Request) {
           phoneNumber: phone,
           firstName: firstName!,
           lastName: lastName!,
-          licenseNumber,
-          licenseIssuedDate,
-          ...(existingDriver.complianceStatus !== "active"
-            ? { complianceStatus: "pending" }
-            : {}),
+          licenseNumber: drivingLicenceNumber,
+          licenseIssuedDate: drivingLicenceIssuedDate,
+          ...(existingDriver.complianceStatus !== "active" ? { complianceStatus: "pending" } : {}),
         },
       });
     } else {
@@ -178,8 +163,8 @@ export async function POST(req: Request) {
           firstName: firstName!,
           lastName: lastName!,
           phoneNumber: phone,
-          licenseNumber,
-          licenseIssuedDate,
+          licenseNumber: drivingLicenceNumber,
+          licenseIssuedDate: drivingLicenceIssuedDate,
           complianceStatus: "pending",
           sourceType: "self_submitted",
         },
@@ -188,190 +173,153 @@ export async function POST(req: Request) {
 
     resultDriverId = driver.id;
 
-    // Driver: NRIC document
-    const nricDoc = await tx.complianceDocument.create({
-      data: {
-        entityType: "driver",
-        driverId: driver.id,
-        docType: "nric",
-        expiryDate: new Date("2099-12-31"),
-        status: "pending_review",
-        verificationMethod: "manual",
-      },
-    });
-    if (nricFileResult && nricKey) {
-      await tx.documentFile.create({
-        data: {
-          complianceDocumentId: nricDoc.id,
-          fileName: nricFileResult.filename,
-          mimeType: nricFileResult.mimeType,
-          size: nricFileResult.buffer.length,
-          storageKey: nricKey,
-        },
-      });
+    // Helper to upsert a compliance document + file record
+    async function createDocWithFile(
+      docData: Parameters<TxClient["complianceDocument"]["create"]>[0]["data"],
+      fileResult: { buffer: Buffer; filename: string; mimeType: string } | null,
+      storageKey: string | null
+    ) {
+      const doc = await tx.complianceDocument.create({ data: docData });
+      if (fileResult && storageKey) {
+        await tx.documentFile.create({
+          data: {
+            complianceDocumentId: doc.id,
+            fileName: fileResult.filename,
+            mimeType: fileResult.mimeType,
+            size: fileResult.buffer.length,
+            storageKey,
+          },
+        });
+      }
+      return doc;
     }
 
-    // Driver: License document
-    const licenseDoc = await tx.complianceDocument.create({
-      data: {
-        entityType: "driver",
-        driverId: driver.id,
-        docType: "license",
-        issuedDate: licenseIssuedDate,
-        expiryDate: new Date("2099-12-31"),
-        status: "pending_review",
-        verificationMethod: "manual",
-      },
-    });
-    if (licenseFileResult && licenseKey) {
-      await tx.documentFile.create({
-        data: {
-          complianceDocumentId: licenseDoc.id,
-          fileName: licenseFileResult.filename,
-          mimeType: licenseFileResult.mimeType,
-          size: licenseFileResult.buffer.length,
-          storageKey: licenseKey,
-        },
-      });
-    }
+    // 1. NRIC document
+    await createDocWithFile({
+      entityType: "driver", driverId: driver.id,
+      docType: "nric",
+      expiryDate: new Date("2099-12-31"),
+      status: "pending_review", verificationMethod: "manual",
+    }, nricFileResult, nricKey);
 
-    // Vehicle — upsert by plateNumber
-    let vehicle = await tx.vehicle.findUnique({ where: { plateNumber: plateNumber! } });
-    if (!vehicle) {
-      vehicle = await tx.vehicle.create({
-        data: {
-          registeredByTenantId: "lypx_direct",
-          make: vehicleMake ?? "—",
-          model: vehicleModel ?? "—",
-          plateNumber: plateNumber!,
-          insuranceCompany: insuranceCompany ?? undefined,
-        },
-      });
-    } else {
-      vehicle = await tx.vehicle.update({
-        where: { id: vehicle.id },
-        data: { insuranceCompany: insuranceCompany ?? undefined },
-      });
-    }
+    // 2. Driving licence
+    await createDocWithFile({
+      entityType: "driver", driverId: driver.id,
+      docType: "driving_licence",
+      issuedDate: drivingLicenceIssuedDate,
+      expiryDate: new Date("2099-12-31"),
+      status: "pending_review", verificationMethod: "manual",
+    }, drivingLicenceFileResult, drivingLicenceKey);
 
-    const vehicleR2Prefix = vehicle.id;
+    // 3. Vocational licence
+    await createDocWithFile({
+      entityType: "driver", driverId: driver.id,
+      docType: "vocational_licence",
+      expiryDate: new Date("2099-12-31"),
+      status: "pending_review", verificationMethod: "manual",
+    }, vocationalLicenceFileResult, vocationalLicenceKey);
 
-    // VehicleOwnership
-    const existingOwnership = await tx.vehicleOwnership.findFirst({
-      where: { vehicleId: vehicle.id, driverId: driver.id },
-    });
-    if (!existingOwnership) {
-      await tx.vehicleOwnership.create({
-        data: {
-          vehicleId: vehicle.id,
-          driverId: driver.id,
-          relationshipType: isOwned ? "owned" : "contracted",
-          contractStatus: isOwned ? null : "active",
-          contractExpiry: rentalEndDate ?? undefined,
-        },
+    // 4. Vocational licence expiry page — expiry date is tracked and evaluated by compliance sweep
+    await createDocWithFile({
+      entityType: "driver", driverId: driver.id,
+      docType: "vocational_licence_expiry",
+      expiryDate: vocationalLicenceExpiryDate,
+      status: "pending_review", verificationMethod: "manual",
+    }, vocationalLicenceExpiryFileResult, vocationalLicenceExpiryKey);
+
+    // 5+6. Vehicle documents (optional)
+    if (hasVehicle && vehiclePlate) {
+      let vehicle = await tx.vehicle.findUnique({ where: { plateNumber: vehiclePlate } });
+      if (!vehicle) {
+        vehicle = await tx.vehicle.create({
+          data: {
+            registeredByTenantId: "lypx_direct",
+            make: vehicleMake ?? "—",
+            model: vehicleModel ?? "—",
+            plateNumber: vehiclePlate,
+          },
+        });
+      } else {
+        vehicle = await tx.vehicle.update({
+          where: { id: vehicle.id },
+          data: {
+            make: vehicleMake && vehicleMake !== "" ? vehicleMake : vehicle.make,
+            model: vehicleModel && vehicleModel !== "" ? vehicleModel : vehicle.model,
+          },
+        });
+      }
+
+      const existingOwnership = await tx.vehicleOwnership.findFirst({
+        where: { vehicleId: vehicle.id, driverId: driver.id },
       });
-    }
+      if (!existingOwnership) {
+        await tx.vehicleOwnership.create({
+          data: {
+            vehicleId: vehicle.id,
+            driverId: driver.id,
+            relationshipType: vehicleRelationship === "rented" ? "contracted" : "owned",
+            contractStatus: vehicleRelationship === "rented" ? "active" : null,
+          },
+        });
+      }
 
-    // Vehicle: Registration document
-    const regDoc = await tx.complianceDocument.create({
-      data: {
-        entityType: "vehicle",
-        vehicleId: vehicle.id,
-        docType: "registration",
-        expiryDate: new Date("2099-12-31"),
-        status: "pending_review",
-        verificationMethod: "manual",
-      },
-    });
-    if (vehicleRegFileResult) {
-      const regKey = makeR2Key(vehicleR2Prefix, "registration", vehicleRegFileResult.filename);
-      await uploadToR2(regKey, vehicleRegFileResult.buffer, vehicleRegFileResult.mimeType);
-      await tx.documentFile.create({
-        data: {
-          complianceDocumentId: regDoc.id,
-          fileName: vehicleRegFileResult.filename,
-          mimeType: vehicleRegFileResult.mimeType,
-          size: vehicleRegFileResult.buffer.length,
-          storageKey: regKey,
-        },
-      });
-    }
+      // Vehicle log card
+      if (vehicleLogCardFileResult) {
+        const logCardKey = makeR2Key(vehicle.id, "vehicle_log_card", vehicleLogCardFileResult.filename);
+        await uploadToR2(logCardKey, vehicleLogCardFileResult.buffer, vehicleLogCardFileResult.mimeType);
+        await createDocWithFile({
+          entityType: "vehicle", vehicleId: vehicle.id,
+          docType: "vehicle_log_card",
+          expiryDate: new Date("2099-12-31"),
+          status: "pending_review", verificationMethod: "manual",
+        }, vehicleLogCardFileResult, logCardKey);
+      }
 
-    // Vehicle: Rental agreement (if not owned)
-    if (!isOwned && rentalAgreementFileResult) {
-      const rentalDoc = await tx.complianceDocument.create({
-        data: {
-          entityType: "vehicle",
-          vehicleId: vehicle.id,
+      // Rental agreement
+      if (vehicleRelationship === "rented" && rentalAgreementFileResult) {
+        const rentalKey = makeR2Key(vehicle.id, "rental_agreement", rentalAgreementFileResult.filename);
+        await uploadToR2(rentalKey, rentalAgreementFileResult.buffer, rentalAgreementFileResult.mimeType);
+        await createDocWithFile({
+          entityType: "vehicle", vehicleId: vehicle.id,
           docType: "rental_agreement",
-          expiryDate: rentalEndDate!,
-          status: "pending_review",
-          verificationMethod: "manual",
-        },
-      });
-      const rentalKey = makeR2Key(vehicleR2Prefix, "rental_agreement", rentalAgreementFileResult.filename);
-      await uploadToR2(rentalKey, rentalAgreementFileResult.buffer, rentalAgreementFileResult.mimeType);
-      await tx.documentFile.create({
-        data: {
-          complianceDocumentId: rentalDoc.id,
-          fileName: rentalAgreementFileResult.filename,
-          mimeType: rentalAgreementFileResult.mimeType,
-          size: rentalAgreementFileResult.buffer.length,
-          storageKey: rentalKey,
-        },
-      });
+          expiryDate: new Date("2099-12-31"),
+          status: "pending_review", verificationMethod: "manual",
+        }, rentalAgreementFileResult, rentalKey);
+      }
     }
 
-    // Vehicle: Insurance document
-    const insDoc = await tx.complianceDocument.create({
-      data: {
-        entityType: "vehicle",
-        vehicleId: vehicle.id,
-        docType: "insurance",
-        expiryDate: insuranceExpiry,
-        status: "pending_review",
-        verificationMethod: "manual",
-      },
-    });
-    if (insuranceFileResult) {
-      const insKey = makeR2Key(vehicleR2Prefix, "insurance", insuranceFileResult.filename);
-      await uploadToR2(insKey, insuranceFileResult.buffer, insuranceFileResult.mimeType);
-      await tx.documentFile.create({
-        data: {
-          complianceDocumentId: insDoc.id,
-          fileName: insuranceFileResult.filename,
-          mimeType: insuranceFileResult.mimeType,
-          size: insuranceFileResult.buffer.length,
-          storageKey: insKey,
-        },
-      });
-    }
-
-    // DriverSubmission record (upsert for resubmissions)
+    // DriverSubmission upsert
     await tx.driverSubmission.upsert({
       where: { driverId: driver.id },
       create: {
         driverId: driver.id,
-        fullName: `${firstName} ${lastName}`,
-        nricNumber: nric!,
+        firstName: firstName!,
+        lastName: lastName!,
+        nricNumber: nricNumber!,
         phoneNumber: phone,
-        licenceNumber: licenseNumber!,
+        drivingLicenceNumber: drivingLicenceNumber!,
+        drivingLicenceIssuedDate,
+        vocationalLicenceNumber: vocationalLicenceNumber!,
+        vocationalLicenceExpiryDate,
         vehicleMake: vehicleMake ?? null,
         vehicleModel: vehicleModel ?? null,
-        vehiclePlate: plateNumber ?? null,
-        vehicleRelationship: isOwned ? "owned" : "contracted",
+        vehiclePlate: vehiclePlate ?? null,
+        vehicleRelationship: vehiclePlate ? vehicleRelationship : null,
       },
       update: {
         submittedAt: new Date(),
-        fullName: `${firstName} ${lastName}`,
-        nricNumber: nric!,
+        firstName: firstName!,
+        lastName: lastName!,
+        nricNumber: nricNumber!,
         phoneNumber: phone,
-        licenceNumber: licenseNumber!,
+        drivingLicenceNumber: drivingLicenceNumber!,
+        drivingLicenceIssuedDate,
+        vocationalLicenceNumber: vocationalLicenceNumber!,
+        vocationalLicenceExpiryDate,
         vehicleMake: vehicleMake ?? null,
         vehicleModel: vehicleModel ?? null,
-        vehiclePlate: plateNumber ?? null,
-        vehicleRelationship: isOwned ? "owned" : "contracted",
-        // Clear prior review state on resubmission
+        vehiclePlate: vehiclePlate ?? null,
+        vehicleRelationship: vehiclePlate ? vehicleRelationship : null,
         adminNotes: null,
         flagReason: null,
         rejectionReason: null,
@@ -386,12 +334,11 @@ export async function POST(req: Request) {
         entityId: driver.id,
         action: isResubmission ? "self_onboarding_resubmission" : "self_onboarding_submitted",
         actorId: "self",
-        metadata: { phone, plateNumber, isOwned, isResubmission },
+        metadata: { phone, vehiclePlate, vehicleRelationship: hasVehicle ? vehicleRelationship : null, isResubmission },
       },
     });
   });
 
-  // WhatsApp notification — non-blocking
   try {
     await sendWhatsAppTemplate({
       to: phone,
