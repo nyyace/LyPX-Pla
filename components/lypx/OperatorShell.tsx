@@ -42,18 +42,6 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, chil
           </span>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", lineHeight: 1.1 }}>
-            <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
-              {tenantName}
-            </span>
-            <span style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.6px" }}>
-              Operator Console
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: "var(--text-dim)", border: "1px solid var(--border)", padding: "5px 10px", borderRadius: 4 }}>
-            <span className="live-dot" />
-            <span className="mono">Live</span>
-          </div>
           <AdminClock />
           <div style={{
             width: 30, height: 30, borderRadius: 4, background: "var(--surface-raised)",

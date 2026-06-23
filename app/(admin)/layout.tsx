@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { AdminClock } from "@/components/lypx/AdminClock";
 import { AdminTab } from "@/components/lypx/AdminTab";
 import { SignOutButton } from "@/components/lypx/SignOutButton";
+import { getOperatorTenant } from "@/lib/utils/operator";
 
 const tabs = [
   { href: "/dispatch",          label: "Dispatch Centre" },
@@ -10,7 +11,7 @@ const tabs = [
   { href: "/submissions",       label: "Submissions" },
   { href: "/accounts",          label: "Accounts & Claims" },
   { href: "/takeover-requests", label: "Takeover Requests" },
-  { href: "/orders",            label: "Orders" },
+  { href: "/orders",            label: "Reservations" },
   { href: "/whatsapp",          label: "WhatsApp" },
   { href: "/audit-log",         label: "Audit Log" },
   { href: "/settings",          label: "Settings" },
@@ -23,6 +24,10 @@ export default async function AdminLayout({
 }) {
   const { user } = await withAuth({ ensureSignedIn: true });
   if (!user) redirect("/");
+
+  // Operator users must not access admin routes — send them to the operator portal
+  const operatorTenant = await getOperatorTenant(user.id);
+  if (operatorTenant) redirect("/operator/dispatch");
 
   const initials = [user.firstName?.[0], user.lastName?.[0]]
     .filter(Boolean)

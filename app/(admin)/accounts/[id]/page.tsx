@@ -113,7 +113,7 @@ export default async function AccountDetailPage({
       {account.orders.length > 0 && (
         <Card className="bg-gray-900 border-gray-800 mb-6">
           <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-gray-300">Recent Orders</CardTitle>
+            <CardTitle className="text-sm text-gray-300">Recent Reservations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-2">

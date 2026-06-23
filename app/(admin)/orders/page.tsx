@@ -51,7 +51,7 @@ export default async function OrdersPage({
     <div className="p-8">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-semibold text-white">Orders</h1>
+          <h1 className="text-2xl font-semibold text-white">Reservations</h1>
           <p className="text-sm text-gray-500 mt-1">Manual trip log</p>
         </div>
         <Link href="/orders/new">

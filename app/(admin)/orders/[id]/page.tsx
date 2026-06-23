@@ -42,7 +42,7 @@ export default async function OrderDetailPage({
     <div className="p-8 max-w-2xl">
       <div className="mb-6">
         <Link href="/orders" className="text-xs text-gray-500 hover:text-gray-300 mb-3 block">
-          ← Orders
+          ← Reservations
         </Link>
         <div className="flex items-start justify-between">
           <div>
