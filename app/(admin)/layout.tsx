@@ -13,6 +13,7 @@ const tabs = [
   { href: "/takeover-requests", label: "Takeover Requests" },
   { href: "/orders",            label: "Reservations" },
   { href: "/whatsapp",          label: "WhatsApp" },
+  { href: "/users",             label: "Users" },
   { href: "/audit-log",         label: "Audit Log" },
   { href: "/settings",          label: "Settings" },
 ];

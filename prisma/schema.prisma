@@ -14,11 +14,21 @@ datasource db {
 // ─────────────────────────────────────────────
 
 model Tenant {
-  id                       String   @id @default(cuid())
+  id                       String    @id @default(cuid())
   name                     String
-  tenantType               String   // "operator" | "lypx_direct"
-  marketplaceParticipation Boolean  @default(false)
-  createdAt                DateTime @default(now())
+  tenantType               String    // "operator" | "lypx_direct"
+  marketplaceParticipation Boolean   @default(false)
+  createdAt                DateTime  @default(now())
+
+  // Onboarding & lifecycle
+  contactName              String?
+  contactEmail             String?
+  contactPhone             String?
+  status                   String    @default("active") // invited | active | suspended
+  workosOrganisationId     String?
+  workosInvitationId       String?
+  invitedAt                DateTime?
+  activatedAt              DateTime?
 
   driverMemberships        OperatorDriverMembership[]
   registeredVehicles       Vehicle[]

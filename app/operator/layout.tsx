@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { getOperatorTenant } from "@/lib/utils/operator";
 import { OperatorShell } from "@/components/lypx/OperatorShell";
+import { prisma } from "@/lib/prisma";
 
 export default async function OperatorLayout({
   children,
@@ -25,6 +26,30 @@ export default async function OperatorLayout({
         </p>
       </div>
     );
+  }
+
+  // Suspended operators see a notice page
+  if (tenant.status === "suspended") {
+    redirect("/operator/suspended");
+  }
+
+  // First login after invite — auto-activate
+  if (tenant.status === "invited") {
+    await prisma.$transaction(async (tx) => {
+      await tx.tenant.update({
+        where: { id: tenant.id },
+        data: { status: "active", activatedAt: new Date() },
+      });
+      await tx.auditLog.create({
+        data: {
+          entityType: "tenant",
+          entityId: tenant.id,
+          action: "operator_activated",
+          actorId: user.id,
+          metadata: { triggeredBy: "first_login" },
+        },
+      });
+    });
   }
 
   const initials = [user.firstName?.[0], user.lastName?.[0]]
