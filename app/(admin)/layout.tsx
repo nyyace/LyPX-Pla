@@ -1,17 +1,18 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
-import Link from "next/link";
 import { AdminClock } from "@/components/lypx/AdminClock";
+import { AdminTab } from "@/components/lypx/AdminTab";
+import { SignOutButton } from "@/components/lypx/SignOutButton";
 
 const tabs = [
-  { href: "/dispatch",           label: "Dispatch Centre" },
-  { href: "/compliance-queue",   label: "Compliance Queue" },
-  { href: "/accounts",           label: "Accounts & Claims" },
-  { href: "/takeover-requests",  label: "Takeover Requests" },
-  { href: "/orders",             label: "Orders" },
-  { href: "/whatsapp",           label: "WhatsApp" },
-  { href: "/audit-log",          label: "Audit Log" },
-  { href: "/settings",           label: "Settings" },
+  { href: "/dispatch",          label: "Dispatch Centre" },
+  { href: "/compliance-queue",  label: "Compliance Queue" },
+  { href: "/accounts",          label: "Accounts & Claims" },
+  { href: "/takeover-requests", label: "Takeover Requests" },
+  { href: "/orders",            label: "Orders" },
+  { href: "/whatsapp",          label: "WhatsApp" },
+  { href: "/audit-log",         label: "Audit Log" },
+  { href: "/settings",          label: "Settings" },
 ];
 
 export default async function AdminLayout({
@@ -55,13 +56,7 @@ export default async function AdminLayout({
           <div style={{ width: 30, height: 30, borderRadius: 4, background: "var(--surface-raised)", border: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 11, fontWeight: 700, color: "var(--gold)" }}>
             {initials}
           </div>
-          <form action="/api/auth/signout" method="POST">
-            <button type="submit" style={{ fontSize: 11, color: "var(--text-faint)", cursor: "pointer", background: "none", border: "none", padding: "4px 8px", borderRadius: 4 }}
-              onMouseOver={(e) => (e.currentTarget.style.color = "var(--text)")}
-              onMouseOut={(e) => (e.currentTarget.style.color = "var(--text-faint)")}>
-              Sign out
-            </button>
-          </form>
+          <SignOutButton />
         </div>
       </div>
 
@@ -79,6 +74,3 @@ export default async function AdminLayout({
     </div>
   );
 }
-
-// Client component for active-tab detection
-import { AdminTab } from "@/components/lypx/AdminTab";

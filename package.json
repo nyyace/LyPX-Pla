@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma migrate deploy && prisma generate && next build",
-    "start": "next start",
+    "build": "prisma generate && node --max-old-space-size=2048 node_modules/.bin/next build",
+    "start": "prisma migrate deploy && next start",
     "seed": "tsx prisma/seed.ts"
   },
   "prisma": {
