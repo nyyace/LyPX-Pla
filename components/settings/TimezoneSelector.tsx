@@ -59,7 +59,7 @@ export function TimezoneSelector({ currentTimezone }: Props) {
           <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
             <SelectValue />
           </SelectTrigger>
-          <SelectContent className="bg-gray-800 border-gray-700">
+          <SelectContent className="bg-gray-800 border-gray-700 w-full min-w-[var(--radix-select-trigger-width)]">
             {SUPPORTED_TIMEZONES.map((tz) => (
               <SelectItem key={tz.value} value={tz.value} className="text-white">
                 {tz.label}
