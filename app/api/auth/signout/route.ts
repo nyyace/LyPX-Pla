@@ -1,9 +1,9 @@
 import { signOut } from "@workos-inc/authkit-nextjs";
-import { headers } from "next/headers";
+
+const PUBLIC_URL = process.env.RAILWAY_PUBLIC_DOMAIN
+  ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
+  : "http://localhost:3000";
 
 export async function POST() {
-  const headersList = await headers();
-  const host = headersList.get("host") ?? "";
-  const proto = host.includes("localhost") ? "http" : "https";
-  return signOut({ returnTo: `${proto}://${host}/` });
+  return signOut({ returnTo: PUBLIC_URL });
 }
