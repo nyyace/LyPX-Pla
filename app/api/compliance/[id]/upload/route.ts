@@ -1,5 +1,6 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
+import { uploadToR2, makeR2Key, deleteFromR2 } from "@/lib/r2";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -22,40 +23,55 @@ export async function POST(
   if (file.size > MAX_SIZE) return Response.json({ error: "File must be under 5 MB" }, { status: 400 });
 
   const buffer = Buffer.from(await file.arrayBuffer());
+  const entityId = doc.driverId ?? doc.vehicleId ?? "unknown";
+  const storageKey = makeR2Key(entityId, doc.docType, file.name);
 
-  await prisma.$transaction(async (tx) => {
-    // Upsert DocumentFile
-    const existing = await tx.documentFile.findUnique({ where: { complianceDocumentId: id } });
-    if (existing) {
-      await tx.documentFile.update({
-        where: { complianceDocumentId: id },
-        data: { fileName: file.name, mimeType: file.type, size: file.size, data: buffer },
+  // Upload to R2 before the DB transaction — if this fails we abort cleanly
+  await uploadToR2(storageKey, buffer, file.type);
+
+  try {
+    const existing = await prisma.documentFile.findUnique({ where: { complianceDocumentId: id } });
+
+    await prisma.$transaction(async (tx) => {
+      if (existing) {
+        await tx.documentFile.update({
+          where: { complianceDocumentId: id },
+          data: { fileName: file.name, mimeType: file.type, size: file.size, storageKey },
+        });
+      } else {
+        await tx.documentFile.create({
+          data: {
+            complianceDocumentId: id,
+            fileName: file.name,
+            mimeType: file.type,
+            size: file.size,
+            storageKey,
+          },
+        });
+      }
+      await tx.complianceDocument.update({
+        where: { id },
+        data: { status: "pending_review" },
       });
-    } else {
-      await tx.documentFile.create({
+      await tx.auditLog.create({
         data: {
-          complianceDocumentId: id,
-          fileName: file.name,
-          mimeType: file.type,
-          size: file.size,
-          data: buffer,
+          entityType: "compliance",
+          entityId: id,
+          action: "document_uploaded",
+          metadata: { fileName: file.name, mimeType: file.type, size: file.size, storageKey },
         },
       });
+    });
+
+    // Clean up old R2 object if replaced
+    if (existing && existing.storageKey !== storageKey) {
+      await deleteFromR2(existing.storageKey).catch(() => {});
     }
-    // Set status to pending_review
-    await tx.complianceDocument.update({
-      where: { id },
-      data: { status: "pending_review" },
-    });
-    await tx.auditLog.create({
-      data: {
-        entityType: "compliance",
-        entityId: id,
-        action: "document_uploaded",
-        metadata: { fileName: file.name, mimeType: file.type, size: file.size },
-      },
-    });
-  });
+  } catch (err) {
+    // DB write failed — clean up the just-uploaded R2 object
+    await deleteFromR2(storageKey).catch(() => {});
+    throw err;
+  }
 
   return Response.json({ ok: true });
 }

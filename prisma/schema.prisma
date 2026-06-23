@@ -49,6 +49,7 @@ model Driver {
   memberships       OperatorDriverMembership[]
   vehicleOwnerships VehicleOwnership[]
   orders            Order[]
+  submission        DriverSubmission?
 }
 
 model OperatorDriverMembership {
@@ -119,15 +120,15 @@ model ComplianceDocument {
   @@index([vehicleId])
 }
 
-// Stores uploaded file binary — separate model to avoid loading blobs in normal queries
+// Stores uploaded file reference — file bytes live in Cloudflare R2
 model DocumentFile {
-  id                   String             @id @default(cuid())
-  complianceDocumentId String             @unique
+  id                   String   @id @default(cuid())
+  complianceDocumentId String   @unique
   fileName             String
   mimeType             String
   size                 Int
-  data                 Bytes
-  uploadedAt           DateTime           @default(now())
+  storageKey           String   // R2 object key: documents/<driverId>/<docType>/<uuid>.<ext>
+  uploadedAt           DateTime @default(now())
 
   document ComplianceDocument @relation(fields: [complianceDocumentId], references: [id])
 }
@@ -263,6 +264,31 @@ model UserPreference {
   userId    String   @unique // WorkOS user ID
   timezone  String   @default("Asia/Singapore")
   updatedAt DateTime @updatedAt
+}
+
+// ─────────────────────────────────────────────
+// DRIVER SELF-ONBOARDING SUBMISSION
+// ─────────────────────────────────────────────
+
+model DriverSubmission {
+  id                  String    @id @default(cuid())
+  driverId            String    @unique
+  submittedAt         DateTime  @default(now())
+  fullName            String
+  nricNumber          String
+  phoneNumber         String
+  licenceNumber       String
+  vehicleMake         String?
+  vehicleModel        String?
+  vehiclePlate        String?
+  vehicleRelationship String?
+  adminNotes          String?
+  flagReason          String?
+  rejectionReason     String?
+  reviewedBy          String?
+  reviewedAt          DateTime?
+
+  driver Driver @relation(fields: [driverId], references: [id])
 }
 
 // ─────────────────────────────────────────────

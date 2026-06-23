@@ -1,5 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
+import { getPresignedUrl } from "@/lib/r2";
+import { redirect } from "next/navigation";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   await withAuth({ ensureSignedIn: true });
@@ -13,12 +15,6 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     return new Response("File not found", { status: 404 });
   }
 
-  return new Response(new Uint8Array(file.data), {
-    headers: {
-      "Content-Type": file.mimeType,
-      "Content-Disposition": `inline; filename="${file.fileName}"`,
-      "Content-Length": String(file.size),
-      "Cache-Control": "private, max-age=3600",
-    },
-  });
+  const url = await getPresignedUrl(file.storageKey);
+  redirect(url);
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
+import { uploadToR2, makeR2Key } from "@/lib/r2";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
 
 const ALLOWED_MIMES = [
@@ -87,6 +88,8 @@ export async function POST(req: Request) {
 
   // ── Vehicle fields ─────────────────────────────────────────────────────────
   const plateNumber = (form.get("plateNumber") as string | null)?.trim().toUpperCase();
+  const vehicleMake = (form.get("vehicleMake") as string | null)?.trim();
+  const vehicleModel = (form.get("vehicleModel") as string | null)?.trim();
   const isOwned = form.get("isOwned") === "true";
   const rentalEndDateRaw = form.get("rentalEndDate") as string | null;
   const insuranceCompany = (form.get("insuranceCompany") as string | null)?.trim();
@@ -128,16 +131,35 @@ export async function POST(req: Request) {
   // ── Existing driver check (resubmission) ───────────────────────────────────
   const existingDriver = await prisma.driver.findUnique({ where: { identityHash } });
   const isResubmission = !!existingDriver;
-  const driverId = existingDriver?.id;
+
+  // ── Upload all files to R2 before DB transaction ───────────────────────────
+  // Use a placeholder driverId key segment for new drivers; replaced after driver creation below.
+  // For simplicity, upload to R2 using identityHash as temporary namespace — key is stable across
+  // resubmissions for the same driver since hash is deterministic.
+  const driverR2Prefix = existingDriver?.id ?? `pending/${identityHash.slice(0, 12)}`;
+
+  const nricKey = nricFileResult ? makeR2Key(driverR2Prefix, "nric", nricFileResult.filename) : null;
+  const licenseKey = licenseFileResult ? makeR2Key(driverR2Prefix, "license", licenseFileResult.filename) : null;
+
+  const r2Uploads: Promise<void>[] = [];
+  if (nricFileResult && nricKey) {
+    r2Uploads.push(uploadToR2(nricKey, nricFileResult.buffer, nricFileResult.mimeType));
+  }
+  if (licenseFileResult && licenseKey) {
+    r2Uploads.push(uploadToR2(licenseKey, licenseFileResult.buffer, licenseFileResult.mimeType));
+  }
+
+  // We need the vehicle id for R2 keys — allocate after DB writes, so upload vehicle docs inside tx
+  await Promise.all(r2Uploads);
 
   let resultDriverId: string;
 
   await prisma.$transaction(async (tx: TxClient) => {
     let driver;
 
-    if (isResubmission && driverId) {
+    if (isResubmission && existingDriver) {
       driver = await tx.driver.update({
-        where: { id: driverId },
+        where: { id: existingDriver.id },
         data: {
           phoneNumber: phone,
           firstName: firstName!,
@@ -172,19 +194,19 @@ export async function POST(req: Request) {
         entityType: "driver",
         driverId: driver.id,
         docType: "nric",
-        expiryDate: new Date("2099-12-31"), // NRIC doesn't expire
+        expiryDate: new Date("2099-12-31"),
         status: "pending_review",
         verificationMethod: "manual",
       },
     });
-    if (nricFileResult) {
+    if (nricFileResult && nricKey) {
       await tx.documentFile.create({
         data: {
           complianceDocumentId: nricDoc.id,
           fileName: nricFileResult.filename,
           mimeType: nricFileResult.mimeType,
           size: nricFileResult.buffer.length,
-          data: nricFileResult.buffer,
+          storageKey: nricKey,
         },
       });
     }
@@ -196,19 +218,19 @@ export async function POST(req: Request) {
         driverId: driver.id,
         docType: "license",
         issuedDate: licenseIssuedDate,
-        expiryDate: new Date("2099-12-31"), // Admin to confirm actual expiry on review
+        expiryDate: new Date("2099-12-31"),
         status: "pending_review",
         verificationMethod: "manual",
       },
     });
-    if (licenseFileResult) {
+    if (licenseFileResult && licenseKey) {
       await tx.documentFile.create({
         data: {
           complianceDocumentId: licenseDoc.id,
           fileName: licenseFileResult.filename,
           mimeType: licenseFileResult.mimeType,
           size: licenseFileResult.buffer.length,
-          data: licenseFileResult.buffer,
+          storageKey: licenseKey,
         },
       });
     }
@@ -219,8 +241,8 @@ export async function POST(req: Request) {
       vehicle = await tx.vehicle.create({
         data: {
           registeredByTenantId: "lypx_direct",
-          make: "—",
-          model: "—",
+          make: vehicleMake ?? "—",
+          model: vehicleModel ?? "—",
           plateNumber: plateNumber!,
           insuranceCompany: insuranceCompany ?? undefined,
         },
@@ -231,6 +253,8 @@ export async function POST(req: Request) {
         data: { insuranceCompany: insuranceCompany ?? undefined },
       });
     }
+
+    const vehicleR2Prefix = vehicle.id;
 
     // VehicleOwnership
     const existingOwnership = await tx.vehicleOwnership.findFirst({
@@ -260,13 +284,15 @@ export async function POST(req: Request) {
       },
     });
     if (vehicleRegFileResult) {
+      const regKey = makeR2Key(vehicleR2Prefix, "registration", vehicleRegFileResult.filename);
+      await uploadToR2(regKey, vehicleRegFileResult.buffer, vehicleRegFileResult.mimeType);
       await tx.documentFile.create({
         data: {
           complianceDocumentId: regDoc.id,
           fileName: vehicleRegFileResult.filename,
           mimeType: vehicleRegFileResult.mimeType,
           size: vehicleRegFileResult.buffer.length,
-          data: vehicleRegFileResult.buffer,
+          storageKey: regKey,
         },
       });
     }
@@ -283,13 +309,15 @@ export async function POST(req: Request) {
           verificationMethod: "manual",
         },
       });
+      const rentalKey = makeR2Key(vehicleR2Prefix, "rental_agreement", rentalAgreementFileResult.filename);
+      await uploadToR2(rentalKey, rentalAgreementFileResult.buffer, rentalAgreementFileResult.mimeType);
       await tx.documentFile.create({
         data: {
           complianceDocumentId: rentalDoc.id,
           fileName: rentalAgreementFileResult.filename,
           mimeType: rentalAgreementFileResult.mimeType,
           size: rentalAgreementFileResult.buffer.length,
-          data: rentalAgreementFileResult.buffer,
+          storageKey: rentalKey,
         },
       });
     }
@@ -306,16 +334,51 @@ export async function POST(req: Request) {
       },
     });
     if (insuranceFileResult) {
+      const insKey = makeR2Key(vehicleR2Prefix, "insurance", insuranceFileResult.filename);
+      await uploadToR2(insKey, insuranceFileResult.buffer, insuranceFileResult.mimeType);
       await tx.documentFile.create({
         data: {
           complianceDocumentId: insDoc.id,
           fileName: insuranceFileResult.filename,
           mimeType: insuranceFileResult.mimeType,
           size: insuranceFileResult.buffer.length,
-          data: insuranceFileResult.buffer,
+          storageKey: insKey,
         },
       });
     }
+
+    // DriverSubmission record (upsert for resubmissions)
+    await tx.driverSubmission.upsert({
+      where: { driverId: driver.id },
+      create: {
+        driverId: driver.id,
+        fullName: `${firstName} ${lastName}`,
+        nricNumber: nric!,
+        phoneNumber: phone,
+        licenceNumber: licenseNumber!,
+        vehicleMake: vehicleMake ?? null,
+        vehicleModel: vehicleModel ?? null,
+        vehiclePlate: plateNumber ?? null,
+        vehicleRelationship: isOwned ? "owned" : "contracted",
+      },
+      update: {
+        submittedAt: new Date(),
+        fullName: `${firstName} ${lastName}`,
+        nricNumber: nric!,
+        phoneNumber: phone,
+        licenceNumber: licenseNumber!,
+        vehicleMake: vehicleMake ?? null,
+        vehicleModel: vehicleModel ?? null,
+        vehiclePlate: plateNumber ?? null,
+        vehicleRelationship: isOwned ? "owned" : "contracted",
+        // Clear prior review state on resubmission
+        adminNotes: null,
+        flagReason: null,
+        rejectionReason: null,
+        reviewedBy: null,
+        reviewedAt: null,
+      },
+    });
 
     await tx.auditLog.create({
       data: {

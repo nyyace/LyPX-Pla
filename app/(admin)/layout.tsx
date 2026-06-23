@@ -7,6 +7,7 @@ import { SignOutButton } from "@/components/lypx/SignOutButton";
 const tabs = [
   { href: "/dispatch",          label: "Dispatch Centre" },
   { href: "/compliance-queue",  label: "Compliance Queue" },
+  { href: "/submissions",       label: "Submissions" },
   { href: "/accounts",          label: "Accounts & Claims" },
   { href: "/takeover-requests", label: "Takeover Requests" },
   { href: "/orders",            label: "Orders" },
