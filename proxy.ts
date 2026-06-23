@@ -11,6 +11,7 @@ export default authkitProxy({
       "/api/onboarding/otp/send",
       "/api/onboarding/otp/verify",
       "/api/onboarding/submit",
+      "/api/cron/:path*",
     ],
   },
 });
