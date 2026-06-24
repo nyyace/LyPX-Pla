@@ -2,14 +2,14 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { workos } from "@/lib/workos/auth";
 import { NextResponse } from "next/server";
-import { getOperatorTenant } from "@/lib/utils/operator";
+import { isAdminUser } from "@/lib/utils/admin";
 
 export async function POST(
   _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || await getOperatorTenant(user.id)) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

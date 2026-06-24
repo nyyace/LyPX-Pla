@@ -1,14 +1,16 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
-import { getOperatorTenant } from "@/lib/utils/operator";
+import { resolveUserRole } from "@/lib/utils/admin";
 
 export default async function RootPage() {
   const { user } = await withAuth();
 
   if (user) {
-    const tenant = await getOperatorTenant(user.id);
-    if (tenant) redirect("/operator/dispatch");
-    redirect("/dispatch");
+    const role = await resolveUserRole(user.id);
+    if (role === "operator") redirect("/operator/dispatch");
+    if (role === "admin") redirect("/dispatch");
+    // signed in but not provisioned in either console
+    redirect("/api/auth/signout");
   }
 
   redirect("/api/auth/signin");

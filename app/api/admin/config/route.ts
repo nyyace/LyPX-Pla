@@ -1,20 +1,16 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getOperatorTenant } from "@/lib/utils/operator";
+import { isAdminUser } from "@/lib/utils/admin";
 
 const VALIDATION: Record<string, { min: number; max: number; label: string }> = {
   marketplace_take_rate_percent: { min: 1,  max: 30, label: "Take rate" },
   marketplace_floor_rate_sgd:    { min: 0,  max: 50, label: "Floor rate" },
 };
 
-async function assertAdmin(userId: string) {
-  return !(await getOperatorTenant(userId));
-}
-
 export async function GET() {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -27,7 +23,7 @@ export async function GET() {
 
 export async function PATCH(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

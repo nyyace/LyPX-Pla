@@ -1,17 +1,16 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
-import { getOperatorTenant } from "@/lib/utils/operator";
+import { isAdminUser } from "@/lib/utils/admin";
 
 export async function GET(
   _req: Request,
   { params }: { params: Promise<{ driverId: string }> }
 ) {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-
-  const operatorTenant = await getOperatorTenant(user.id);
-  if (operatorTenant) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  if (!user || !(await isAdminUser(user.id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
   const { driverId } = await params;
 

@@ -2,18 +2,12 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { workos } from "@/lib/workos/auth";
 import { NextResponse } from "next/server";
-import { getOperatorTenant } from "@/lib/utils/operator";
-
-async function assertAdmin(userId: string) {
-  const tenant = await getOperatorTenant(userId);
-  if (tenant) return false;
-  return true;
-}
+import { isAdminUser } from "@/lib/utils/admin";
 
 // GET /api/admin/operators — list all operator tenants
 export async function GET() {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -32,7 +26,7 @@ export async function GET() {
 // POST /api/admin/operators — invite a new operator
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

@@ -2,19 +2,15 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { workos } from "@/lib/workos/auth";
 import { NextResponse } from "next/server";
-import { getOperatorTenant } from "@/lib/utils/operator";
+import { isAdminUser } from "@/lib/utils/admin";
 
 const ADMIN_ORG_ID = process.env.WORKOS_ADMIN_ORG_ID;
 const SUPER_ADMIN_EMAIL = process.env.WORKOS_SUPER_ADMIN_EMAIL;
 
-async function assertAdmin(userId: string) {
-  return !(await getOperatorTenant(userId));
-}
-
 // GET /api/admin/users — list all LyPX admin users
 export async function GET() {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
@@ -58,7 +54,7 @@ export async function GET() {
 // POST /api/admin/users — invite a new LyPX admin user
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
-  if (!user || !(await assertAdmin(user.id))) {
+  if (!user || !(await isAdminUser(user.id))) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

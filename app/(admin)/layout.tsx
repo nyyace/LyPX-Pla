@@ -4,6 +4,7 @@ import { AdminClock } from "@/components/lypx/AdminClock";
 import { AdminTab } from "@/components/lypx/AdminTab";
 import { SignOutButton } from "@/components/lypx/SignOutButton";
 import { getOperatorTenant } from "@/lib/utils/operator";
+import { isAdminUser } from "@/lib/utils/admin";
 
 const tabs = [
   { href: "/dispatch",          label: "Dispatch Centre" },
@@ -28,9 +29,13 @@ export default async function AdminLayout({
   const { user } = await withAuth({ ensureSignedIn: true });
   if (!user) redirect("/");
 
-  // Operator users must not access admin routes — send them to the operator portal
+  // Operator users must not access admin routes
   const operatorTenant = await getOperatorTenant(user.id);
   if (operatorTenant) redirect("/operator/dispatch");
+
+  // Require active membership in the LyPX admin org
+  const adminAccess = await isAdminUser(user.id);
+  if (!adminAccess) redirect("/api/auth/signout");
 
   const initials = [user.firstName?.[0], user.lastName?.[0]]
     .filter(Boolean)
