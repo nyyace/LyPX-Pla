@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { onTripCompleted } from "@/lib/claims/engine";
+import { getMarketplaceConfig, calculateMarketplaceFee } from "@/lib/utils/marketplace";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -25,10 +26,40 @@ export async function GET(req: Request) {
 
 export async function POST(req: Request) {
   const body = await req.json();
-  const { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation, driverId, vehicleId, notes } = body;
+  const { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation, driverId, vehicleId, notes, tripFare } = body;
 
   if (!accountId || !tenantId || !pickupTime || !pickupLocation || !dropoffLocation) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  // Calculate marketplace fee for LyPX Direct trips with a known fare
+  let feeData: {
+    tripFare: number;
+    lypxFee: number;
+    operatorReceives: number;
+    rateApplied: string;
+    takeRateSnapshot: number;
+    floorRateSnapshot: number;
+  } | null = null;
+
+  if (tenantId === "lypx_direct" && tripFare != null) {
+    const fare = parseFloat(tripFare);
+    if (!isNaN(fare) && fare > 0) {
+      const config = await getMarketplaceConfig(prisma);
+      const { lypxFee, operatorReceives, rateApplied } = calculateMarketplaceFee(
+        fare,
+        config.takeRatePercent,
+        config.floorRateSGD
+      );
+      feeData = {
+        tripFare: fare,
+        lypxFee,
+        operatorReceives,
+        rateApplied,
+        takeRateSnapshot: config.takeRatePercent,
+        floorRateSnapshot: config.floorRateSGD,
+      };
+    }
   }
 
   const order = await prisma.$transaction(async (tx: TxClient) => {
@@ -43,6 +74,7 @@ export async function POST(req: Request) {
         dropoffLocation,
         notes: notes ?? null,
         status: "booked",
+        ...(feeData ?? {}),
       },
     });
 
@@ -52,7 +84,14 @@ export async function POST(req: Request) {
         entityId: o.id,
         action: "order_created",
         actorId: "admin",
-        metadata: { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation },
+        metadata: {
+          accountId,
+          tenantId,
+          pickupTime,
+          pickupLocation,
+          dropoffLocation,
+          ...(feeData ? { lypxFee: feeData.lypxFee, takeRateSnapshot: feeData.takeRateSnapshot } : {}),
+        },
       },
     });
 

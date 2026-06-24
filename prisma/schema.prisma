@@ -201,18 +201,26 @@ model TakeoverRequest {
 // ─────────────────────────────────────────────
 
 model Order {
-  id              String    @id @default(cuid())
-  accountId       String
-  driverId        String?
-  vehicleId       String?
-  tenantId        String    // fulfilling tenant
-  status          String    @default("booked") // booked | assigned | en_route | arrived | started | completed | cancelled
-  pickupTime      DateTime
-  pickupLocation  String
-  dropoffLocation String
-  notes           String?
-  createdAt       DateTime  @default(now())
-  completedAt     DateTime?
+  id                String    @id @default(cuid())
+  accountId         String
+  driverId          String?
+  vehicleId         String?
+  tenantId          String    // fulfilling tenant
+  status            String    @default("booked") // booked | assigned | en_route | arrived | started | completed | cancelled
+  pickupTime        DateTime
+  pickupLocation    String
+  dropoffLocation   String
+  notes             String?
+  createdAt         DateTime  @default(now())
+  completedAt       DateTime?
+
+  // Marketplace fee breakdown (lypx_direct orders only)
+  tripFare          Float?
+  lypxFee           Float?
+  operatorReceives  Float?
+  rateApplied       String?   // "percentage" | "floor" | null for non-marketplace trips
+  takeRateSnapshot  Float?    // take rate % at time of order creation
+  floorRateSnapshot Float?    // floor SGD at time of order creation
 
   account Account  @relation(fields: [accountId], references: [id])
   driver  Driver?  @relation(fields: [driverId], references: [id])
@@ -221,6 +229,20 @@ model Order {
 
   @@index([accountId])
   @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// PLATFORM CONFIGURATION
+// ─────────────────────────────────────────────
+
+model PlatformConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String
+  updatedBy   String?  // admin WorkOS user ID
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
 }
 
 // ─────────────────────────────────────────────
