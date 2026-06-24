@@ -9,6 +9,7 @@ const tabs = [
   { href: "/dispatch",          label: "Dispatch Centre" },
   { href: "/compliance-queue",  label: "Compliance Queue" },
   { href: "/submissions",       label: "Submissions" },
+  { href: "/drivers",           label: "Drivers" },
   { href: "/accounts",          label: "Accounts & Claims" },
   { href: "/takeover-requests", label: "Takeover Requests" },
   { href: "/orders",            label: "Reservations" },
