@@ -18,7 +18,7 @@ export async function GET() {
   }
 
   const operators = await prisma.tenant.findMany({
-    where: { tenantType: "operator" },
+    where: { tenantType: "operator", status: { not: "revoked" } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       preference: { select: { timezone: true, accentColour: true } },
@@ -56,6 +56,7 @@ export async function POST(req: Request) {
   // Create WorkOS organisation
   let orgId: string | null = null;
   let invitationId: string | null = null;
+  let acceptInvitationUrl: string | null = null;
 
   try {
     const org = await workos.organizations.createOrganization({ name: companyName.trim() });
@@ -66,6 +67,7 @@ export async function POST(req: Request) {
       organizationId: org.id,
     });
     invitationId = invitation.id;
+    acceptInvitationUrl = invitation.acceptInvitationUrl;
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "WorkOS error";
     return NextResponse.json({ error: `WorkOS: ${message}` }, { status: 502 });
@@ -110,5 +112,5 @@ export async function POST(req: Request) {
     return t;
   });
 
-  return NextResponse.json(tenant, { status: 201 });
+  return NextResponse.json({ ...tenant, acceptInvitationUrl }, { status: 201 });
 }

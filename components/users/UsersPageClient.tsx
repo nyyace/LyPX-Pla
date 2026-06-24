@@ -111,6 +111,17 @@ export function UsersPageClient({
     refresh();
   }
 
+  async function handleRevokeInvite(id: string) {
+    setActionError(null);
+    const res = await fetch(`/api/admin/operators/${id}/revoke-invite`, { method: "POST" });
+    if (!res.ok) {
+      const d = await res.json();
+      setActionError(d.error ?? "Failed to revoke invite");
+      return;
+    }
+    refresh();
+  }
+
   const colStyle: React.CSSProperties = { padding: "10px 12px", fontSize: 13, color: "var(--text)" };
   const thStyle: React.CSSProperties = { ...colStyle, color: "var(--text-faint)", fontWeight: 500, fontSize: 11, textTransform: "uppercase", letterSpacing: "0.5px", borderBottom: "1px solid var(--border)" };
 
@@ -186,13 +197,26 @@ export function UsersPageClient({
                   <td style={{ ...colStyle, textAlign: "right" }}>
                     <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
                       {op.status === "invited" && (
-                        <button
-                          onClick={() => handleResendInvite(op.id)}
-                          disabled={isPending}
-                          style={{ fontSize: 12, color: "var(--gold)", background: "none", border: "1px solid var(--gold)44", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
-                        >
-                          Resend
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleResendInvite(op.id)}
+                            disabled={isPending}
+                            style={{ fontSize: 12, color: "var(--gold)", background: "none", border: "1px solid var(--gold)44", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
+                          >
+                            Resend
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Revoke the invitation for ${op.name}? This cannot be undone.`)) {
+                                handleRevokeInvite(op.id);
+                              }
+                            }}
+                            disabled={isPending}
+                            style={{ fontSize: 12, color: "#ef4444", background: "none", border: "1px solid #ef444444", borderRadius: 4, padding: "4px 10px", cursor: "pointer" }}
+                          >
+                            Revoke
+                          </button>
+                        </>
                       )}
                       <button
                         onClick={() => setViewOperator(op)}

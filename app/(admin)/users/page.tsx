@@ -6,7 +6,7 @@ const ADMIN_ORG_ID = process.env.WORKOS_ADMIN_ORG_ID;
 
 async function getOperators() {
   return prisma.tenant.findMany({
-    where: { tenantType: "operator" },
+    where: { tenantType: "operator", status: { not: "revoked" } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
       preference: { select: { timezone: true } },
