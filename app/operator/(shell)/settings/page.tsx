@@ -2,8 +2,6 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getOperatorTenant } from "@/lib/utils/operator";
 import { redirect } from "next/navigation";
 import { AccentColourPicker } from "@/components/lypx/AccentColourPicker";
-import { MarketplaceToggle } from "@/components/lypx/MarketplaceToggle";
-import { WhatsAppSettings } from "@/components/lypx/WhatsAppSettings";
 
 export default async function OperatorSettingsPage() {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -21,17 +19,6 @@ export default async function OperatorSettingsPage() {
         <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 16 }}>Appearance</p>
         <AccentColourPicker tenantId={tenant.id} currentAccent={currentAccent} />
       </section>
-
-      {/* Marketplace participation */}
-      <section style={{ borderTop: "1px solid var(--border)", paddingTop: 32, marginBottom: 36 }}>
-        <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 16 }}>Marketplace Participation</p>
-        <MarketplaceToggle tenantId={tenant.id} initialValue={tenant.marketplaceParticipation} />
-      </section>
-
-      {/* WhatsApp for Business */}
-      <div style={{ borderTop: "1px solid var(--border)", paddingTop: 32 }}>
-        <WhatsAppSettings />
-      </div>
     </div>
   );
 }

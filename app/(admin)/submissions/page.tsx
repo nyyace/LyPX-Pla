@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { InviteRequestsSection } from "@/components/admin/InviteRequestsSection";
 import {
   Table,
   TableBody,
@@ -100,6 +101,8 @@ export default async function SubmissionsPage() {
           </Table>
         </div>
       )}
+
+      <InviteRequestsSection />
     </div>
   );
 }

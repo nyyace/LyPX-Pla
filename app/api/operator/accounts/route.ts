@@ -39,20 +39,22 @@ export async function POST(req: Request) {
   const body = await req.json() as {
     name: string;
     uen: string;
-    customerSegment: string;
-    picName?: string;
-    picWhatsapp?: string;
+    customerSegment?: string;
+    noPic?: boolean;
+    picName?: string | null;
+    picWhatsapp?: string | null;
     picEmail?: string;
     notes?: string;
     challengerNote?: string;
   };
 
-  const { name, uen, customerSegment, picName, picWhatsapp, picEmail, challengerNote } = body;
+  const { name, uen, customerSegment, noPic, picName, picWhatsapp, picEmail, challengerNote } = body;
+  const resolvedSegment = customerSegment || "corporate_general";
 
-  if (!name?.trim() || !uen?.trim() || !customerSegment) {
-    return NextResponse.json({ error: "name, uen, and customerSegment are required" }, { status: 400 });
+  if (!name?.trim() || !uen?.trim()) {
+    return NextResponse.json({ error: "name and uen are required" }, { status: 400 });
   }
-  if (!picName?.trim() || !picWhatsapp?.trim()) {
+  if (!noPic && (!picName?.trim() || !picWhatsapp?.trim())) {
     return NextResponse.json({ error: "PIC name and WhatsApp number are required" }, { status: 400 });
   }
   if (!isValidUEN(uen)) {
@@ -106,10 +108,10 @@ export async function POST(req: Request) {
       data: {
         name: name.trim(),
         uen: formattedUEN,
-        customerSegment,
+        customerSegment: resolvedSegment,
         sourceType: "operator_sourced",
-        picName: picName?.trim() ?? null,
-        picWhatsapp: picWhatsapp?.trim() ?? null,
+        picName: noPic ? null : (picName?.trim() ?? null),
+        picWhatsapp: noPic ? null : (picWhatsapp?.trim() ?? null),
         picEmail: picEmail?.trim() ?? null,
       },
       select: { id: true },

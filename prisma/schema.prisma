@@ -36,6 +36,7 @@ model Tenant {
   preference               TenantPreference?
   users                    TenantUser[]
   whatsApp                 TenantWhatsApp?
+  driverInviteRequests     DriverInviteRequest[]
 }
 
 // ─────────────────────────────────────────────
@@ -380,6 +381,28 @@ model TenantWhatsApp {
   createdAt     DateTime  @default(now())
 
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// DRIVER INVITE REQUESTS
+// ─────────────────────────────────────────────
+
+model DriverInviteRequest {
+  id             String    @id @default(cuid())
+  tenantId       String
+  driverWhatsapp String
+  driverName     String?
+  status         String    @default("pending") // pending | approved | rejected | sent | expired
+  adminNote      String?
+  approvedBy     String?
+  approvedAt     DateTime?
+  sentAt         DateTime?
+  expiresAt      DateTime? // 7 days after sent
+  createdAt      DateTime  @default(now())
+
+  tenant         Tenant    @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, status])
 }
 
 // ─────────────────────────────────────────────

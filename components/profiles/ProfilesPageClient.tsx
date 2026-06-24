@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -20,20 +19,14 @@ export type DriverListItem = {
   tripCount30d: number;
 };
 
-export type AccountListItem = {
-  claimId: string;
-  accountId: string;
-  name: string;
-  uen: string | null;
-  customerSegment: string;
-  claimStatus: string;
-  protectionTier: string;
-  claimedAt: string;
-  expiryAt: string;
-  wonAt: string | null;
-  daysRemaining: number;
-  totalTrips: number;
-  lastTripAt: string | null;
+export type InviteRequestItem = {
+  id: string;
+  driverWhatsapp: string;
+  driverName: string | null;
+  status: string;
+  createdAt: string;
+  sentAt: string | null;
+  expiresAt: string | null;
 };
 
 type DriverDetail = {
@@ -55,40 +48,12 @@ type DriverDetail = {
   earningsThisMonth: number;
 };
 
-type AccountDetail = {
-  accountId: string;
-  name: string;
-  uen: string | null;
-  customerSegment: string;
-  picName: string | null;
-  picWhatsapp: string | null;
-  picEmail: string | null;
-  claim: {
-    id: string;
-    status: string;
-    protectionTier: string;
-    claimedAt: string;
-    expiryAt: string;
-    wonAt: string | null;
-    daysRemaining: number;
-    progressPercent: number;
-  };
-  totalTrips: number;
-  recentOrders: { id: string; completedAt: string | null; pickupLocation: string; dropoffLocation: string; tripFare: number | null }[];
-};
-
-type SearchResult = {
-  found: boolean;
+type CheckResult = {
+  status: "found_active" | "found_suspended" | "found_pending" | "not_found";
   driver?: {
-    id: string;
     firstName: string;
     lastName: string;
-    phoneNumber: string;
-    complianceStatus: string;
-    alreadyMember: boolean;
-    tier1Member: boolean;
-    vocationalLicenceNumber: string;
-    vocationalLicenceExpiry: string;
+    tier2Qualified: boolean;
   };
 };
 
@@ -149,13 +114,6 @@ function DocChip({ expiryDate, status }: { expiryDate: string; status: string })
   return <span className="chip chip-green">VALID</span>;
 }
 
-function AccountStatusIcon({ status, protectionTier, daysRemaining }: { status: string; protectionTier: string; daysRemaining: number }) {
-  if (daysRemaining <= 14 && status !== "won") return <span title="Expiring soon">⚠️</span>;
-  if (status === "won" && protectionTier === "long_term") return <span title="Won — Long-term">🏆</span>;
-  if (status === "won") return <span style={{ color: "#4CAF6D", fontWeight: 700, fontSize: 14 }}>✓</span>;
-  return <span title="Claimed">⏱</span>;
-}
-
 function fmtDate(iso: string | null | undefined) {
   if (!iso) return "—";
   return new Date(iso).toLocaleDateString("en-SG", { day: "2-digit", month: "short", year: "numeric" });
@@ -165,79 +123,74 @@ function fmtSGD(amount: number) {
   return `S$${amount.toFixed(2)}`;
 }
 
-const SEGMENT_LABEL: Record<string, string> = {
-  hotel: "Hotel", mice: "MICE", tdm: "TDM", dmc: "DMC", corporate_general: "Corporate",
-};
+function daysAgo(iso: string): string {
+  const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 86400000);
+  if (diff === 0) return "today";
+  if (diff === 1) return "1 day ago";
+  return `${diff} days ago`;
+}
+
+function daysUntilLabel(iso: string | null): string | null {
+  if (!iso) return null;
+  const diff = Math.ceil((new Date(iso).getTime() - Date.now()) / 86400000);
+  if (diff <= 0) return "expired";
+  return `expires ${diff}d`;
+}
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 interface Props {
   initialDrivers: DriverListItem[];
-  initialAccounts: AccountListItem[];
-  sub: "drivers" | "accounts";
+  initialInviteRequests: InviteRequestItem[];
   timezone: string;
   tenantId: string;
 }
 
-export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timezone, tenantId }: Props) {
+export function ProfilesPageClient({ initialDrivers, initialInviteRequests, timezone, tenantId }: Props) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // Lists (refreshable)
   const [drivers, setDrivers] = useState<DriverListItem[]>(initialDrivers);
-  const [accounts] = useState<AccountListItem[]>(initialAccounts);
+  const [inviteRequests, setInviteRequests] = useState<InviteRequestItem[]>(initialInviteRequests);
 
-  // Driver selection + detail
   const [selectedDriverId, setSelectedDriverId] = useState<string | null>(drivers[0]?.id ?? null);
   const [driverDetail, setDriverDetail] = useState<DriverDetail | null>(null);
   const [driverDetailLoading, setDriverDetailLoading] = useState(false);
 
-  // Account selection + detail
-  const [selectedAccountId, setSelectedAccountId] = useState<string | null>(accounts[0]?.accountId ?? null);
-  const [accountDetail, setAccountDetail] = useState<AccountDetail | null>(null);
-  const [accountDetailLoading, setAccountDetailLoading] = useState(false);
-
-  // Client-side search filter
   const [search, setSearch] = useState("");
 
-  // Add Driver drawer
+  // Add Driver drawer state
   const [addDriverOpen, setAddDriverOpen] = useState(false);
-  const [licenceInput, setLicenceInput] = useState("");
-  const [licenceResult, setLicenceResult] = useState<SearchResult | null>(null);
-  const [licenceSearching, setLicenceSearching] = useState(false);
+  const [waInput, setWaInput] = useState("+65 ");
+  const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [nameInput, setNameInput] = useState("");
   const [addingTier1, setAddingTier1] = useState(false);
+  const [sendingInvite, setSendingInvite] = useState(false);
+  const [inviteSuccess, setInviteSuccess] = useState(false);
+  const [drawerError, setDrawerError] = useState<string | null>(null);
   const [tier1Mutating, setTier1Mutating] = useState(false);
   const [tier1Error, setTier1Error] = useState<string | null>(null);
 
-  const licenceInputRef = useRef<HTMLInputElement>(null);
+  const waInputRef = useRef<HTMLInputElement>(null);
 
-  // Fetch driver detail when selection changes
   useEffect(() => {
-    if (sub !== "drivers" || !selectedDriverId) { setDriverDetail(null); return; }
+    if (!selectedDriverId) { setDriverDetail(null); return; }
     setDriverDetailLoading(true);
     fetch(`/api/operator/profiles/drivers/${selectedDriverId}`)
       .then((r) => r.json())
       .then((d) => { setDriverDetail(d); setDriverDetailLoading(false); })
       .catch(() => setDriverDetailLoading(false));
-  }, [selectedDriverId, sub]);
+  }, [selectedDriverId]);
 
-  // Fetch account detail when selection changes
-  useEffect(() => {
-    if (sub !== "accounts" || !selectedAccountId) { setAccountDetail(null); return; }
-    setAccountDetailLoading(true);
-    fetch(`/api/operator/profiles/accounts/${selectedAccountId}`)
-      .then((r) => r.json())
-      .then((d) => { setAccountDetail(d); setAccountDetailLoading(false); })
-      .catch(() => setAccountDetailLoading(false));
-  }, [selectedAccountId, sub]);
-
-  // Focus licence input when drawer opens
   useEffect(() => {
     if (addDriverOpen) {
-      setLicenceInput("");
-      setLicenceResult(null);
-      setTier1Error(null);
-      setTimeout(() => licenceInputRef.current?.focus(), 50);
+      setWaInput("+65 ");
+      setCheckResult(null);
+      setNameInput("");
+      setDrawerError(null);
+      setInviteSuccess(false);
+      setTimeout(() => waInputRef.current?.focus(), 50);
     }
   }, [addDriverOpen]);
 
@@ -246,31 +199,64 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
     if (res.ok) setDrivers(await res.json());
   }
 
-  async function handleLicenceSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!licenceInput.trim()) return;
-    setLicenceSearching(true);
-    setLicenceResult(null);
-    setTier1Error(null);
-    const res = await fetch(`/api/operator/profiles/drivers/search?licence=${encodeURIComponent(licenceInput.trim())}`);
-    setLicenceResult(await res.json());
-    setLicenceSearching(false);
+  async function refreshInviteRequests() {
+    const res = await fetch("/api/operator/drivers/invite-request");
+    if (res.ok) setInviteRequests(await res.json());
   }
 
-  async function handleAddTier1(driverId: string) {
+  async function handleCheckWhatsapp(e: React.FormEvent) {
+    e.preventDefault();
+    if (!waInput.trim() || waInput.trim() === "+65") return;
+    setChecking(true);
+    setCheckResult(null);
+    setDrawerError(null);
+    const res = await fetch(`/api/operator/drivers/check-whatsapp?number=${encodeURIComponent(waInput.trim())}`);
+    const data = await res.json();
+    setCheckResult(data);
+    setChecking(false);
+  }
+
+  async function handleAddTier1ByWa() {
     setAddingTier1(true);
-    setTier1Error(null);
-    const res = await fetch(`/api/operator/profiles/drivers/${driverId}/add-tier1`, { method: "POST" });
+    setDrawerError(null);
+    const res = await fetch("/api/operator/drivers/add-by-whatsapp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ driverWhatsapp: waInput.trim() }),
+    });
     if (!res.ok) {
       const d = await res.json();
-      setTier1Error(d.error ?? "Failed to add driver");
+      setDrawerError(d.error ?? "Failed to add driver");
       setAddingTier1(false);
       return;
     }
+    const data = await res.json();
     await refreshDriverList();
     setAddDriverOpen(false);
-    setSelectedDriverId(driverId);
+    setSelectedDriverId(data.driverId ?? null);
     setAddingTier1(false);
+  }
+
+  async function handleSendInvite(e: React.FormEvent) {
+    e.preventDefault();
+    setSendingInvite(true);
+    setDrawerError(null);
+    const res = await fetch("/api/operator/drivers/invite-request", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        driverWhatsapp: waInput.trim(),
+        driverName: nameInput.trim() || undefined,
+      }),
+    });
+    const data = await res.json();
+    setSendingInvite(false);
+    if (!res.ok) {
+      setDrawerError(data.error ?? "Failed to send invite request");
+      return;
+    }
+    setInviteSuccess(true);
+    await refreshInviteRequests();
   }
 
   async function handleRemoveTier1() {
@@ -285,7 +271,6 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
       return;
     }
     await refreshDriverList();
-    // Re-fetch detail
     const dr = await fetch(`/api/operator/profiles/drivers/${selectedDriverId}`).then((r) => r.json());
     setDriverDetail(dr);
     setTier1Mutating(false);
@@ -301,13 +286,6 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
     );
   });
 
-  const filteredAccounts = accounts.filter((a) => {
-    const q = search.toLowerCase();
-    return a.name.toLowerCase().includes(q) || (a.uen ?? "").toLowerCase().includes(q);
-  });
-
-  // ─── Layout styles ─────────────────────────────────────────────────────────
-
   const leftPanelStyle: React.CSSProperties = {
     width: "25%", borderRight: "1px solid var(--border)", overflowY: "auto", height: "100%",
     display: "flex", flexDirection: "column",
@@ -318,35 +296,13 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
-      {/* Sub-tabs */}
-      <div style={{ borderBottom: "1px solid var(--border)", display: "flex", gap: 0, padding: "0 20px", background: "var(--bg)", flexShrink: 0 }}>
-        {(["drivers", "accounts"] as const).map((s) => (
-          <button
-            key={s}
-            onClick={() => {
-              setSearch("");
-              startTransition(() => router.push(`/operator/profiles?sub=${s}`));
-            }}
-            style={{
-              background: "none", border: "none",
-              borderBottom: sub === s ? "2px solid var(--accent)" : "2px solid transparent",
-              color: sub === s ? "var(--text)" : "var(--text-dim)",
-              fontWeight: sub === s ? 600 : 500,
-              fontSize: 12.5, padding: "10px 16px", cursor: "pointer", textTransform: "capitalize",
-            }}
-          >
-            {s}
-          </button>
-        ))}
-      </div>
-
-      {/* 25/75 split */}
+      {/* 25/75 split — no sub-tabs */}
       <div style={{ flex: 1, display: "grid", gridTemplateColumns: "25% 75%", overflow: "hidden" }}>
         {/* ── LEFT PANEL ─────────────────────────────────────────────────── */}
         <div style={leftPanelStyle}>
           <div style={{ padding: "12px 12px 8px", flexShrink: 0 }}>
             <input
-              placeholder={`Search ${sub}…`}
+              placeholder="Search drivers…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               style={{
@@ -357,22 +313,20 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
             />
           </div>
 
-          {sub === "drivers" && (
-            <div style={{ padding: "0 12px 8px", flexShrink: 0 }}>
-              <button
-                onClick={() => setAddDriverOpen(true)}
-                style={{
-                  width: "100%", padding: "7px", fontSize: 12, fontWeight: 600,
-                  background: "var(--accent)", color: "#000", border: "none", borderRadius: 4, cursor: "pointer",
-                }}
-              >
-                + Add Driver
-              </button>
-            </div>
-          )}
+          <div style={{ padding: "0 12px 8px", flexShrink: 0 }}>
+            <button
+              onClick={() => setAddDriverOpen(true)}
+              style={{
+                width: "100%", padding: "7px", fontSize: 12, fontWeight: 600,
+                background: "var(--accent)", color: "#000", border: "none", borderRadius: 4, cursor: "pointer",
+              }}
+            >
+              + Add Driver
+            </button>
+          </div>
 
           <div style={{ flex: 1, overflowY: "auto" }}>
-            {sub === "drivers" && filteredDrivers.map((d) => (
+            {filteredDrivers.map((d) => (
               <div
                 key={d.id}
                 onClick={() => setSelectedDriverId(d.id)}
@@ -402,72 +356,75 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
               </div>
             ))}
 
-            {sub === "drivers" && filteredDrivers.length === 0 && (
+            {filteredDrivers.length === 0 && (
               <p style={{ padding: "32px 16px", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>
                 {drivers.length === 0 ? "No drivers yet" : "No results"}
               </p>
             )}
 
-            {sub === "accounts" && filteredAccounts.map((a) => (
-              <div
-                key={a.accountId}
-                onClick={() => setSelectedAccountId(a.accountId)}
-                style={{
-                  padding: "10px 12px", cursor: "pointer", borderBottom: "1px solid var(--border)",
-                  background: selectedAccountId === a.accountId ? "var(--surface)" : "transparent",
-                }}
-              >
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 2 }}>
-                  <AccountStatusIcon status={a.claimStatus} protectionTier={a.protectionTier} daysRemaining={a.daysRemaining} />
-                  <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>{a.name}</span>
+            {/* Pending Invitations */}
+            {inviteRequests.length > 0 && (
+              <div style={{ borderTop: "1px solid var(--border)", marginTop: 8 }}>
+                <div style={{ padding: "10px 12px 6px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <p style={{ fontSize: 10, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", margin: 0 }}>
+                    Pending Invitations
+                  </p>
+                  <span style={{ fontSize: 10, background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 10, padding: "1px 6px", color: "var(--text-faint)" }}>
+                    {inviteRequests.length}
+                  </span>
                 </div>
-                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "0 0 0 22px" }}>
-                  {SEGMENT_LABEL[a.customerSegment] ?? a.customerSegment}
-                  {a.claimStatus !== "won" && (
-                    <span style={{ marginLeft: 6, color: a.daysRemaining <= 14 ? "#D9534F" : a.daysRemaining <= 30 ? "#E5A93C" : "var(--text-faint)" }}>
-                      · {a.daysRemaining}d left
-                    </span>
-                  )}
-                </p>
+                {inviteRequests.map((r) => (
+                  <div key={r.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
+                    <div className="mono" style={{ fontSize: 12, color: "var(--text)", marginBottom: 2 }}>
+                      {r.driverWhatsapp}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                        {r.driverName ?? "—"}
+                      </span>
+                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                        <span style={{
+                          fontSize: 9, fontWeight: 600, textTransform: "uppercase",
+                          padding: "1px 5px", borderRadius: 3,
+                          background: r.status === "sent" ? "#1a3d2b" : "#3d2f00",
+                          color: r.status === "sent" ? "#4CAF6D" : "#E5A93C",
+                          border: `1px solid ${r.status === "sent" ? "#2d6b4a" : "#5a4500"}`,
+                        }}>
+                          {r.status}
+                        </span>
+                        {r.expiresAt && (
+                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>
+                            {daysUntilLabel(r.expiresAt)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <p style={{ fontSize: 10, color: "var(--text-faint)", margin: "2px 0 0" }}>
+                      {daysAgo(r.createdAt)}
+                    </p>
+                  </div>
+                ))}
               </div>
-            ))}
-
-            {sub === "accounts" && filteredAccounts.length === 0 && (
-              <p style={{ padding: "32px 16px", textAlign: "center", fontSize: 12, color: "var(--text-faint)" }}>
-                {accounts.length === 0 ? "No accounts claimed" : "No results"}
-              </p>
             )}
           </div>
         </div>
 
         {/* ── RIGHT PANEL ────────────────────────────────────────────────── */}
         <div style={rightPanelStyle}>
-          {/* Driver detail */}
-          {sub === "drivers" && (
-            driverDetailLoading ? (
-              <div style={{ padding: 32, color: "var(--text-faint)", fontSize: 13 }}>Loading…</div>
-            ) : driverDetail ? (
-              <DriverDetailView
-                detail={driverDetail}
-                onRemoveTier1={handleRemoveTier1}
-                removing={tier1Mutating}
-                removeError={tier1Error}
-                timezone={timezone}
-              />
-            ) : (
-              <EmptyDetail label="Select a driver" />
-            )
-          )}
-
-          {/* Account detail */}
-          {sub === "accounts" && (
-            accountDetailLoading ? (
-              <div style={{ padding: 32, color: "var(--text-faint)", fontSize: 13 }}>Loading…</div>
-            ) : accountDetail ? (
-              <AccountDetailView detail={accountDetail} timezone={timezone} />
-            ) : (
-              <EmptyDetail label="Select an account" />
-            )
+          {driverDetailLoading ? (
+            <div style={{ padding: 32, color: "var(--text-faint)", fontSize: 13 }}>Loading…</div>
+          ) : driverDetail ? (
+            <DriverDetailView
+              detail={driverDetail}
+              onRemoveTier1={handleRemoveTier1}
+              removing={tier1Mutating}
+              removeError={tier1Error}
+              timezone={timezone}
+            />
+          ) : (
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-faint)", fontSize: 13 }}>
+              Select a driver
+            </div>
           )}
         </div>
       </div>
@@ -477,107 +434,147 @@ export function ProfilesPageClient({ initialDrivers, initialAccounts, sub, timez
         <>
           <div onClick={() => setAddDriverOpen(false)} style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 40 }} />
           <div style={{
-            position: "fixed", top: 0, right: 0, bottom: 0, width: 420,
+            position: "fixed", top: 0, right: 0, bottom: 0, width: 440,
             background: "var(--surface)", borderLeft: "1px solid var(--border)",
             zIndex: 50, display: "flex", flexDirection: "column",
           }}>
             <div style={{ padding: "24px 24px 16px", borderBottom: "1px solid var(--border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <div>
                 <h2 style={{ margin: 0, fontSize: 15, fontWeight: 600, color: "var(--text)" }}>Add Driver</h2>
-                <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-dim)" }}>Search by vocational licence number</p>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--text-dim)" }}>
+                  Search by WhatsApp number
+                </p>
               </div>
               <button onClick={() => setAddDriverOpen(false)} style={{ background: "none", border: "none", color: "var(--text-dim)", fontSize: 22, cursor: "pointer", lineHeight: 1 }}>×</button>
             </div>
 
             <div style={{ padding: 24, display: "flex", flexDirection: "column", gap: 20, flex: 1, overflowY: "auto" }}>
-              <form onSubmit={handleLicenceSearch} style={{ display: "flex", gap: 8 }}>
-                <input
-                  ref={licenceInputRef}
-                  value={licenceInput}
-                  onChange={(e) => { setLicenceInput(e.target.value.toUpperCase()); setLicenceResult(null); }}
-                  placeholder="e.g. VL12345678"
-                  style={{
-                    flex: 1, background: "var(--surface-raised)", border: "1px solid var(--border)",
-                    borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "9px 12px", outline: "none",
-                    fontFamily: "monospace",
-                  }}
-                />
-                <button
-                  type="submit"
-                  disabled={!licenceInput.trim() || licenceSearching}
-                  style={{
-                    padding: "9px 16px", fontSize: 13, fontWeight: 600, background: "var(--accent)",
-                    color: "#000", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0,
-                  }}
-                >
-                  {licenceSearching ? "…" : "Search"}
-                </button>
-              </form>
 
-              {licenceResult && !licenceResult.found && (
-                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 8, padding: 16, textAlign: "center" }}>
-                  <p style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 12 }}>
-                    No driver found with that vocational licence.
-                  </p>
-                  <Link
-                    href="/onboard"
-                    target="_blank"
+              {/* WhatsApp number input */}
+              <div>
+                <label style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 500, marginBottom: 6, display: "block" }}>
+                  Driver&apos;s WhatsApp Number <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <form onSubmit={handleCheckWhatsapp} style={{ display: "flex", gap: 8 }}>
+                  <input
+                    ref={waInputRef}
+                    type="tel"
+                    value={waInput}
+                    onChange={(e) => { setWaInput(e.target.value); setCheckResult(null); setDrawerError(null); setInviteSuccess(false); }}
+                    placeholder="+65 9123 4567"
                     style={{
-                      fontSize: 13, fontWeight: 600, color: "var(--accent)",
-                      textDecoration: "none", border: "1px solid var(--accent)",
-                      padding: "8px 16px", borderRadius: 4, display: "inline-block",
+                      flex: 1, background: "var(--surface-raised)", border: "1px solid var(--border)",
+                      borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "9px 12px", outline: "none",
+                    }}
+                  />
+                  <button
+                    type="submit"
+                    disabled={!waInput.trim() || waInput.trim() === "+65" || checking}
+                    style={{
+                      padding: "9px 16px", fontSize: 13, fontWeight: 600, background: "var(--accent)",
+                      color: "#000", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0,
+                      opacity: (!waInput.trim() || waInput.trim() === "+65" || checking) ? 0.5 : 1,
                     }}
                   >
-                    Invite to self-onboard →
-                  </Link>
+                    {checking ? "Checking…" : "Check Number →"}
+                  </button>
+                </form>
+                <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 6 }}>
+                  We will check if this driver is already on LyPX.
+                </p>
+              </div>
+
+              {drawerError && (
+                <p style={{ fontSize: 13, color: "#D9534F" }}>{drawerError}</p>
+              )}
+
+              {/* Result A — found active */}
+              {checkResult?.status === "found_active" && checkResult.driver && (
+                <div style={{ background: "var(--surface-raised)", border: "1px solid #22c55e44", borderRadius: 8, padding: 16 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12 }}>
+                    <span style={{ color: "#4CAF6D", fontSize: 14 }}>✓</span>
+                    <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
+                      {checkResult.driver.firstName} {checkResult.driver.lastName} is already verified on LyPX.
+                    </span>
+                  </div>
+                  {checkResult.driver.tier2Qualified && (
+                    <div style={{ marginBottom: 10 }}>
+                      <TierChip tier1={false} tier2={true} />
+                      <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 6 }}>Tier 2 qualified</span>
+                    </div>
+                  )}
+                  <button
+                    onClick={handleAddTier1ByWa}
+                    disabled={addingTier1}
+                    className="btn-primary"
+                    style={{ fontSize: 13, padding: "9px 18px" }}
+                  >
+                    {addingTier1 ? "Adding…" : "Add to My Tier 1 Fleet"}
+                  </button>
                 </div>
               )}
 
-              {licenceResult?.found && licenceResult.driver && (
+              {/* Result — found suspended */}
+              {checkResult?.status === "found_suspended" && (
+                <div style={{ background: "var(--surface-raised)", border: "1px solid #D9534F44", borderRadius: 8, padding: 16 }}>
+                  <p style={{ fontSize: 13, color: "#D9534F", fontWeight: 500, margin: 0 }}>
+                    This driver cannot be added — they are currently suspended on LyPX.
+                  </p>
+                </div>
+              )}
+
+              {/* Result — found pending */}
+              {checkResult?.status === "found_pending" && (
                 <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 8, padding: 16 }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
-                    <StatusDot status={licenceResult.driver.complianceStatus} />
+                  <p style={{ fontSize: 13, color: "var(--text-dim)", margin: 0 }}>
+                    This driver&apos;s profile is pending review. They can be added once approved by LyPX.
+                  </p>
+                </div>
+              )}
+
+              {/* Result B — not found → invite form */}
+              {checkResult?.status === "not_found" && !inviteSuccess && (
+                <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 8, padding: 16 }}>
+                  <p style={{ fontSize: 13, color: "var(--text-dim)", marginBottom: 16 }}>
+                    This driver is not yet registered on LyPX.
+                  </p>
+                  <form onSubmit={handleSendInvite} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     <div>
-                      <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
-                        {licenceResult.driver.firstName} {licenceResult.driver.lastName}
-                      </p>
-                      <p className="mono" style={{ margin: "2px 0 0", fontSize: 12, color: "var(--text-faint)" }}>
-                        {licenceResult.driver.phoneNumber}
-                      </p>
+                      <label style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 500, marginBottom: 6, display: "block" }}>
+                        Driver Name <span style={{ color: "var(--text-faint)" }}>(optional — helps admin identify)</span>
+                      </label>
+                      <input
+                        value={nameInput}
+                        onChange={(e) => setNameInput(e.target.value)}
+                        placeholder="e.g. David Tan"
+                        style={{
+                          width: "100%", background: "var(--surface)", border: "1px solid var(--border)",
+                          borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "9px 12px", outline: "none",
+                          boxSizing: "border-box",
+                        }}
+                      />
                     </div>
-                  </div>
-
-                  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-                    <span style={{ fontSize: 11, color: "var(--text-dim)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px" }}>
-                      {licenceResult.driver.vocationalLicenceNumber}
-                    </span>
-                    <span style={{ fontSize: 11, color: "var(--text-dim)", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 4, padding: "3px 8px" }}>
-                      Expiry: {fmtDate(licenceResult.driver.vocationalLicenceExpiry)}
-                    </span>
-                  </div>
-
-                  {licenceResult.driver.alreadyMember && licenceResult.driver.tier1Member && (
-                    <p style={{ fontSize: 13, color: "#4CAF6D", fontWeight: 500 }}>✓ Already a Tier 1 member</p>
-                  )}
-                  {licenceResult.driver.alreadyMember && !licenceResult.driver.tier1Member && (
-                    <p style={{ fontSize: 12, color: "var(--text-dim)", marginBottom: 10 }}>This driver is already in your pool (T3). Add to Tier 1?</p>
-                  )}
-                  {licenceResult.driver.complianceStatus !== "active" && (
-                    <p style={{ fontSize: 12, color: "#E5A93C" }}>Driver is not active — cannot add to Tier 1</p>
-                  )}
-
-                  {tier1Error && <p style={{ fontSize: 12, color: "#D9534F", marginTop: 8 }}>{tier1Error}</p>}
-
-                  {licenceResult.driver.complianceStatus === "active" && !(licenceResult.driver.alreadyMember && licenceResult.driver.tier1Member) && (
                     <button
-                      onClick={() => handleAddTier1(licenceResult.driver!.id)}
-                      disabled={addingTier1}
+                      type="submit"
+                      disabled={sendingInvite}
                       className="btn-primary"
-                      style={{ fontSize: 13, padding: "9px 18px", marginTop: 8 }}
+                      style={{ fontSize: 13, padding: "9px 18px", alignSelf: "flex-start" }}
                     >
-                      {addingTier1 ? "Adding…" : "Add to Tier 1"}
+                      {sendingInvite ? "Sending…" : "Send Invite Request →"}
                     </button>
-                  )}
+                  </form>
+                </div>
+              )}
+
+              {/* Invite sent success */}
+              {inviteSuccess && (
+                <div style={{ background: "#22c55e11", border: "1px solid #22c55e44", borderRadius: 8, padding: 16 }}>
+                  <p style={{ fontSize: 13, color: "#4CAF6D", fontWeight: 500, margin: 0 }}>
+                    ✓ Request sent to LyPX for review.
+                  </p>
+                  <p style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 6 }}>
+                    LyPX will review and send an onboarding invite to the driver.
+                  </p>
                 </div>
               )}
             </div>
@@ -708,8 +705,7 @@ function DriverDetailView({
               Remove {d.firstName} {d.lastName} from your Tier 1 fleet?
             </p>
             <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: "0 0 24px" }}>
-              They will remain on the LyPX platform and may be available
-              through the general driver pool.
+              They will remain on the LyPX platform and may be available through the general driver pool.
             </p>
             <div style={{ display: "flex", gap: 10 }}>
               <button
@@ -765,7 +761,6 @@ function DriverDetailView({
         </div>
       </div>
 
-      {/* Recent trips */}
       {d.recentOrders.length > 0 && (
         <>
           <p className="panel-title" style={{ marginBottom: 10 }}>Recent Trips (30d)</p>
@@ -793,157 +788,6 @@ function DriverDetailView({
           </div>
         </>
       )}
-    </div>
-  );
-}
-
-// ─── Account Detail View ──────────────────────────────────────────────────────
-
-function AccountDetailView({ detail, timezone }: { detail: AccountDetail; timezone: string }) {
-  const a = detail;
-  const c = a.claim;
-  const barColor = c.daysRemaining > 90 ? "#4CAF6D" : c.daysRemaining > 30 ? "#E5A93C" : "#D9534F";
-
-  return (
-    <div style={{ padding: 28 }}>
-      {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 28 }}>
-        <div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
-            <h2 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>{a.name}</h2>
-            <span style={{
-              fontSize: 10, fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px",
-              padding: "2px 8px", borderRadius: 10, background: "var(--surface-raised)",
-              border: "1px solid var(--border)", color: "var(--text-dim)",
-            }}>
-              {SEGMENT_LABEL[a.customerSegment] ?? a.customerSegment}
-            </span>
-            {c.status === "won" && c.protectionTier === "long_term" && (
-              <span style={{ fontSize: 11, color: "#E5A93C", fontWeight: 600 }}>🏆 Long-term</span>
-            )}
-          </div>
-          {a.uen && (
-            <p className="mono" style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>UEN: {a.uen}</p>
-          )}
-        </div>
-        <Link
-          href={`/operator/dispatch`}
-          style={{
-            marginLeft: "auto", flexShrink: 0, fontSize: 12, fontWeight: 600,
-            color: "var(--accent)", border: "1px solid var(--accent)",
-            padding: "7px 14px", borderRadius: 4, textDecoration: "none",
-          }}
-        >
-          New Reservation
-        </Link>
-      </div>
-
-      {/* PIC Contact */}
-      {(a.picName || a.picWhatsapp) && (
-        <>
-          <p className="panel-title" style={{ marginBottom: 10 }}>Contact</p>
-          <div style={{ marginBottom: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "14px 16px" }}>
-            {a.picName && (
-              <div style={{ display: "flex", gap: 12, marginBottom: a.picWhatsapp || a.picEmail ? 10 : 0 }}>
-                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>Person in Charge</span>
-                <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{a.picName}</span>
-              </div>
-            )}
-            {a.picWhatsapp && (
-              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: a.picEmail ? 10 : 0 }}>
-                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>WhatsApp</span>
-                <span className="mono" style={{ fontSize: 13, color: "var(--text)" }}>{a.picWhatsapp}</span>
-                <a
-                  href={`https://wa.me/${a.picWhatsapp.replace(/[\s\-()]/g, "").replace(/^\+/, "")}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  style={{
-                    marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "#25D366",
-                    border: "1px solid #25D36644", borderRadius: 4, padding: "3px 10px",
-                    textDecoration: "none", flexShrink: 0,
-                  }}
-                >
-                  Send WhatsApp
-                </a>
-              </div>
-            )}
-            {a.picEmail && (
-              <div style={{ display: "flex", gap: 12 }}>
-                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>Email</span>
-                <a href={`mailto:${a.picEmail}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{a.picEmail}</a>
-              </div>
-            )}
-          </div>
-        </>
-      )}
-
-      {/* Claim Countdown */}
-      <p className="panel-title" style={{ marginBottom: 10 }}>Claim Status</p>
-      <div style={{ marginBottom: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "16px 18px" }}>
-        {c.status === "won" ? (
-          <p style={{ fontSize: 14, fontWeight: 600, color: "#4CAF6D", margin: "0 0 4px" }}>
-            {c.protectionTier === "long_term" ? "🏆 Won — Long-term Protection" : "✓ Won — Standard Protection"}
-          </p>
-        ) : (
-          <>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-              <p style={{ fontSize: 13, fontWeight: 500, color: "var(--text)", margin: 0 }}>
-                {c.daysRemaining} days remaining
-              </p>
-              <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>{c.progressPercent}% elapsed</p>
-            </div>
-            <div style={{ height: 6, background: "var(--surface-raised)", borderRadius: 3, overflow: "hidden" }}>
-              <div style={{ height: "100%", width: `${c.progressPercent}%`, background: barColor, borderRadius: 3 }} />
-            </div>
-          </>
-        )}
-        <div style={{ display: "flex", gap: 16, marginTop: 12 }}>
-          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Claimed: {fmtDate(c.claimedAt)}</span>
-          {c.wonAt
-            ? <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Won: {fmtDate(c.wonAt)}</span>
-            : <span style={{ fontSize: 11, color: "var(--text-faint)" }}>Expires: {fmtDate(c.expiryAt)}</span>}
-        </div>
-      </div>
-
-      {/* Trip Stats */}
-      <p className="panel-title" style={{ marginBottom: 10 }}>Trip History</p>
-      <div style={{ marginBottom: 24, padding: "14px 16px", background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 6 }}>
-        <p style={{ fontSize: 24, fontWeight: 700, color: "var(--text)", margin: "0 0 2px" }}>{a.totalTrips}</p>
-        <p style={{ fontSize: 12, color: "var(--text-faint)", margin: 0 }}>trips with this operator</p>
-      </div>
-
-      {a.recentOrders.length > 0 && (
-        <div>
-          {a.recentOrders.slice(0, 8).map((o) => (
-            <div key={o.id} style={{
-              padding: "9px 0", borderBottom: "1px solid var(--border)",
-              display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-            }}>
-              <div>
-                <p style={{ fontSize: 12, color: "var(--text)", margin: 0 }}>
-                  {o.pickupLocation} → {o.dropoffLocation}
-                </p>
-                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "2px 0 0" }}>
-                  {fmtDate(o.completedAt)}
-                </p>
-              </div>
-              {o.tripFare != null && (
-                <span style={{ fontSize: 12, color: "var(--text-dim)", flexShrink: 0, marginLeft: 12 }}>
-                  {fmtSGD(o.tripFare)}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EmptyDetail({ label }: { label: string }) {
-  return (
-    <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-faint)", fontSize: 13 }}>
-      {label}
     </div>
   );
 }
