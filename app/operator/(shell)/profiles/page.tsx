@@ -3,12 +3,12 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getOperatorTenant } from "@/lib/utils/operator";
 import { getUserTimezone } from "@/lib/utils/timezone";
 import { redirect } from "next/navigation";
-import { ProfilesPanel } from "@/components/lypx/ProfilesPanel";
+import { ProfilesPageClient } from "@/components/profiles/ProfilesPageClient";
 
 export default async function OperatorProfilesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ sub?: string; driver?: string; account?: string }>;
+  searchParams: Promise<{ sub?: string }>;
 }) {
   const { user } = await withAuth({ ensureSignedIn: true });
   const tenant = await getOperatorTenant(user.id);
@@ -16,61 +16,105 @@ export default async function OperatorProfilesPage({
 
   const tz = await getUserTimezone(user.id);
   const params = await searchParams;
-  const sub = params.sub ?? "drivers";
+  const sub = params.sub === "accounts" ? "accounts" : "drivers";
 
-  const [memberships, accounts] = await Promise.all([
+  const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+  const [memberships, claims] = await Promise.all([
     prisma.operatorDriverMembership.findMany({
       where: { tenantId: tenant.id },
       include: {
         driver: {
           include: {
-            documents: {
-              where: { entityType: "driver" },
-              orderBy: { expiryDate: "asc" },
-            },
             vehicleOwnerships: {
-              include: { vehicle: { select: { id: true, plateNumber: true, make: true, model: true } } },
+              include: {
+                vehicle: {
+                  select: { plateNumber: true, make: true, model: true, vehicleClass: true },
+                },
+              },
               take: 1,
             },
             orders: {
-              where: { tenantId: tenant.id, status: "completed" },
-              orderBy: { completedAt: "desc" },
-              take: 30,
-              select: { id: true, completedAt: true },
+              where: { tenantId: tenant.id, status: "completed", completedAt: { gte: thirtyDaysAgo } },
+              select: { id: true },
+            },
+            submission: {
+              select: { vocationalLicenceExpiryDate: true },
             },
           },
         },
       },
+      orderBy: { addedAt: "desc" },
     }),
-    prisma.account.findMany({
-      where: { claims: { some: { claimingPartyId: tenant.id, status: { in: ["claimed", "won"] } } } },
+    prisma.accountClaim.findMany({
+      where: {
+        claimingPartyType: "operator",
+        claimingPartyId: tenant.id,
+        status: { in: ["claimed", "won"] },
+      },
       include: {
-        claims: {
-          where: { claimingPartyId: tenant.id },
-          orderBy: { claimedAt: "desc" },
-          take: 1,
-        },
-        orders: {
-          where: { tenantId: tenant.id, status: "completed" },
-          orderBy: { completedAt: "desc" },
-          take: 1,
-          select: { id: true, completedAt: true },
+        account: {
+          select: {
+            id: true,
+            name: true,
+            uen: true,
+            customerSegment: true,
+            _count: { select: { orders: true } },
+            orders: {
+              where: { tenantId: tenant.id, status: "completed" },
+              orderBy: { completedAt: "desc" },
+              take: 1,
+              select: { completedAt: true },
+            },
+          },
         },
       },
+      orderBy: { claimedAt: "desc" },
     }),
   ]);
 
-  const drivers = memberships.map(m => m.driver);
+  const now = Date.now();
+
+  const initialDrivers = memberships.map((m) => ({
+    id: m.driver.id,
+    firstName: m.driver.firstName,
+    lastName: m.driver.lastName,
+    phoneNumber: m.driver.phoneNumber,
+    complianceStatus: m.driver.complianceStatus,
+    tier1Member: m.tier1Member,
+    tier2Qualified: m.driver.tier2Qualified,
+    vehicleClass: m.driver.vehicleOwnerships[0]?.vehicle.vehicleClass ?? null,
+    vehicle: m.driver.vehicleOwnerships[0]?.vehicle ?? null,
+    vocationalLicenceExpiry:
+      m.driver.submission?.vocationalLicenceExpiryDate?.toISOString() ?? null,
+    tripCount30d: m.driver.orders.length,
+  }));
+
+  const initialAccounts = claims.map((c) => ({
+    claimId: c.id,
+    accountId: c.account.id,
+    name: c.account.name,
+    uen: c.account.uen ?? null,
+    customerSegment: c.account.customerSegment,
+    claimStatus: c.status,
+    protectionTier: c.protectionTier,
+    claimedAt: c.claimedAt.toISOString(),
+    expiryAt: c.expiryAt.toISOString(),
+    wonAt: c.wonAt?.toISOString() ?? null,
+    daysRemaining: Math.ceil((c.expiryAt.getTime() - now) / 86400000),
+    totalTrips: c.account._count.orders,
+    lastTripAt: c.account.orders[0]?.completedAt?.toISOString() ?? null,
+  }));
 
   return (
-    <ProfilesPanel
-      sub={sub}
-      selectedDriverId={params.driver}
-      selectedAccountId={params.account}
-      drivers={drivers}
-      accounts={accounts}
-      tenantId={tenant.id}
-      timezone={tz}
-    />
+    <div style={{ height: "100%", overflow: "hidden" }}>
+      <ProfilesPageClient
+        initialDrivers={initialDrivers}
+        initialAccounts={initialAccounts}
+        sub={sub}
+        timezone={tz}
+        tenantId={tenant.id}
+      />
+    </div>
   );
 }
