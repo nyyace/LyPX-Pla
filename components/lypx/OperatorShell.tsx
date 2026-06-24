@@ -9,6 +9,7 @@ import { AdminClock } from "./AdminClock";
 const tabs = [
   { href: "/operator/dispatch",      label: "Dispatch Centre" },
   { href: "/operator/reservations",  label: "Reservations" },
+  { href: "/operator/accounts",      label: "Accounts" },
   { href: "/operator/profiles",      label: "Profiles" },
   { href: "/operator/billing",       label: "Billing Logs" },
   { href: "/operator/gate-queue",    label: "Gate Queue" },

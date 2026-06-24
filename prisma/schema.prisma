@@ -84,6 +84,7 @@ model Vehicle {
   plateNumber          String   @unique
   status               String   @default("inactive") // active | inactive | suspended — DERIVED
   insuranceCompany     String?
+  vehicleClass         String?  // "VVV" | "AVF" | "NVE"
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -150,6 +151,7 @@ model DocumentFile {
 model Account {
   id              String   @id @default(cuid())
   name            String
+  uen             String?  @unique  // Singapore UEN — primary dedup key
   customerSegment String   // hotel | mice | tdm | dmc | corporate_general
   sourceType      String   // "operator_sourced" | "lypx_sourced"
   createdAt       DateTime @default(now())
@@ -157,6 +159,25 @@ model Account {
   claims           AccountClaim[]
   takeoverRequests TakeoverRequest[]
   orders           Order[]
+  claimConflicts   ClaimConflict[]
+}
+
+model ClaimConflict {
+  id                  String    @id @default(cuid())
+  accountId           String
+  existingClaimId     String
+  challengerTenantId  String
+  challengerNote      String?
+  status              String    @default("pending") // pending | allowed | rejected | flagged
+  adminDecision       String?
+  decidedBy           String?
+  decidedAt           DateTime?
+  createdAt           DateTime  @default(now())
+
+  account             Account   @relation(fields: [accountId], references: [id])
+
+  @@index([accountId])
+  @@index([status])
 }
 
 model AccountClaim {
