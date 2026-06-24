@@ -9,6 +9,7 @@ import { NewReservationDrawer } from "./NewReservationDrawer";
 type Order = {
   id: string;
   status: string;
+  serviceType?: string | null;
   pickupTime: Date;
   pickupLocation: string;
   dropoffLocation: string;
@@ -33,6 +34,15 @@ const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
   started:   { label: "ACTIVE",     cls: "chip chip-green" },
   completed: { label: "COMPLETED",  cls: "chip chip-dim"   },
   cancelled: { label: "CANCELLED",  cls: "chip chip-red"   },
+};
+
+const SERVICE_CHIP: Record<string, { label: string; color: string }> = {
+  p2p:              { label: "P2P",      color: "var(--text-faint)" },
+  departure:        { label: "DEP",      color: "#60a5fa" },
+  arrival_mng:      { label: "ARR MNG",  color: "#a78bfa" },
+  arrival_driveway: { label: "ARR DWY",  color: "#818cf8" },
+  disposal:         { label: "DISPOSAL", color: "#f59e0b" },
+  flexible:         { label: "FLEX",     color: "#34d399" },
 };
 
 const STATUS_FILTERS = ["all", "booked", "assigned", "completed", "cancelled"];
@@ -81,6 +91,7 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
           <thead>
             <tr>
               <th>Job Ref</th>
+              <th>Type</th>
               <th>Date & Time</th>
               <th>Route</th>
               <th>Account</th>
@@ -91,11 +102,25 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
           <tbody>
             {orders.map(o => {
               const chip = STATUS_CHIP[o.status] ?? { label: o.status, cls: "chip chip-dim" };
+              const svc = o.serviceType ? (SERVICE_CHIP[o.serviceType] ?? { label: o.serviceType, color: "var(--text-faint)" }) : null;
               const isCancelled = o.status === "cancelled";
               return (
                 <tr key={o.id} style={isCancelled ? { opacity: 0.45 } : undefined}>
                   <td className="mono" style={{ color: "var(--text-dim)", fontSize: 12 }}>
                     {o.id.slice(0, 12).toUpperCase()}
+                  </td>
+                  <td>
+                    {svc ? (
+                      <span style={{
+                        fontSize: 10, fontWeight: 700, color: svc.color,
+                        border: `1px solid ${svc.color}55`, borderRadius: 3,
+                        padding: "2px 6px", letterSpacing: "0.3px",
+                      }}>
+                        {svc.label}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-faint)", fontSize: 11 }}>—</span>
+                    )}
                   </td>
                   <td>
                     <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)" }}>
@@ -107,7 +132,9 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
                   </td>
                   <td>
                     <div style={{ fontSize: 12, color: "var(--text-dim)" }}>{o.pickupLocation}</div>
-                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>→ {o.dropoffLocation}</div>
+                    <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text)" }}>
+                      {o.dropoffLocation ? `→ ${o.dropoffLocation}` : <span style={{ color: "var(--text-faint)", fontSize: 12 }}>No dropoff</span>}
+                    </div>
                   </td>
                   <td style={{ fontSize: 13, color: "var(--text)" }}>{o.account.name}</td>
                   <td style={{ fontSize: 13, color: o.driver ? "var(--text)" : "var(--text-faint)" }}>

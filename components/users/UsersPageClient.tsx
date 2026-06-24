@@ -19,7 +19,7 @@ type Operator = {
   invitedAt: string | null;
   activatedAt: string | null;
   createdAt: string;
-  preference: { timezone: string } | null;
+  preference: { timezone: string; whatsappEnabled?: boolean } | null;
   driverCount: number;
   userCount: number;
 };

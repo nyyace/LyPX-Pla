@@ -3,6 +3,20 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 
+const SERVICE_TYPES = [
+  { value: "p2p",              label: "Point to Point" },
+  { value: "departure",        label: "Airport Departure" },
+  { value: "arrival_mng",      label: "Airport Arrival (MNG)" },
+  { value: "arrival_driveway", label: "Airport Arrival (Driveway)" },
+  { value: "disposal",         label: "Hourly Disposal" },
+  { value: "flexible",         label: "Flexible / Charter" },
+];
+
+const NEEDS_FLIGHT  = new Set(["departure", "arrival_mng", "arrival_driveway"]);
+const NEEDS_BOARD   = new Set(["arrival_mng"]);
+const NEEDS_HOURS   = new Set(["disposal"]);
+const DROPOFF_OPT   = new Set(["disposal", "flexible"]);
+
 interface Props {
   tenantId: string;
   onClose: () => void;
@@ -11,10 +25,12 @@ interface Props {
 export function NewReservationDrawer({ tenantId, onClose }: Props) {
   const router = useRouter();
   const [accounts, setAccounts] = useState<{ id: string; name: string }[]>([]);
-  const [drivers, setDrivers] = useState<{ id: string; firstName: string; lastName: string }[]>([]);
+  const [drivers, setDrivers]   = useState<{ id: string; firstName: string; lastName: string }[]>([]);
   const [form, setForm] = useState({
+    serviceType: "p2p",
     accountId: "", pickupDate: "", pickupTime: "", pickupLocation: "",
     dropoffLocation: "", vehicleClass: "AVF", pax: 1, notes: "", driverId: "",
+    flightNumber: "", nameBoardText: "", disposalHours: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,10 +46,24 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     setForm(f => ({ ...f, [k]: v }));
   }
 
+  const dropoffOptional = DROPOFF_OPT.has(form.serviceType);
+
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    if (!form.accountId || !form.pickupDate || !form.pickupTime || !form.pickupLocation || !form.dropoffLocation) {
+    if (!form.accountId || !form.pickupDate || !form.pickupTime || !form.pickupLocation) {
       return setError("All required fields must be filled");
+    }
+    if (!dropoffOptional && !form.dropoffLocation) {
+      return setError("Dropoff location is required for this service type");
+    }
+    if (NEEDS_FLIGHT.has(form.serviceType) && !form.flightNumber.trim()) {
+      return setError("Flight number is required for this service type");
+    }
+    if (NEEDS_BOARD.has(form.serviceType) && !form.nameBoardText.trim()) {
+      return setError("Name board text is required for MNG arrivals");
+    }
+    if (NEEDS_HOURS.has(form.serviceType) && !form.disposalHours) {
+      return setError("Number of hours is required for Hourly Disposal");
     }
     setSaving(true);
     setError(null);
@@ -46,10 +76,14 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         tenantId,
         pickupTime: pickupTime.toISOString(),
         pickupLocation: form.pickupLocation,
-        dropoffLocation: form.dropoffLocation,
+        dropoffLocation: form.dropoffLocation || null,
         driverId: form.driverId || undefined,
         notes: form.notes || undefined,
         status: form.driverId ? "assigned" : "booked",
+        serviceType: form.serviceType,
+        flightNumber: NEEDS_FLIGHT.has(form.serviceType) ? form.flightNumber.trim() || null : null,
+        nameBoardText: NEEDS_BOARD.has(form.serviceType) ? form.nameBoardText.trim() || null : null,
+        disposalHours: NEEDS_HOURS.has(form.serviceType) ? parseInt(form.disposalHours) || null : null,
       }),
     });
     setSaving(false);
@@ -91,6 +125,15 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         )}
 
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+
+          {/* Ride Type — first field */}
+          <div>
+            <label style={labelStyle}>Ride Type *</label>
+            <select value={form.serviceType} onChange={e => set("serviceType", e.target.value)} style={inputStyle}>
+              {SERVICE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+            </select>
+          </div>
+
           <div>
             <label style={labelStyle}>Account *</label>
             <select value={form.accountId} onChange={e => set("accountId", e.target.value)} style={inputStyle} required>
@@ -116,9 +159,40 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
           </div>
 
           <div>
-            <label style={labelStyle}>Dropoff Location *</label>
-            <input type="text" value={form.dropoffLocation} onChange={e => set("dropoffLocation", e.target.value)} style={inputStyle} placeholder="e.g. Changi Airport T3" required />
+            <label style={labelStyle}>Dropoff Location {dropoffOptional ? "" : "*"}</label>
+            <input
+              type="text"
+              value={form.dropoffLocation}
+              onChange={e => set("dropoffLocation", e.target.value)}
+              style={inputStyle}
+              placeholder={dropoffOptional ? "Optional for this service type" : "e.g. Changi Airport T3"}
+              required={!dropoffOptional}
+            />
           </div>
+
+          {/* Conditional: flight number */}
+          {NEEDS_FLIGHT.has(form.serviceType) && (
+            <div>
+              <label style={labelStyle}>Flight Number *</label>
+              <input type="text" value={form.flightNumber} onChange={e => set("flightNumber", e.target.value)} style={inputStyle} placeholder="e.g. SQ123" required />
+            </div>
+          )}
+
+          {/* Conditional: name board */}
+          {NEEDS_BOARD.has(form.serviceType) && (
+            <div>
+              <label style={labelStyle}>Name Board Text *</label>
+              <input type="text" value={form.nameBoardText} onChange={e => set("nameBoardText", e.target.value)} style={inputStyle} placeholder="Name shown on arrival board" required />
+            </div>
+          )}
+
+          {/* Conditional: disposal hours */}
+          {NEEDS_HOURS.has(form.serviceType) && (
+            <div>
+              <label style={labelStyle}>Duration (hours) *</label>
+              <input type="number" min={1} max={24} value={form.disposalHours} onChange={e => set("disposalHours", e.target.value)} style={inputStyle} placeholder="e.g. 3" required />
+            </div>
+          )}
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             <div>

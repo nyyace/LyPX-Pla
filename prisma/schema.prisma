@@ -37,6 +37,7 @@ model Tenant {
   users                    TenantUser[]
   whatsApp                 TenantWhatsApp?
   driverInviteRequests     DriverInviteRequest[]
+  whatsappMessages         WhatsAppMessage[]
 }
 
 // ─────────────────────────────────────────────
@@ -240,6 +241,12 @@ model Order {
   createdAt         DateTime  @default(now())
   completedAt       DateTime?
 
+  // Service type + contextual fields
+  serviceType    String?   // p2p | departure | arrival_mng | arrival_driveway | disposal | flexible
+  flightNumber   String?   // departure + arrival types
+  nameBoardText  String?   // arrival MNG only
+  disposalHours  Int?      // disposal/hourly type
+
   // Marketplace fee breakdown (lypx_direct orders only)
   tripFare          Float?
   lypxFee           Float?
@@ -291,13 +298,16 @@ model PhoneVerification {
 // ─────────────────────────────────────────────
 
 model TenantPreference {
-  id           String   @id @default(cuid())
-  tenantId     String   @unique
-  accentColour String   @default("#E5A93C")
-  timezone     String   @default("Asia/Singapore")
-  updatedAt    DateTime @updatedAt
+  id               String   @id @default(cuid())
+  tenantId         String   @unique
+  accentColour     String   @default("#E5A93C")
+  timezone         String   @default("Asia/Singapore")
+  logoUrl          String?  // public R2 URL of processed logo
+  logoKey          String?  // R2 storage key for deletion/replacement
+  whatsappEnabled  Boolean  @default(false)
+  updatedAt        DateTime @updatedAt
 
-  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+  tenant           Tenant   @relation(fields: [tenantId], references: [id])
 }
 
 // Maps WorkOS user IDs to operator tenants
@@ -381,6 +391,30 @@ model TenantWhatsApp {
   createdAt     DateTime  @default(now())
 
   tenant        Tenant    @relation(fields: [tenantId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP MESSAGES (inbound + outbound log)
+// ─────────────────────────────────────────────
+
+model WhatsAppMessage {
+  id           String   @id @default(cuid())
+  tenantId     String
+  accountId    String?  // linked account if resolvable
+  direction    String   // "inbound" | "outbound"
+  from         String   // phone number
+  to           String   // phone number
+  body         String?  // message text
+  templateName String?  // template name (outbound)
+  waMessageId  String?  // Meta message ID
+  isRead       Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  tenant       Tenant   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, direction, isRead])
+  @@index([tenantId, from])
+  @@index([tenantId, to])
 }
 
 // ─────────────────────────────────────────────

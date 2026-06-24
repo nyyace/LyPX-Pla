@@ -49,3 +49,10 @@ export function makeR2Key(driverId: string, docType: string, filename: string): 
   const uuid = crypto.randomUUID();
   return `documents/${driverId}/${docType}/${uuid}.${ext}`;
 }
+
+// Returns a public URL if R2_PUBLIC_URL is configured, otherwise null.
+export function getPublicUrl(key: string): string | null {
+  const base = process.env.R2_PUBLIC_URL?.replace(/\/$/, "");
+  if (!base) return null;
+  return `${base}/${key}`;
+}

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getOperatorTenant } from "@/lib/utils/operator";
 import { OperatorShell } from "@/components/lypx/OperatorShell";
 import { prisma } from "@/lib/prisma";
+import { getPresignedUrl } from "@/lib/r2";
 
 export default async function OperatorLayout({
   children,
@@ -58,6 +59,22 @@ export default async function OperatorLayout({
     .toUpperCase() || "?";
 
   const accent = tenant.preference?.accentColour ?? "#E5A93C";
+  const whatsappEnabled = tenant.preference?.whatsappEnabled ?? false;
+
+  // Resolve logo URL
+  let logoUrl: string | null = null;
+  const { R2_PUBLIC_URL } = process.env;
+  if (tenant.preference?.logoKey) {
+    if (R2_PUBLIC_URL) {
+      logoUrl = `${R2_PUBLIC_URL.replace(/\/$/, "")}/${tenant.preference.logoKey}`;
+    } else {
+      try {
+        logoUrl = await getPresignedUrl(tenant.preference.logoKey, 3600);
+      } catch {
+        logoUrl = null;
+      }
+    }
+  }
 
   return (
     <OperatorShell
@@ -65,6 +82,8 @@ export default async function OperatorLayout({
       tenantName={tenant.name}
       userInitials={initials}
       accent={accent}
+      logoUrl={logoUrl}
+      whatsappEnabled={whatsappEnabled}
     >
       {children}
     </OperatorShell>

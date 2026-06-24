@@ -9,7 +9,7 @@ async function getOperators() {
     where: { tenantType: "operator", status: { not: "revoked" } },
     orderBy: [{ status: "asc" }, { createdAt: "desc" }],
     include: {
-      preference: { select: { timezone: true } },
+      preference: { select: { timezone: true, whatsappEnabled: true } },
       _count: { select: { driverMemberships: true, users: true } },
     },
   });

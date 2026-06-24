@@ -25,7 +25,9 @@ export default async function OperatorReservationsPage({
     where: { tenantId: tenant.id, ...whereStatus },
     orderBy: { pickupTime: "desc" },
     take: 100,
-    include: {
+    select: {
+      id: true, status: true, serviceType: true,
+      pickupTime: true, pickupLocation: true, dropoffLocation: true, notes: true,
       account: { select: { id: true, name: true } },
       driver: { select: { id: true, firstName: true, lastName: true } },
       vehicle: { select: { plateNumber: true, make: true, model: true } },

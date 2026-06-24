@@ -15,7 +15,7 @@ type Operator = {
   invitedAt: string | null;
   activatedAt: string | null;
   createdAt: string;
-  preference: { timezone: string } | null;
+  preference: { timezone: string; whatsappEnabled?: boolean } | null;
   driverCount: number;
   userCount: number;
 };
@@ -48,6 +48,20 @@ export function ViewOperatorDrawer({
   isPending: boolean;
 }) {
   const [confirming, setConfirming] = useState<"suspend" | "reinstate" | null>(null);
+  const [waEnabled, setWaEnabled] = useState(operator.preference?.whatsappEnabled ?? false);
+  const [waTogglingPending, setWaTogglingPending] = useState(false);
+
+  async function toggleWhatsApp() {
+    setWaTogglingPending(true);
+    const next = !waEnabled;
+    const res = await fetch(`/api/admin/operators/${operator.id}/whatsapp-access`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ enabled: next }),
+    });
+    setWaTogglingPending(false);
+    if (res.ok) setWaEnabled(next);
+  }
 
   const statusColors: Record<string, string> = {
     active: "#22c55e",
@@ -93,6 +107,35 @@ export function ViewOperatorDrawer({
             <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 4 }}>Activity</p>
             <Row label="Drivers registered" value={operator.driverCount} />
             <Row label="Users" value={operator.userCount} />
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Features</p>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderBottom: "1px solid var(--border)" }}>
+              <div>
+                <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>WhatsApp Inbox</span>
+                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "2px 0 0" }}>
+                  Allow this operator to view inbound WhatsApp messages
+                </p>
+              </div>
+              <button
+                onClick={toggleWhatsApp}
+                disabled={waTogglingPending}
+                style={{
+                  minWidth: 52, height: 28, borderRadius: 14,
+                  background: waEnabled ? "#25D366" : "var(--surface-raised)",
+                  border: `1px solid ${waEnabled ? "#25D366" : "var(--border)"}`,
+                  cursor: "pointer", position: "relative", transition: "background 0.2s",
+                  flexShrink: 0,
+                }}
+              >
+                <span style={{
+                  position: "absolute", top: 3, left: waEnabled ? 26 : 3,
+                  width: 20, height: 20, borderRadius: 10,
+                  background: "#fff", transition: "left 0.2s",
+                }} />
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: 24 }}>
