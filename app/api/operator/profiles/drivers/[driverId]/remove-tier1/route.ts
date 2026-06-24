@@ -31,7 +31,7 @@ export async function DELETE(
       entityId: membership.id,
       action: "tier1_removed",
       actorId: user.id,
-      metadata: { driverId, tenantId: tenant.id },
+      metadata: { driverId, tenantId: tenant.id, reason: "operator_removed" },
     },
   });
 

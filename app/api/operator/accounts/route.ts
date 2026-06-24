@@ -40,17 +40,20 @@ export async function POST(req: Request) {
     name: string;
     uen: string;
     customerSegment: string;
-    contactName?: string;
-    contactEmail?: string;
-    contactPhone?: string;
+    picName?: string;
+    picWhatsapp?: string;
+    picEmail?: string;
     notes?: string;
     challengerNote?: string;
   };
 
-  const { name, uen, customerSegment, challengerNote } = body;
+  const { name, uen, customerSegment, picName, picWhatsapp, picEmail, challengerNote } = body;
 
   if (!name?.trim() || !uen?.trim() || !customerSegment) {
     return NextResponse.json({ error: "name, uen, and customerSegment are required" }, { status: 400 });
+  }
+  if (!picName?.trim() || !picWhatsapp?.trim()) {
+    return NextResponse.json({ error: "PIC name and WhatsApp number are required" }, { status: 400 });
   }
   if (!isValidUEN(uen)) {
     return NextResponse.json({ error: "Invalid UEN format" }, { status: 400 });
@@ -100,7 +103,15 @@ export async function POST(req: Request) {
   // Clear — create Account + claim
   const result = await prisma.$transaction(async (tx) => {
     const accountId = existing?.id ?? (await tx.account.create({
-      data: { name: name.trim(), uen: formattedUEN, customerSegment, sourceType: "operator_sourced" },
+      data: {
+        name: name.trim(),
+        uen: formattedUEN,
+        customerSegment,
+        sourceType: "operator_sourced",
+        picName: picName?.trim() ?? null,
+        picWhatsapp: picWhatsapp?.trim() ?? null,
+        picEmail: picEmail?.trim() ?? null,
+      },
       select: { id: true },
     })).id;
 

@@ -35,6 +35,7 @@ model Tenant {
   orders                   Order[]
   preference               TenantPreference?
   users                    TenantUser[]
+  whatsApp                 TenantWhatsApp?
 }
 
 // ─────────────────────────────────────────────
@@ -154,6 +155,9 @@ model Account {
   uen             String?  @unique  // Singapore UEN — primary dedup key
   customerSegment String   // hotel | mice | tdm | dmc | corporate_general
   sourceType      String   // "operator_sourced" | "lypx_sourced"
+  picName         String?  // Person in Charge — full name
+  picWhatsapp     String?  // PIC WhatsApp number for trip status updates
+  picEmail        String?  // PIC email, optional, for invoice delivery
   createdAt       DateTime @default(now())
 
   claims           AccountClaim[]
@@ -356,6 +360,26 @@ model DriverSubmission {
   reviewedAt                  DateTime?
 
   driver Driver @relation(fields: [driverId], references: [id])
+}
+
+// ─────────────────────────────────────────────
+// TENANT WHATSAPP (Stage A — schema only, no data yet)
+// ─────────────────────────────────────────────
+
+model TenantWhatsApp {
+  id            String    @id @default(cuid())
+  tenantId      String    @unique
+  wabaId        String?   // Meta WABA ID
+  phoneNumberId String?   // Meta phone number ID
+  displayName   String?   // Business display name on WhatsApp
+  accessToken   String?   // Encrypted System User token
+  qualityRating String?   // high | medium | low — from Meta API
+  status        String    @default("pending") // pending | connected | disconnected | suspended
+  connectedAt   DateTime?
+  updatedAt     DateTime  @updatedAt
+  createdAt     DateTime  @default(now())
+
+  tenant        Tenant    @relation(fields: [tenantId], references: [id])
 }
 
 // ─────────────────────────────────────────────

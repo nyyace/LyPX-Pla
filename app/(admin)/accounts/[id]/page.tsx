@@ -67,6 +67,42 @@ export default async function AccountDetailPage({
         </div>
       </div>
 
+      {/* PIC Contact */}
+      {(account.picName || account.picWhatsapp) && (
+        <Card className="bg-gray-900 border-gray-800 mb-6">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-sm text-gray-300">Contact (PIC)</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm">
+            {account.picName && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Person in Charge</span>
+                <span className="text-white">{account.picName}</span>
+              </div>
+            )}
+            {account.picWhatsapp && (
+              <div className="flex justify-between items-center">
+                <span className="text-gray-500">WhatsApp</span>
+                <a
+                  href={`https://wa.me/${account.picWhatsapp.replace(/[\s\-()]/g, "").replace(/^\+/, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green-400 font-mono hover:underline"
+                >
+                  {account.picWhatsapp}
+                </a>
+              </div>
+            )}
+            {account.picEmail && (
+              <div className="flex justify-between">
+                <span className="text-gray-500">Email</span>
+                <a href={`mailto:${account.picEmail}`} className="text-blue-400 hover:underline">{account.picEmail}</a>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Active Claim */}
       {activeClaim && (
         <Card className="bg-gray-900 border-gray-800 mb-6">

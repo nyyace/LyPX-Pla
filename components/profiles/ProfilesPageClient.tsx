@@ -60,6 +60,9 @@ type AccountDetail = {
   name: string;
   uen: string | null;
   customerSegment: string;
+  picName: string | null;
+  picWhatsapp: string | null;
+  picEmail: string | null;
   claim: {
     id: string;
     status: string;
@@ -600,6 +603,7 @@ function DriverDetailView({
   removeError: string | null;
   timezone: string;
 }) {
+  const [confirmingRemove, setConfirmingRemove] = useState(false);
   const d = detail;
   const initials = (d.firstName[0] ?? "") + (d.lastName[0] ?? "");
 
@@ -671,7 +675,7 @@ function DriverDetailView({
           </div>
           {d.tier1Member && (
             <button
-              onClick={onRemoveTier1}
+              onClick={() => setConfirmingRemove(true)}
               disabled={removing}
               style={{
                 fontSize: 11, color: "#D9534F", background: "none",
@@ -690,6 +694,41 @@ function DriverDetailView({
         )}
         {removeError && <p style={{ fontSize: 12, color: "#D9534F" }}>{removeError}</p>}
       </div>
+
+      {/* Confirmation modal */}
+      {confirmingRemove && (
+        <>
+          <div onClick={() => setConfirmingRemove(false)} style={{ position: "fixed", inset: 0, background: "#00000066", zIndex: 60 }} />
+          <div style={{
+            position: "fixed", top: "50%", left: "50%", transform: "translate(-50%, -50%)",
+            background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 10,
+            padding: "28px 32px", width: 400, zIndex: 70,
+          }}>
+            <p style={{ fontSize: 15, fontWeight: 600, color: "var(--text)", margin: "0 0 12px" }}>
+              Remove {d.firstName} {d.lastName} from your Tier 1 fleet?
+            </p>
+            <p style={{ fontSize: 13, color: "var(--text-dim)", lineHeight: 1.6, margin: "0 0 24px" }}>
+              They will remain on the LyPX platform and may be available
+              through the general driver pool.
+            </p>
+            <div style={{ display: "flex", gap: 10 }}>
+              <button
+                onClick={() => setConfirmingRemove(false)}
+                style={{ flex: 1, padding: "9px", background: "none", border: "1px solid var(--border)", borderRadius: 6, color: "var(--text-dim)", fontSize: 13, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { setConfirmingRemove(false); onRemoveTier1(); }}
+                disabled={removing}
+                style={{ flex: 2, padding: "9px", background: "#D9534F", border: "none", borderRadius: 6, color: "#fff", fontSize: 13, fontWeight: 600, cursor: "pointer" }}
+              >
+                Remove from Tier 1
+              </button>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Vehicle */}
       {d.vehicle && (
@@ -798,6 +837,45 @@ function AccountDetailView({ detail, timezone }: { detail: AccountDetail; timezo
           New Reservation
         </Link>
       </div>
+
+      {/* PIC Contact */}
+      {(a.picName || a.picWhatsapp) && (
+        <>
+          <p className="panel-title" style={{ marginBottom: 10 }}>Contact</p>
+          <div style={{ marginBottom: 24, background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: "14px 16px" }}>
+            {a.picName && (
+              <div style={{ display: "flex", gap: 12, marginBottom: a.picWhatsapp || a.picEmail ? 10 : 0 }}>
+                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>Person in Charge</span>
+                <span style={{ fontSize: 13, color: "var(--text)", fontWeight: 500 }}>{a.picName}</span>
+              </div>
+            )}
+            {a.picWhatsapp && (
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: a.picEmail ? 10 : 0 }}>
+                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>WhatsApp</span>
+                <span className="mono" style={{ fontSize: 13, color: "var(--text)" }}>{a.picWhatsapp}</span>
+                <a
+                  href={`https://wa.me/${a.picWhatsapp.replace(/[\s\-()]/g, "").replace(/^\+/, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  style={{
+                    marginLeft: "auto", fontSize: 11, fontWeight: 600, color: "#25D366",
+                    border: "1px solid #25D36644", borderRadius: 4, padding: "3px 10px",
+                    textDecoration: "none", flexShrink: 0,
+                  }}
+                >
+                  Send WhatsApp
+                </a>
+              </div>
+            )}
+            {a.picEmail && (
+              <div style={{ display: "flex", gap: 12 }}>
+                <span style={{ fontSize: 12, color: "var(--text-faint)", width: 130, flexShrink: 0 }}>Email</span>
+                <a href={`mailto:${a.picEmail}`} style={{ fontSize: 13, color: "var(--accent)", textDecoration: "none" }}>{a.picEmail}</a>
+              </div>
+            )}
+          </div>
+        </>
+      )}
 
       {/* Claim Countdown */}
       <p className="panel-title" style={{ marginBottom: 10 }}>Claim Status</p>

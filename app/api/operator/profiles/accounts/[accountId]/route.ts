@@ -57,6 +57,9 @@ export async function GET(
     name: a.name,
     uen: a.uen,
     customerSegment: a.customerSegment,
+    picName: a.picName ?? null,
+    picWhatsapp: a.picWhatsapp ?? null,
+    picEmail: a.picEmail ?? null,
     claim: {
       id: claim.id,
       status: claim.status,

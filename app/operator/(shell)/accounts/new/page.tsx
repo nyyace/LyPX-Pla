@@ -30,10 +30,11 @@ export default function NewOperatorAccountPage() {
 
   // Step 2 — Details
   const [segment, setSegment] = useState("");
-  const [contactName, setContactName] = useState("");
-  const [contactEmail, setContactEmail] = useState("");
-  const [contactPhone, setContactPhone] = useState("");
+  const [picName, setPicName] = useState("");
+  const [picWhatsapp, setPicWhatsapp] = useState("+65 ");
+  const [picEmail, setPicEmail] = useState("");
   const [notes, setNotes] = useState("");
+  const [picWhatsappError, setPicWhatsappError] = useState("");
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -66,15 +67,35 @@ export default function NewOperatorAccountPage() {
     }
   }
 
+  function validatePhone(val: string): boolean {
+    const cleaned = val.replace(/[\s\-()]/g, "");
+    return /^\+?\d{8,15}$/.test(cleaned);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!segment) { setError("Please select a customer segment"); return; }
+    if (!picName.trim()) { setError("PIC name is required"); return; }
+    if (!validatePhone(picWhatsapp)) {
+      setPicWhatsappError("Enter a valid phone number (e.g. +65 9123 4567)");
+      return;
+    }
+    if (picEmail.trim() && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(picEmail)) {
+      setError("Invalid PIC email address");
+      return;
+    }
+    setPicWhatsappError("");
     setError(null);
     setSubmitting(true);
     const res = await fetch("/api/operator/accounts", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: companyName, uen, customerSegment: segment, contactName, contactEmail, contactPhone, notes }),
+      body: JSON.stringify({
+        name: companyName, uen, customerSegment: segment,
+        picName: picName.trim(), picWhatsapp: picWhatsapp.trim(),
+        picEmail: picEmail.trim() || undefined,
+        notes,
+      }),
     });
     const data = await res.json();
     setSubmitting(false);
@@ -190,16 +211,32 @@ export default function NewOperatorAccountPage() {
             </div>
 
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Primary Contact Name</label>
-              <input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="e.g. John Tan" style={inputStyle} />
+              <label style={labelStyle}>Person in Charge (PIC) <span style={{ color: "#ef4444" }}>*</span></label>
+              <input value={picName} onChange={(e) => setPicName(e.target.value)} placeholder="Full name of the primary contact" style={inputStyle} />
+              <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                Full name of the primary contact at this company.
+              </p>
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Primary Contact Email</label>
-              <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} placeholder="john@raffles.com" style={inputStyle} />
+              <label style={labelStyle}>PIC WhatsApp Number <span style={{ color: "#ef4444" }}>*</span></label>
+              <input
+                type="tel"
+                value={picWhatsapp}
+                onChange={(e) => { setPicWhatsapp(e.target.value); setPicWhatsappError(""); }}
+                placeholder="+65 9123 4567"
+                style={{ ...inputStyle, borderColor: picWhatsappError ? "#ef4444" : undefined }}
+              />
+              {picWhatsappError
+                ? <p style={{ fontSize: 11, color: "#ef4444", marginTop: 4 }}>{picWhatsappError}</p>
+                : <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                    This number receives all trip status updates (assigned, en route, arrived, completed).
+                  </p>
+              }
             </div>
             <div style={{ marginBottom: 14 }}>
-              <label style={labelStyle}>Contact Phone</label>
-              <input type="tel" value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="+65 9123 4567" style={inputStyle} />
+              <label style={labelStyle}>PIC Email <span style={{ color: "var(--text-faint)", fontWeight: 400 }}>(optional)</span></label>
+              <input type="email" value={picEmail} onChange={(e) => setPicEmail(e.target.value)} placeholder="pic@company.com" style={inputStyle} />
+              <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>For invoice delivery.</p>
             </div>
             <div style={{ marginBottom: 20 }}>
               <label style={labelStyle}>Internal Notes</label>
