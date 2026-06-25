@@ -1,0 +1,7 @@
+[services.cron-compliance]
+cronSchedule = "0 16 * * *"
+startCommand = "curl -X POST -H 'x-cron-secret: $CRON_SECRET' http://localhost:3000/api/cron/compliance-sweep"
+
+[services.cron-claims]
+cronSchedule = "0 16 * * *"
+startCommand = "curl -X POST -H 'x-cron-secret: $CRON_SECRET' http://localhost:3000/api/cron/expire-claims"
