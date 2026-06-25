@@ -14,6 +14,7 @@ export function LogoUpload({ currentLogoUrl }: Props) {
   const [uploading, setUploading] = useState(false);
   const [removing, setRemoving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [uploadedOk, setUploadedOk] = useState(false);
 
   async function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -33,6 +34,8 @@ export function LogoUpload({ currentLogoUrl }: Props) {
     }
     const { logoUrl } = await res.json();
     if (logoUrl) setPreview(logoUrl);
+    setUploadedOk(true);
+    setTimeout(() => setUploadedOk(false), 3000);
     router.refresh();
   }
 
@@ -87,6 +90,9 @@ export function LogoUpload({ currentLogoUrl }: Props) {
         PNG, JPG, WEBP, or SVG · Max 2 MB · Resized to 30pt height
       </p>
 
+      {uploadedOk && (
+        <p style={{ fontSize: 12, color: "#22c55e", marginTop: 6 }}>✓ Logo uploaded successfully</p>
+      )}
       {error && (
         <p style={{ fontSize: 12, color: "#D9534F", marginTop: 6 }}>{error}</p>
       )}

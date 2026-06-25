@@ -7,6 +7,7 @@ import { hueToAccent, applyAccent, computeAccentDim } from "@/lib/utils/theme";
 interface Props {
   tenantId: string;
   currentAccent: string;
+  saveLabel?: string;
 }
 
 function hexToHue(hex: string): number {
@@ -23,11 +24,15 @@ function hexToHue(hex: string): number {
   return Math.round((h / 6) * 360);
 }
 
-export function AccentColourPicker({ tenantId, currentAccent }: Props) {
+export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save Colour" }: Props) {
   const router = useRouter();
   const [hue, setHue] = useState(() => hexToHue(currentAccent));
+  const [initialHue, setInitialHue] = useState(() => hexToHue(currentAccent));
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const hasChanges = hue !== initialHue;
 
   const previewAccent = hueToAccent(hue);
   const previewDim = computeAccentDim(previewAccent);
@@ -38,15 +43,22 @@ export function AccentColourPicker({ tenantId, currentAccent }: Props) {
 
   async function save() {
     setSaving(true);
-    await fetch(`/api/operators/${tenantId}/preferences`, {
+    setSaveError(null);
+    const res = await fetch(`/api/operators/${tenantId}/preferences`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ accentColour: previewAccent }),
     });
     setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
-    router.refresh();
+    if (res.ok) {
+      setInitialHue(hue);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      router.refresh();
+    } else {
+      const d = await res.json().catch(() => ({}));
+      setSaveError(d.error ?? "Failed to save");
+    }
   }
 
   const spectrumGradient =
@@ -127,19 +139,25 @@ export function AccentColourPicker({ tenantId, currentAccent }: Props) {
         </div>
       </div>
 
-      <button
-        onClick={save}
-        disabled={saving}
-        style={{
-          background: saved ? "rgba(76,175,109,0.2)" : previewAccent,
-          border: saved ? "1px solid rgba(76,175,109,0.4)" : "none",
-          borderRadius: 4,
-          color: saved ? "#4CAF6D" : "#1A1305",
-          fontSize: 13, fontWeight: 700, padding: "10px 24px", cursor: "pointer",
-          transition: "background 0.3s ease",
-        }}>
-        {saved ? "✓ Saved" : saving ? "Saving…" : "Save Colour"}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <button
+          onClick={save}
+          disabled={!hasChanges || saving}
+          style={{
+            background: saved ? "rgba(76,175,109,0.2)" : hasChanges && !saving ? previewAccent : "var(--surface-raised)",
+            border: saved ? "1px solid rgba(76,175,109,0.4)" : "none",
+            borderRadius: 4,
+            color: saved ? "#4CAF6D" : hasChanges && !saving ? "#1A1305" : "var(--text-faint)",
+            fontSize: 13, fontWeight: 700, padding: "10px 24px",
+            cursor: hasChanges && !saving ? "pointer" : "not-allowed",
+            transition: "background 0.3s ease",
+          }}>
+          {saved ? "✓ Saved" : saving ? "Saving…" : saveLabel}
+        </button>
+        {saveError && (
+          <span style={{ fontSize: 12, color: "#ef4444" }}>✗ {saveError}</span>
+        )}
+      </div>
     </div>
   );
 }

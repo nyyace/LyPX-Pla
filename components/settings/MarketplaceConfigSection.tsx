@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { calculateMarketplaceFee } from "@/lib/utils/marketplace";
+import { formatTZ } from "@/lib/utils/date";
 
 type ConfigRow = {
   key: string;
@@ -11,14 +12,7 @@ type ConfigRow = {
 };
 
 function fmtSGT(iso: string) {
-  return new Date(iso).toLocaleString("en-SG", {
-    timeZone: "Asia/Singapore",
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
+  return formatTZ(iso, "Asia/Singapore", { dateStyle: "medium", timeStyle: "short" });
 }
 
 function FieldMeta({ updatedAt, updatedByName }: { updatedAt: string; updatedByName: string | null }) {
@@ -37,6 +31,9 @@ export function MarketplaceConfigSection({ configs }: { configs: ConfigRow[] }) 
 
   const [takeRate,  setTakeRate]  = useState(takeRateRow?.value  ?? "12");
   const [floorRate, setFloorRate] = useState(floorRateRow?.value ?? "3");
+  const [savedTakeRate,  setSavedTakeRate]  = useState(takeRateRow?.value  ?? "12");
+  const [savedFloorRate, setSavedFloorRate] = useState(floorRateRow?.value ?? "3");
+  const hasChanges = takeRate !== savedTakeRate || floorRate !== savedFloorRate;
   const [previewFare, setPreviewFare] = useState("50");
 
   const [takeRateError,  setTakeRateError]  = useState<string | null>(null);
@@ -45,6 +42,13 @@ export function MarketplaceConfigSection({ configs }: { configs: ConfigRow[] }) 
   const [saving,    setSaving]    = useState(false);
   const [savedAt,   setSavedAt]   = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (savedAt) {
+      const t = setTimeout(() => setSavedAt(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [savedAt]);
 
   // Live fee preview
   const previewFareNum  = parseFloat(previewFare)  || 0;
@@ -105,6 +109,8 @@ export function MarketplaceConfigSection({ configs }: { configs: ConfigRow[] }) 
     }
 
     setSaving(false);
+    setSavedTakeRate(takeRate);
+    setSavedFloorRate(floorRate);
     setSavedAt(new Date().toISOString());
   }
 
@@ -226,7 +232,7 @@ export function MarketplaceConfigSection({ configs }: { configs: ConfigRow[] }) 
           )}
           <button
             onClick={handleSave}
-            disabled={saving || !!takeRateError || !!floorRateError}
+            disabled={saving || !hasChanges || !!takeRateError || !!floorRateError}
             className="btn-primary"
             style={{ alignSelf: "flex-start", padding: "10px 24px", fontSize: 13 }}
           >

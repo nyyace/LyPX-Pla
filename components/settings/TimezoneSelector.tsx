@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SUPPORTED_TIMEZONES } from "@/lib/utils/date";
 import {
@@ -24,6 +24,13 @@ export function TimezoneSelector({ currentTimezone }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (saved) {
+      const t = setTimeout(() => setSaved(false), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [saved]);
 
   async function handleSave() {
     setSaving(true);
