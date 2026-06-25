@@ -17,6 +17,9 @@ type Order = {
   fareAmount?: number | null;
   fareCurrency?: string | null;
   cancellationReason?: string | null;
+  passengerName?: string | null;
+  passengerWhatsapp?: string | null;
+  sameAsRequestor?: boolean;
   account: { id: string; name: string };
   driver?: { id: string; firstName: string; lastName: string } | null;
   vehicle?: { plateNumber: string; make: string; model: string } | null;
@@ -98,6 +101,7 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
               <th>Date & Time</th>
               <th>Route</th>
               <th>Account</th>
+              <th>Passenger</th>
               <th>Fare</th>
               <th>Driver</th>
               <th>Status</th>
@@ -141,6 +145,15 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
                     </div>
                   </td>
                   <td style={{ fontSize: 13, color: "var(--text)" }}>{o.account.name}</td>
+                  <td style={{ fontSize: 13 }}>
+                    {o.sameAsRequestor ? (
+                      <span style={{ color: "var(--text-faint)", fontSize: 11 }}>Same as requestor</span>
+                    ) : o.passengerName ? (
+                      <span style={{ color: "var(--text)" }}>{o.passengerName}</span>
+                    ) : (
+                      <span style={{ color: "var(--text-faint)" }}>—</span>
+                    )}
+                  </td>
                   <td style={{ fontSize: 13 }}>
                     {o.fareAmount != null ? (
                       <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>

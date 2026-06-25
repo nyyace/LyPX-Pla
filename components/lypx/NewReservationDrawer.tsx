@@ -32,6 +32,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     dropoffLocation: "", vehicleClass: "AVF", pax: 1, notes: "", driverId: "",
     flightNumber: "", nameBoardText: "", disposalHours: "",
     fareAmount: "", fareCurrency: "SGD", fareNote: "",
+    sameAsRequestor: false, passengerName: "", passengerWhatsapp: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -56,6 +57,11 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     }
     if (!form.fareAmount || isNaN(parseFloat(form.fareAmount)) || parseFloat(form.fareAmount) <= 0) {
       return setError("Fare amount is required");
+    }
+    if (!form.sameAsRequestor) {
+      if (!form.passengerName.trim()) return setError("Passenger name is required");
+      const digits = form.passengerWhatsapp.replace(/[\s+\-()]/g, "");
+      if (!/^\d{8,15}$/.test(digits)) return setError("Passenger WhatsApp must be 8–15 digits (e.g. +6591234567)");
     }
     if (!dropoffOptional && !form.dropoffLocation) {
       return setError("Dropoff location is required for this service type");
@@ -91,6 +97,9 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         fareAmount: parseFloat(form.fareAmount),
         fareCurrency: form.fareCurrency,
         fareNote: form.fareNote || null,
+        sameAsRequestor: form.sameAsRequestor,
+        passengerName: form.sameAsRequestor ? null : form.passengerName.trim() || null,
+        passengerWhatsapp: form.sameAsRequestor ? null : form.passengerWhatsapp.trim() || null,
       }),
     });
     setSaving(false);
@@ -147,6 +156,49 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
               <option value="">Select account…</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
+          </div>
+
+          {/* Passenger Details */}
+          <div style={{ borderTop: "1px solid var(--border)", paddingTop: 14 }}>
+            <p style={{ fontSize: 10, fontWeight: 700, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 10 }}>
+              Passenger Details
+            </p>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer", marginBottom: 10 }}>
+              <input
+                type="checkbox"
+                checked={form.sameAsRequestor}
+                onChange={e => set("sameAsRequestor", e.target.checked)}
+                style={{ accentColor: "var(--accent)", width: 14, height: 14 }}
+              />
+              <span style={{ fontSize: 12, color: "var(--text-dim)" }}>Same as requestor</span>
+            </label>
+            {!form.sameAsRequestor && (
+              <>
+                <div style={{ marginBottom: 10 }}>
+                  <label style={labelStyle}>Passenger Name *</label>
+                  <input
+                    type="text"
+                    value={form.passengerName}
+                    onChange={e => set("passengerName", e.target.value)}
+                    style={inputStyle}
+                    placeholder="e.g. David Lee"
+                  />
+                </div>
+                <div>
+                  <label style={labelStyle}>Passenger WhatsApp *</label>
+                  <input
+                    type="text"
+                    value={form.passengerWhatsapp}
+                    onChange={e => set("passengerWhatsapp", e.target.value)}
+                    style={inputStyle}
+                    placeholder="+6591234567"
+                  />
+                  <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3 }}>
+                    Status updates will be sent to this number.
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>

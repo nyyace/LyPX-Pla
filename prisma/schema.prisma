@@ -266,6 +266,11 @@ model Order {
   fareCurrency      String?   @default("SGD")
   fareNote          String?
 
+  // Passenger details (captured at reservation time)
+  passengerName      String?
+  passengerWhatsapp  String?
+  sameAsRequestor    Boolean   @default(false)
+
   // Cancellation
   cancellationReason String?
   cancelledAt        DateTime?

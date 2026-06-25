@@ -12,7 +12,14 @@ interface Driver {
 }
 
 interface Props {
-  order: { id: string; pickupTime: Date; pickupLocation: string; dropoffLocation: string };
+  order: {
+    id: string;
+    pickupTime: Date;
+    pickupLocation: string;
+    dropoffLocation: string;
+    passengerWhatsapp?: string | null;
+    sameAsRequestor?: boolean;
+  };
   tenantId: string;
   onClose: () => void;
 }
@@ -78,6 +85,21 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
             borderRadius: 4, padding: "8px 12px", color: "#D9534F", fontSize: 12, marginBottom: 12,
           }}>
             {assignError}
+          </div>
+        )}
+
+        {!order.sameAsRequestor && !order.passengerWhatsapp && (
+          <div style={{
+            display: "flex", alignItems: "flex-start", gap: 8,
+            background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)",
+            borderRadius: 6, padding: "8px 12px", marginBottom: 12, fontSize: 12,
+            color: "#f59e0b",
+          }}>
+            <span style={{ flexShrink: 0 }}>⚠</span>
+            <span>
+              No passenger WhatsApp on this booking. Driver assigned notification will be sent to requestor only.{" "}
+              Edit the reservation to add passenger details.
+            </span>
           </div>
         )}
 

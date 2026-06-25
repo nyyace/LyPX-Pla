@@ -30,6 +30,7 @@ export default async function OperatorReservationsPage({
       pickupTime: true, pickupLocation: true, dropoffLocation: true, notes: true,
       fareAmount: true, fareCurrency: true,
       cancellationReason: true, cancelledAt: true,
+      passengerName: true, passengerWhatsapp: true, sameAsRequestor: true,
       account: { select: { id: true, name: true } },
       driver: { select: { id: true, firstName: true, lastName: true } },
       vehicle: { select: { plateNumber: true, make: true, model: true } },

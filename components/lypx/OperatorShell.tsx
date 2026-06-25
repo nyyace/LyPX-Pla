@@ -12,7 +12,6 @@ const tabs = [
   { href: "/operator/reservations",  label: "Reservations" },
   { href: "/operator/accounts",      label: "Accounts" },
   { href: "/operator/profiles",      label: "Profiles" },
-  { href: "/operator/vehicles",      label: "Vehicles" },
   { href: "/operator/billing",       label: "Billing Logs" },
   { href: "/operator/gate-queue",    label: "Gate Queue" },
   { href: "/operator/settings",      label: "Settings" },

@@ -14,6 +14,9 @@ type Order = {
   notes?: string | null;
   fareAmount?: number | null;
   fareCurrency?: string | null;
+  passengerName?: string | null;
+  passengerWhatsapp?: string | null;
+  sameAsRequestor?: boolean;
   account: { name: string };
   driver?: { id: string; firstName: string; lastName: string } | null;
   vehicle?: { plateNumber: string; make: string; model: string } | null;
@@ -72,12 +75,14 @@ function TodayChip({ pickupTime }: { pickupTime: Date }) {
 }
 
 function WheelStage({
-  orderId, status, fareAmount, fareCurrency, onCompleted, onCancelled,
+  orderId, status, fareAmount, fareCurrency, passengerName, sameAsRequestor, onCompleted, onCancelled,
 }: {
   orderId: string;
   status: string;
   fareAmount?: number | null;
   fareCurrency?: string | null;
+  passengerName?: string | null;
+  sameAsRequestor?: boolean;
   onCompleted: (id: string) => void;
   onCancelled: (id: string) => void;
 }) {
@@ -191,6 +196,12 @@ function WheelStage({
             boxShadow: "0 20px 60px rgba(0,0,0,0.5)",
           }} onClick={e => e.stopPropagation()}>
             <h3 style={{ margin: "0 0 16px", fontSize: 16, fontWeight: 700 }}>Confirm Trip Completion</h3>
+            <div style={{ marginBottom: 14, padding: "8px 10px", background: "var(--surface-raised)", borderRadius: 6, fontSize: 12 }}>
+              <span style={{ color: "var(--text-faint)", fontWeight: 600, textTransform: "uppercase", fontSize: 10, letterSpacing: "0.5px" }}>Passenger</span>
+              <p style={{ marginTop: 4, color: "var(--text-dim)" }}>
+                {sameAsRequestor ? "Same as requestor" : (passengerName ?? "—")}
+              </p>
+            </div>
             <div style={{ marginBottom: 12 }}>
               <label style={{ fontSize: 11, color: "var(--text-dim)", fontWeight: 600, display: "block", marginBottom: 4 }}>
                 Final Fare (SGD) *
@@ -455,6 +466,8 @@ export function DispatchBoard({ unassigned, active, tenants = [], isAdmin = fals
                         status={order.status}
                         fareAmount={order.fareAmount}
                         fareCurrency={order.fareCurrency}
+                        passengerName={order.passengerName}
+                        sameAsRequestor={order.sameAsRequestor}
                         onCompleted={removeOrder}
                         onCancelled={removeOrder}
                       />
