@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { sendWhatsAppTemplate, WHATSAPP_TEMPLATES, TemplateKey } from "@/lib/whatsapp/client";
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { to, templateKey, components, orderId } = body;
 
@@ -22,7 +24,7 @@ export async function POST(req: Request) {
       templateKey: templateKey as TemplateKey,
       components: components ?? [],
       orderId,
-      actorId: "admin",
+      actorId: user.id,
     });
 
     return NextResponse.json({ ok: true, messageId: result.messageId });

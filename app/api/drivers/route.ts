@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
 
@@ -33,6 +34,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { firstName, lastName, phoneNumber, licenseNumber, nationalId, relationshipType } = body;
 
@@ -65,7 +67,7 @@ export async function POST(req: Request) {
         entityType: "driver",
         entityId: d.id,
         action: "driver_created",
-        actorId: "admin",
+        actorId: user.id,
         metadata: { firstName, lastName, phoneNumber, relationshipType },
       },
     });

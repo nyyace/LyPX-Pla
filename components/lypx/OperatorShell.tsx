@@ -70,18 +70,17 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, logo
         <div style={{ display: "flex", alignItems: "center", gap: 24 }}>
           <AdminClock />
 
-          {/* WhatsApp icon */}
-          {whatsappEnabled && (
+          {/* WhatsApp icon — always visible; greyed + disabled when not enabled */}
+          {whatsappEnabled ? (
             <button
               onClick={() => setShowInbox(p => !p)}
               style={{
                 position: "relative", background: "none", border: "none", cursor: "pointer",
-                padding: 4, color: showInbox ? "#25D366" : "var(--text-dim)",
+                padding: 4, color: showInbox ? "#25D366" : "#25D366",
                 fontSize: 18, lineHeight: 1, display: "flex", alignItems: "center",
               }}
               title="WhatsApp Inbox"
             >
-              {/* WhatsApp icon using SVG */}
               <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.985-1.406A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.963 7.963 0 01-4.065-1.112l-.291-.173-3.002.847.857-2.938-.19-.302A7.963 7.963 0 014 12c0-4.418 3.582-8 8-8s8 3.582 8 8-3.582 8-8 8zm4.406-5.845c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.013-.373-1.929-1.19-.713-.636-1.194-1.42-1.334-1.66-.14-.24-.015-.37.105-.49.108-.107.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.195-.468-.393-.404-.54-.412l-.46-.008c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2 0 1.18.86 2.32.98 2.48.12.16 1.693 2.587 4.1 3.627.573.247 1.02.395 1.37.505.576.183 1.1.157 1.514.095.462-.069 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28z"/>
               </svg>
@@ -97,6 +96,20 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, logo
                   {unread > 99 ? "99+" : unread}
                 </span>
               )}
+            </button>
+          ) : (
+            <button
+              disabled
+              style={{
+                background: "none", border: "none", cursor: "not-allowed",
+                padding: 4, color: "var(--text-faint)", opacity: 0.3,
+                fontSize: 18, lineHeight: 1, display: "flex", alignItems: "center",
+              }}
+              title="WhatsApp not activated — contact LyPX to enable"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2C6.477 2 2 6.477 2 12c0 1.89.525 3.66 1.438 5.168L2 22l4.985-1.406A9.956 9.956 0 0012 22c5.523 0 10-4.477 10-10S17.523 2 12 2zm0 18a7.963 7.963 0 01-4.065-1.112l-.291-.173-3.002.847.857-2.938-.19-.302A7.963 7.963 0 014 12c0-4.418 3.582-8 8-8s8 3.582 8 8-3.582 8-8 8zm4.406-5.845c-.24-.12-1.42-.7-1.64-.78-.22-.08-.38-.12-.54.12-.16.24-.62.78-.76.94-.14.16-.28.18-.52.06-.24-.12-1.013-.373-1.929-1.19-.713-.636-1.194-1.42-1.334-1.66-.14-.24-.015-.37.105-.49.108-.107.24-.28.36-.42.12-.14.16-.24.24-.4.08-.16.04-.3-.02-.42-.06-.12-.54-1.3-.74-1.78-.195-.468-.393-.404-.54-.412l-.46-.008c-.16 0-.42.06-.64.3-.22.24-.84.82-.84 2 0 1.18.86 2.32.98 2.48.12.16 1.693 2.587 4.1 3.627.573.247 1.02.395 1.37.505.576.183 1.1.157 1.514.095.462-.069 1.42-.58 1.62-1.14.2-.56.2-1.04.14-1.14-.06-.1-.22-.16-.46-.28z"/>
+              </svg>
             </button>
           )}
 

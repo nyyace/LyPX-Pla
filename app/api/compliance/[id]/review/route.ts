@@ -1,8 +1,10 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { evaluateAndSyncDriverCompliance, evaluateAndSyncVehicleCompliance } from "@/lib/compliance/state-machine";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const { id } = await params;
   const { decision, notes } = await req.json(); // notes stored in audit log only
 
@@ -18,7 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       where: { id },
       data: {
         status: decision,
-        reviewedBy: "admin",
+        reviewedBy: user.id,
         reviewedAt: new Date(),
       },
     });
@@ -28,15 +30,15 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         entityType: "compliance",
         entityId: id,
         action: `document_${decision}`,
-        actorId: "admin",
+        actorId: user.id,
         metadata: { docType: doc.docType, notes },
       },
     });
   });
 
   // Cascade compliance re-evaluation to the parent entity
-  if (doc.driverId) await evaluateAndSyncDriverCompliance(doc.driverId, "admin");
-  if (doc.vehicleId) await evaluateAndSyncVehicleCompliance(doc.vehicleId, "admin");
+  if (doc.driverId) await evaluateAndSyncDriverCompliance(doc.driverId, user.id);
+  if (doc.vehicleId) await evaluateAndSyncVehicleCompliance(doc.vehicleId, user.id);
 
   return NextResponse.json({ ok: true });
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { createInitialClaim } from "@/lib/claims/engine";
 
@@ -23,6 +24,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { name, customerSegment, sourceType, claimingPartyType, claimingPartyId } = body;
 
@@ -40,7 +42,7 @@ export async function POST(req: Request) {
         entityType: "account_claim",
         entityId: a.id,
         action: "account_created",
-        actorId: "admin",
+        actorId: user.id,
         metadata: { name, customerSegment, sourceType },
       },
     });

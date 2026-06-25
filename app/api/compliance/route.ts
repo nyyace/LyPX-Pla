@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { evaluateAndSyncDriverCompliance, evaluateAndSyncVehicleCompliance } from "@/lib/compliance/state-machine";
 
@@ -16,6 +17,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { entityType, entityId, docType, expiryDate } = body;
 
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
         entityType: "compliance",
         entityId: d.id,
         action: "document_uploaded",
-        actorId: "admin",
+        actorId: user.id,
         metadata: { entityType, entityId, docType, expiryDate },
       },
     });

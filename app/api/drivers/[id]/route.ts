@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -17,6 +18,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const { id } = await params;
   const body = await req.json();
   const allowedFields = ["tier2Qualified", "phoneNumber", "firstName", "lastName"];
@@ -37,7 +39,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         entityType: "driver",
         entityId: id,
         action: "driver_updated",
-        actorId: "admin",
+        actorId: user.id,
         metadata: updates as object,
       },
     });

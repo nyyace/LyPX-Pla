@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -15,6 +16,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const {
     accountId,
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
         entityType: "takeover_request",
         entityId: r.id,
         action: "takeover_requested",
-        actorId: "admin",
+        actorId: user.id,
         metadata: { accountId, currentOwnerType, requestingPartyType },
       },
     });

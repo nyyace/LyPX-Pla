@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 
 // Scorecard criteria and weights (5 criteria, max 100 points)
@@ -22,6 +23,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 }
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const { id } = await params;
   const body = await req.json();
 
@@ -66,7 +68,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         entityType: "takeover_request",
         entityId: id,
         action: body.status ? `takeover_${body.status}` : "takeover_updated",
-        actorId: "admin",
+        actorId: user.id,
         metadata: updates as object,
       },
     });

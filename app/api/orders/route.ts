@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { onTripCompleted } from "@/lib/claims/engine";
 import { getMarketplaceConfig, calculateMarketplaceFee } from "@/lib/utils/marketplace";
@@ -25,6 +26,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation, driverId, vehicleId, notes, tripFare,
     serviceType, flightNumber, nameBoardText, disposalHours } = body;
@@ -88,7 +90,7 @@ export async function POST(req: Request) {
         entityType: "order",
         entityId: o.id,
         action: "order_created",
-        actorId: "admin",
+        actorId: user.id,
         metadata: {
           accountId,
           tenantId,

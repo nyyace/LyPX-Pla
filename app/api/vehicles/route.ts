@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 
 export async function GET(req: Request) {
@@ -27,6 +28,7 @@ export async function GET(req: Request) {
 }
 
 export async function POST(req: Request) {
+  const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { make, model, plateNumber, registeredByTenantId } = body;
 
@@ -58,7 +60,7 @@ export async function POST(req: Request) {
         entityType: "vehicle",
         entityId: v.id,
         action: "vehicle_created",
-        actorId: "admin",
+        actorId: user.id,
         metadata: { make, model, plateNumber },
       },
     });
