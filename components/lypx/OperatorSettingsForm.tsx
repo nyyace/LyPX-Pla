@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { LogoUpload } from "@/components/lypx/LogoUpload";
-import { WhatsAppSettings } from "@/components/lypx/WhatsAppSettings";
 import { hueToAccent, applyAccent } from "@/lib/utils/theme";
 
 function hexToHue(hex: string): number {
@@ -174,6 +173,32 @@ export function OperatorSettingsForm({
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Company Details */}
+      <section style={{ marginBottom: 36 }}>
+        <p style={sectionLabel}>Company Details</p>
+        <div style={card}>
+          <p style={hint}>Contact phone is used as the requestor WhatsApp number for trip notifications.</p>
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div>
+              <label style={fieldLabel}>Company Name *</label>
+              <input value={form.name} onChange={e => set("name", e.target.value)} style={inputStyle} placeholder="e.g. Prestige Limo Pte Ltd" />
+            </div>
+            <div>
+              <label style={fieldLabel}>Contact Name</label>
+              <input value={form.contactName} onChange={e => set("contactName", e.target.value)} style={inputStyle} placeholder="e.g. John Tan" />
+            </div>
+            <div>
+              <label style={fieldLabel}>Contact Email</label>
+              <input type="email" value={form.contactEmail} onChange={e => set("contactEmail", e.target.value)} style={inputStyle} placeholder="e.g. john@company.com" />
+            </div>
+            <div>
+              <label style={fieldLabel}>Contact Phone (WhatsApp)</label>
+              <input type="tel" value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} style={inputStyle} placeholder="+65 9123 4567" />
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Branding */}
       <section style={{ marginBottom: 36 }}>
         <p style={sectionLabel}>Branding</p>
@@ -241,39 +266,6 @@ export function OperatorSettingsForm({
             ))}
           </select>
         </div>
-      </section>
-
-      {/* Account */}
-      <section style={{ marginBottom: 36 }}>
-        <p style={sectionLabel}>Account</p>
-        <div style={card}>
-          <p style={subsectionTitle}>Company Details</p>
-          <p style={hint}>Contact phone is used as the requestor WhatsApp number for trip notifications.</p>
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div>
-              <label style={fieldLabel}>Company Name *</label>
-              <input value={form.name} onChange={e => set("name", e.target.value)} style={inputStyle} placeholder="e.g. Prestige Limo Pte Ltd" />
-            </div>
-            <div>
-              <label style={fieldLabel}>Contact Name</label>
-              <input value={form.contactName} onChange={e => set("contactName", e.target.value)} style={inputStyle} placeholder="e.g. John Tan" />
-            </div>
-            <div>
-              <label style={fieldLabel}>Contact Email</label>
-              <input type="email" value={form.contactEmail} onChange={e => set("contactEmail", e.target.value)} style={inputStyle} placeholder="e.g. john@company.com" />
-            </div>
-            <div>
-              <label style={fieldLabel}>Contact Phone (WhatsApp)</label>
-              <input type="tel" value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} style={inputStyle} placeholder="+65 9123 4567" />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* WhatsApp */}
-      <section style={{ marginBottom: 36 }}>
-        <p style={sectionLabel}>WhatsApp</p>
-        <WhatsAppSettings />
       </section>
 
       {/* Single save button */}
