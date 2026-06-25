@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -83,6 +84,7 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
 }
 
 export default function OnboardPage() {
+  const router = useRouter();
   const [step, setStep] = useState<Step>("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -118,8 +120,6 @@ export default function OnboardPage() {
   const [vehicleRelationship, setVehicleRelationship] = useState<"owned" | "rented">("owned");
   const [vehicleLogCardFile, setVehicleLogCardFile] = useState<File | null>(null);
   const [rentalAgreementFile, setRentalAgreementFile] = useState<File | null>(null);
-
-  const [isResubmission, setIsResubmission] = useState(false);
 
   function setErr(msg: string) { setError(msg); setLoading(false); }
 
@@ -221,8 +221,10 @@ export default function OnboardPage() {
     setLoading(false);
 
     if (!res.ok) return setErr(data.error ?? "Submission failed");
-    setIsResubmission(data.isResubmission ?? false);
-    setStep("success");
+    const driverId: string = data.driverId ?? "";
+    router.push(
+      `/onboard/status?driverId=${encodeURIComponent(driverId)}&name=${encodeURIComponent(firstName.trim())}`
+    );
   }
 
   const stepIndex = STEPS.indexOf(step);
@@ -474,38 +476,6 @@ export default function OnboardPage() {
         </form>
       )}
 
-      {/* ── Success ─────────────────────────────────────────────────────── */}
-      {step === "success" && (
-        <Card className="bg-gray-900 border-gray-800 text-center">
-          <CardContent className="pt-8 pb-8 flex flex-col items-center gap-4">
-            <div className="w-14 h-14 rounded-full bg-green-900 border border-green-700 flex items-center justify-center">
-              <CheckCircle className="text-green-400" size={28} />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-white mb-2">
-                {isResubmission ? "Resubmission received" : "Application submitted"}
-              </h2>
-              <p className="text-sm text-gray-400 max-w-sm mx-auto leading-relaxed">
-                Your application is <span className="text-yellow-400 font-medium">pending review</span>. Our
-                team will check your documents and notify you via WhatsApp within 2 business days.
-              </p>
-              {isResubmission && (
-                <p className="text-xs text-gray-600 mt-3">
-                  Your previous record has been updated with the new documents.
-                </p>
-              )}
-            </div>
-            <div className="mt-2 px-4 py-3 bg-gray-800 rounded-md text-left w-full">
-              <p className="text-xs text-gray-400 font-medium mb-1">What happens next</p>
-              <ul className="text-xs text-gray-500 space-y-1">
-                <li>• Admin reviews your driver and vehicle documents</li>
-                <li>• You will receive a WhatsApp message when approved</li>
-                <li>• If anything is unclear, we will message you with details</li>
-              </ul>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

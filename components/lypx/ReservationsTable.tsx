@@ -14,6 +14,9 @@ type Order = {
   pickupLocation: string;
   dropoffLocation: string;
   notes?: string | null;
+  fareAmount?: number | null;
+  fareCurrency?: string | null;
+  cancellationReason?: string | null;
   account: { id: string; name: string };
   driver?: { id: string; firstName: string; lastName: string } | null;
   vehicle?: { plateNumber: string; make: string; model: string } | null;
@@ -95,6 +98,7 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
               <th>Date & Time</th>
               <th>Route</th>
               <th>Account</th>
+              <th>Fare</th>
               <th>Driver</th>
               <th>Status</th>
             </tr>
@@ -137,10 +141,26 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
                     </div>
                   </td>
                   <td style={{ fontSize: 13, color: "var(--text)" }}>{o.account.name}</td>
+                  <td style={{ fontSize: 13 }}>
+                    {o.fareAmount != null ? (
+                      <span style={{ fontVariantNumeric: "tabular-nums", color: "var(--text)" }}>
+                        {o.fareCurrency ?? "SGD"} {o.fareAmount.toFixed(2)}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--text-faint)" }}>—</span>
+                    )}
+                  </td>
                   <td style={{ fontSize: 13, color: o.driver ? "var(--text)" : "var(--text-faint)" }}>
                     {o.driver ? `${o.driver.firstName} ${o.driver.lastName}` : "Unassigned"}
                   </td>
-                  <td><span className={chip.cls}>{chip.label}</span></td>
+                  <td>
+                    <span className={chip.cls}>{chip.label}</span>
+                    {isCancelled && o.cancellationReason && (
+                      <div style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3, maxWidth: 160, lineHeight: 1.4 }}>
+                        {o.cancellationReason}
+                      </div>
+                    )}
+                  </td>
                 </tr>
               );
             })}
