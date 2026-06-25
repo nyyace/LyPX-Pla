@@ -7,13 +7,13 @@ import { applyAccent } from "@/lib/utils/theme";
 import { AdminClock } from "./AdminClock";
 import { WhatsAppInboxPanel } from "./WhatsAppInboxPanel";
 
-const tabs = [
+const STATIC_TABS = [
   { href: "/operator/dispatch",      label: "Dispatch Centre" },
   { href: "/operator/reservations",  label: "Reservations" },
   { href: "/operator/accounts",      label: "Accounts" },
   { href: "/operator/profiles",      label: "Profiles" },
-  { href: "/operator/billing",       label: "Billing Logs" },
   { href: "/operator/gate-queue",    label: "Gate Queue" },
+  { href: "/operator/billing",       label: "Billing Logs" },
   { href: "/operator/settings",      label: "Settings" },
 ];
 
@@ -31,10 +31,26 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, logo
   const pathname = usePathname();
   const [showInbox, setShowInbox] = useState(false);
   const [unread, setUnread] = useState(0);
+  const [gateCount, setGateCount] = useState(0);
 
   useEffect(() => {
     applyAccent(accent);
   }, [accent]);
+
+  // Poll Gate Queue attention count every 60s
+  useEffect(() => {
+    let cancelled = false;
+    async function fetchGateCount() {
+      const res = await fetch("/api/operator/gate-queue/count").catch(() => null);
+      if (res?.ok && !cancelled) {
+        const data = await res.json();
+        setGateCount(data.count ?? 0);
+      }
+    }
+    fetchGateCount();
+    const interval = setInterval(fetchGateCount, 60_000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
 
   // Poll unread count when WhatsApp is enabled
   useEffect(() => {
@@ -131,15 +147,29 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, logo
 
       {/* Nav tabs */}
       <nav className="lypx-navtabs">
-        {tabs.map(t => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className={`lypx-tab${pathname === t.href || pathname.startsWith(t.href + "/") ? " active" : ""}`}
-          >
-            {t.label}
-          </Link>
-        ))}
+        {STATIC_TABS.map(t => {
+          const isGateQueue = t.href === "/operator/gate-queue";
+          return (
+            <Link
+              key={t.href}
+              href={t.href}
+              className={`lypx-tab${pathname === t.href || pathname.startsWith(t.href + "/") ? " active" : ""}`}
+              style={{ display: "flex", alignItems: "center", gap: 6 }}
+            >
+              {t.label}
+              {isGateQueue && gateCount > 0 && (
+                <span style={{
+                  background: "var(--red)", color: "#fff",
+                  fontSize: 10, fontWeight: 700, lineHeight: 1,
+                  padding: "2px 5px", borderRadius: 20,
+                  minWidth: 18, textAlign: "center",
+                }}>
+                  {gateCount > 99 ? "99+" : gateCount}
+                </span>
+              )}
+            </Link>
+          );
+        })}
       </nav>
 
       {/* Content */}
