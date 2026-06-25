@@ -18,6 +18,8 @@ type Operator = {
   preference: { timezone: string; whatsappEnabled?: boolean } | null;
   driverCount: number;
   userCount: number;
+  planTier?: string;
+  driverLimit?: number;
 };
 
 function Row({ label, value }: { label: string; value: React.ReactNode }) {
@@ -50,6 +52,19 @@ export function ViewOperatorDrawer({
   const [confirming, setConfirming] = useState<"suspend" | "reinstate" | null>(null);
   const [waEnabled, setWaEnabled] = useState(operator.preference?.whatsappEnabled ?? false);
   const [waTogglingPending, setWaTogglingPending] = useState(false);
+  const [planTier, setPlanTier] = useState(operator.planTier ?? "starter");
+  const [driverLimit, setDriverLimit] = useState(operator.driverLimit ?? 10);
+  const [planSaving, setPlanSaving] = useState(false);
+
+  async function savePlanTier() {
+    setPlanSaving(true);
+    await fetch(`/api/admin/operators/${operator.id}/plan-tier`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ planTier, driverLimit }),
+    });
+    setPlanSaving(false);
+  }
 
   async function toggleWhatsApp() {
     setWaTogglingPending(true);
@@ -136,6 +151,44 @@ export function ViewOperatorDrawer({
                 }} />
               </button>
             </div>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Plan &amp; Limits</p>
+            <div style={{ display: "flex", gap: 10, marginBottom: 8 }}>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Plan Tier</label>
+                <select
+                  value={planTier}
+                  onChange={e => setPlanTier(e.target.value)}
+                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px" }}
+                >
+                  <option value="starter">Starter</option>
+                  <option value="growth">Growth</option>
+                  <option value="enterprise">Enterprise</option>
+                </select>
+              </div>
+              <div style={{ flex: 1 }}>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 4 }}>Driver Limit</label>
+                <input
+                  type="number" min={1} max={1000}
+                  value={driverLimit}
+                  onChange={e => setDriverLimit(parseInt(e.target.value))}
+                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
+                />
+              </div>
+            </div>
+            <button
+              onClick={savePlanTier}
+              disabled={planSaving}
+              style={{
+                padding: "7px 14px", background: "var(--surface-raised)", border: "1px solid var(--border)",
+                borderRadius: 4, color: "var(--text-dim)", fontSize: 12, cursor: "pointer",
+                opacity: planSaving ? 0.6 : 1,
+              }}
+            >
+              {planSaving ? "Saving…" : "Save Plan"}
+            </button>
           </div>
 
           <div style={{ marginBottom: 24 }}>

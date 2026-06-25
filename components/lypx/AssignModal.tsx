@@ -23,6 +23,7 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
   const [selected, setSelected] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [assignError, setAssignError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch(`/api/operators/${tenantId}/drivers?compliant=true`)
@@ -34,12 +35,18 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
   async function assign() {
     if (!selected) return;
     setSaving(true);
-    await fetch(`/api/orders/${order.id}`, {
+    setAssignError(null);
+    const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ driverId: selected, status: "assigned" }),
     });
     setSaving(false);
+    if (!res.ok) {
+      const d = await res.json().catch(() => ({}));
+      setAssignError(d.error ?? "Failed to assign driver — they may not meet compliance requirements.");
+      return;
+    }
     onClose();
     router.refresh();
   }
@@ -64,6 +71,15 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
             {time} · {order.pickupLocation} → {order.dropoffLocation}
           </p>
         </div>
+
+        {assignError && (
+          <div style={{
+            background: "rgba(217,83,79,0.12)", border: "1px solid rgba(217,83,79,0.25)",
+            borderRadius: 4, padding: "8px 12px", color: "#D9534F", fontSize: 12, marginBottom: 12,
+          }}>
+            {assignError}
+          </div>
+        )}
 
         <div style={{ flex: 1, overflowY: "auto", marginBottom: 16 }}>
           {loading ? (

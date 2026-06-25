@@ -29,7 +29,8 @@ export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
   const { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation, driverId, vehicleId, notes, tripFare,
-    serviceType, flightNumber, nameBoardText, disposalHours } = body;
+    serviceType, flightNumber, nameBoardText, disposalHours,
+    fareAmount, fareCurrency, fareNote } = body;
 
   if (!accountId || !tenantId || !pickupTime || !pickupLocation || !dropoffLocation) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -81,6 +82,9 @@ export async function POST(req: Request) {
         flightNumber: flightNumber ?? null,
         nameBoardText: nameBoardText ?? null,
         disposalHours: disposalHours ?? null,
+        fareAmount: fareAmount != null ? parseFloat(fareAmount) : null,
+        fareCurrency: fareCurrency ?? "SGD",
+        fareNote: fareNote ?? null,
         ...(feeData ?? {}),
       },
     });

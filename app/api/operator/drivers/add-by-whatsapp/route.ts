@@ -16,6 +16,14 @@ export async function POST(req: Request) {
   const tenant = await getOperatorTenant(user.id);
   if (!tenant) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+  const currentCount = await prisma.operatorDriverMembership.count({ where: { tenantId: tenant.id } });
+  if (currentCount >= tenant.driverLimit) {
+    return NextResponse.json(
+      { error: `Driver limit reached (${tenant.driverLimit}). Upgrade your plan to add more drivers.` },
+      { status: 422 }
+    );
+  }
+
   const { driverWhatsapp } = await req.json() as { driverWhatsapp: string };
   if (!driverWhatsapp?.trim()) {
     return NextResponse.json({ error: "driverWhatsapp is required" }, { status: 400 });
@@ -23,14 +31,21 @@ export async function POST(req: Request) {
 
   const normalized = normalizePhone(driverWhatsapp.trim());
 
-  const driver = await prisma.driver.findFirst({
+  // When duplicate phone entries exist, pick the best-standing one.
+  const STATUS_PRIORITY = ["active", "expiring_soon", "pending", "suspended"];
+  const allMatches = await prisma.driver.findMany({
     where: { phoneNumber: normalized },
     select: { id: true, complianceStatus: true },
   });
 
-  if (!driver) {
+  if (allMatches.length === 0) {
     return NextResponse.json({ error: "Driver not found" }, { status: 404 });
   }
+
+  const driver = allMatches.sort(
+    (a, b) => STATUS_PRIORITY.indexOf(a.complianceStatus) - STATUS_PRIORITY.indexOf(b.complianceStatus)
+  )[0];
+
   if (driver.complianceStatus !== "active" && driver.complianceStatus !== "expiring_soon") {
     return NextResponse.json({ error: "Driver must be active to join Tier 1" }, { status: 422 });
   }

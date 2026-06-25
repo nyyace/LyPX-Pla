@@ -30,6 +30,9 @@ model Tenant {
   invitedAt                DateTime?
   activatedAt              DateTime?
 
+  planTier                 String    @default("starter") // starter | growth | enterprise
+  driverLimit              Int       @default(10)
+
   driverMemberships        OperatorDriverMembership[]
   registeredVehicles       Vehicle[]
   orders                   Order[]
@@ -88,6 +91,9 @@ model Vehicle {
   status               String   @default("inactive") // active | inactive | suspended — DERIVED
   insuranceCompany     String?
   vehicleClass         String?  // "VVV" | "AVF" | "NVE"
+  year                 Int?
+  colour               String?
+  seatingCapacity      Int?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -254,6 +260,16 @@ model Order {
   rateApplied       String?   // "percentage" | "floor" | null for non-marketplace trips
   takeRateSnapshot  Float?    // take rate % at time of order creation
   floorRateSnapshot Float?    // floor SGD at time of order creation
+
+  // Fare captured at reservation time
+  fareAmount        Float?
+  fareCurrency      String?   @default("SGD")
+  fareNote          String?
+
+  // Cancellation
+  cancellationReason String?
+  cancelledAt        DateTime?
+  cancelledBy        String?
 
   account Account  @relation(fields: [accountId], references: [id])
   driver  Driver?  @relation(fields: [driverId], references: [id])

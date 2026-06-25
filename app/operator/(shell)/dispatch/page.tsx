@@ -12,9 +12,18 @@ export default async function OperatorDispatchPage() {
 
   const tz = await getUserTimezone(user.id);
 
+  const now = new Date();
+  const endOfToday = new Date(now);
+  endOfToday.setHours(23, 59, 59, 999);
+
   const [unassigned, active] = await Promise.all([
     prisma.order.findMany({
-      where: { tenantId: tenant.id, status: "booked", driverId: null },
+      where: {
+        tenantId: tenant.id,
+        status: "booked",
+        driverId: null,
+        pickupTime: { lte: endOfToday },
+      },
       orderBy: { pickupTime: "asc" },
       take: 30,
       include: { account: true, vehicle: true, tenant: true },

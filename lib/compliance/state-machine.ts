@@ -145,4 +145,8 @@ export async function runComplianceSweep(): Promise<void> {
   for (const d of drivers) {
     await evaluateAndSyncDriverCompliance(d.id, "system");
   }
+  const vehicles = await prisma.vehicle.findMany({ select: { id: true } });
+  for (const v of vehicles) {
+    await evaluateAndSyncVehicleCompliance(v.id, "system");
+  }
 }

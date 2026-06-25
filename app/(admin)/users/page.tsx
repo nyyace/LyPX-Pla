@@ -65,6 +65,8 @@ export default async function UsersPage() {
     preference: op.preference,
     driverCount: op._count.driverMemberships,
     userCount: op._count.users,
+    planTier: op.planTier,
+    driverLimit: op.driverLimit,
   }));
 
   return (

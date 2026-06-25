@@ -31,6 +31,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     accountId: "", pickupDate: "", pickupTime: "", pickupLocation: "",
     dropoffLocation: "", vehicleClass: "AVF", pax: 1, notes: "", driverId: "",
     flightNumber: "", nameBoardText: "", disposalHours: "",
+    fareAmount: "", fareCurrency: "SGD", fareNote: "",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,6 +53,9 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     e.preventDefault();
     if (!form.accountId || !form.pickupDate || !form.pickupTime || !form.pickupLocation) {
       return setError("All required fields must be filled");
+    }
+    if (!form.fareAmount || isNaN(parseFloat(form.fareAmount)) || parseFloat(form.fareAmount) <= 0) {
+      return setError("Fare amount is required");
     }
     if (!dropoffOptional && !form.dropoffLocation) {
       return setError("Dropoff location is required for this service type");
@@ -84,6 +88,9 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         flightNumber: NEEDS_FLIGHT.has(form.serviceType) ? form.flightNumber.trim() || null : null,
         nameBoardText: NEEDS_BOARD.has(form.serviceType) ? form.nameBoardText.trim() || null : null,
         disposalHours: NEEDS_HOURS.has(form.serviceType) ? parseInt(form.disposalHours) || null : null,
+        fareAmount: parseFloat(form.fareAmount),
+        fareCurrency: form.fareCurrency,
+        fareNote: form.fareNote || null,
       }),
     });
     setSaving(false);
@@ -215,6 +222,30 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
               <option value="">Assign later in Dispatch</option>
               {drivers.map(d => <option key={d.id} value={d.id}>{d.firstName} {d.lastName}</option>)}
             </select>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 10 }}>
+            <div>
+              <label style={labelStyle}>Fare Amount (SGD) *</label>
+              <input
+                type="number" min={0} step="0.01"
+                value={form.fareAmount} onChange={e => set("fareAmount", e.target.value)}
+                style={inputStyle} placeholder="e.g. 120.00" required
+              />
+            </div>
+            <div>
+              <label style={labelStyle}>Currency</label>
+              <select value={form.fareCurrency} onChange={e => set("fareCurrency", e.target.value)} style={inputStyle}>
+                <option value="SGD">SGD</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Fare Note (optional)</label>
+            <input type="text" value={form.fareNote} onChange={e => set("fareNote", e.target.value)} style={inputStyle} placeholder="e.g. Inclusive of surcharge" />
           </div>
 
           <div>

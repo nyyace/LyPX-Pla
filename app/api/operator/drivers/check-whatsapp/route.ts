@@ -21,15 +21,16 @@ export async function GET(req: Request) {
 
   const normalized = normalizePhone(raw);
 
-  const driver = await prisma.driver.findFirst({
+  // Prefer the best-standing record when duplicate phone numbers exist.
+  // Try active/expiring_soon first, then fall back to any match.
+  const STATUS_PRIORITY = ["active", "expiring_soon", "pending", "suspended"];
+  const allMatches = await prisma.driver.findMany({
     where: { phoneNumber: normalized },
-    select: {
-      complianceStatus: true,
-      firstName: true,
-      lastName: true,
-      tier2Qualified: true,
-    },
+    select: { complianceStatus: true, firstName: true, lastName: true, tier2Qualified: true },
   });
+  const driver = allMatches.sort(
+    (a, b) => STATUS_PRIORITY.indexOf(a.complianceStatus) - STATUS_PRIORITY.indexOf(b.complianceStatus)
+  )[0] ?? null;
 
   if (!driver) {
     return NextResponse.json({ status: "not_found" });
