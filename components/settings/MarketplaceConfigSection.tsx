@@ -233,6 +233,7 @@ export function MarketplaceConfigSection({ configs }: { configs: ConfigRow[] }) 
           <button
             onClick={handleSave}
             disabled={saving || !hasChanges || !!takeRateError || !!floorRateError}
+            title={!hasChanges ? "No changes to save" : undefined}
             className="btn-primary"
             style={{ alignSelf: "flex-start", padding: "10px 24px", fontSize: 13 }}
           >

@@ -92,9 +92,10 @@ export function TimezoneSelector({ currentTimezone }: Props) {
       <Button
         onClick={handleSave}
         disabled={saving || timezone === currentTimezone}
+        title={timezone === currentTimezone ? "No changes to save" : undefined}
         size="sm"
       >
-        {saving ? "Saving..." : "Save"}
+        {saving ? "Saving..." : "Save Display Settings"}
       </Button>
     </div>
   );

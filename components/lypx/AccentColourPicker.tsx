@@ -143,6 +143,7 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
         <button
           onClick={save}
           disabled={!hasChanges || saving}
+          title={!hasChanges ? "No changes to save" : undefined}
           style={{
             background: saved ? "rgba(76,175,109,0.2)" : hasChanges && !saving ? previewAccent : "var(--surface-raised)",
             border: saved ? "1px solid rgba(76,175,109,0.4)" : "none",

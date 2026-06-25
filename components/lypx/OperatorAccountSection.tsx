@@ -105,6 +105,7 @@ export function OperatorAccountSection({ name, contactName, contactEmail, contac
         <button
           onClick={handleSave}
           disabled={!hasChanges || saving}
+          title={!hasChanges ? "No changes to save" : undefined}
           style={{
             background: hasChanges && !saving ? "var(--accent)" : "var(--surface-raised)",
             border: "none", borderRadius: 4,
