@@ -5,10 +5,9 @@ import { getOperatorTenant } from "@/lib/utils/operator";
 import { uploadToR2, deleteFromR2, getPublicUrl, getPresignedUrl } from "@/lib/r2";
 import sharp from "sharp";
 
-const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/svg+xml"];
+const ALLOWED_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif", "image/svg+xml"];
 const MAX_SIZE_BYTES = 2 * 1024 * 1024; // 2MB
 const LOGO_HEIGHT_PX = 60; // 30pt × 2x retina
-const LOGO_MAX_WIDTH_PX = 240;
 
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -30,19 +29,27 @@ export async function POST(req: Request) {
   const buffer = Buffer.from(await file.arrayBuffer());
 
   // Process with sharp (skip for SVG — serve as-is)
+  // Resize to 60px height proportionally; preserve original format — no conversion
   let processed: Buffer;
-  let outputType = "image/png";
+  const outputType = file.type;
   if (file.type === "image/svg+xml") {
     processed = buffer;
-    outputType = "image/svg+xml";
   } else {
     processed = await sharp(buffer)
-      .resize({ height: LOGO_HEIGHT_PX, width: LOGO_MAX_WIDTH_PX, fit: "inside", withoutEnlargement: true })
-      .png({ compressionLevel: 9 })
+      .resize({
+        height: LOGO_HEIGHT_PX,
+        width: undefined,          // auto — maintain aspect ratio
+        fit: "inside",             // never crop, never upscale beyond original
+        withoutEnlargement: true,
+      })
       .toBuffer();
   }
 
-  const ext = file.type === "image/svg+xml" ? "svg" : "png";
+  const EXT_MAP: Record<string, string> = {
+    "image/png": "png", "image/jpeg": "jpg", "image/webp": "webp",
+    "image/gif": "gif", "image/svg+xml": "svg",
+  };
+  const ext = EXT_MAP[file.type] ?? "png";
   const key = `logos/${tenant.id}/logo_${Date.now()}.${ext}`;
 
   // Delete previous logo if exists
