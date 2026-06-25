@@ -62,19 +62,6 @@ export function WhatsAppSettings() {
             </div>
           </div>
         </div>
-        <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid var(--border)" }}>
-          <button
-            disabled
-            title="No WhatsApp settings to configure yet"
-            style={{
-              background: "var(--surface-raised)", border: "none", borderRadius: 4,
-              color: "var(--text-faint)", fontSize: 12, fontWeight: 700,
-              padding: "9px 20px", cursor: "not-allowed",
-            }}
-          >
-            Save WhatsApp Settings
-          </button>
-        </div>
       </section>
 
       {/* Coming Soon modal */}
