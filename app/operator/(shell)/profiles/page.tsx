@@ -16,7 +16,7 @@ export default async function OperatorProfilesPage() {
 
   const [memberships, inviteRequests] = await Promise.all([
     prisma.operatorDriverMembership.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenant.id, tier1Member: true },
       include: {
         driver: {
           include: {
