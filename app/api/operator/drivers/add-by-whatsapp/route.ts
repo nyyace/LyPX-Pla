@@ -16,14 +16,6 @@ export async function POST(req: Request) {
   const tenant = await getOperatorTenant(user.id);
   if (!tenant) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
-  const currentCount = await prisma.operatorDriverMembership.count({ where: { tenantId: tenant.id } });
-  if (currentCount >= tenant.driverLimit) {
-    return NextResponse.json(
-      { error: `Driver limit reached (${tenant.driverLimit}). Upgrade your plan to add more drivers.` },
-      { status: 422 }
-    );
-  }
-
   const { driverWhatsapp } = await req.json() as { driverWhatsapp: string };
   if (!driverWhatsapp?.trim()) {
     return NextResponse.json({ error: "driverWhatsapp is required" }, { status: 400 });
@@ -50,6 +42,31 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Driver must be active to join Tier 1" }, { status: 422 });
   }
 
+  // Check whether a membership row already exists (active or previously removed).
+  const existing = await prisma.operatorDriverMembership.findUnique({
+    where: { tenantId_driverId: { tenantId: tenant.id, driverId: driver.id } },
+  });
+
+  const isReadd = existing !== null && !existing.tier1Member;
+  const isAlreadyActive = existing?.tier1Member === true;
+
+  // Limit check only applies to genuinely new members — not re-adds (upsert-update path).
+  if (!existing) {
+    const activeCount = await prisma.operatorDriverMembership.count({
+      where: { tenantId: tenant.id, tier1Member: true },
+    });
+    if (activeCount >= tenant.driverLimit) {
+      return NextResponse.json(
+        { error: `Driver limit reached (${tenant.driverLimit}). Upgrade your plan to add more drivers.` },
+        { status: 422 }
+      );
+    }
+  }
+
+  if (isAlreadyActive) {
+    return NextResponse.json({ success: true, driverId: driver.id });
+  }
+
   const membership = await prisma.operatorDriverMembership.upsert({
     where: { tenantId_driverId: { tenantId: tenant.id, driverId: driver.id } },
     create: {
@@ -65,7 +82,7 @@ export async function POST(req: Request) {
     data: {
       entityType: "driver_membership",
       entityId: membership.id,
-      action: "tier1_added",
+      action: isReadd ? "tier1_readded" : "tier1_added",
       actorId: user.id,
       metadata: { driverId: driver.id, tenantId: tenant.id, via: "whatsapp_lookup" },
     },
