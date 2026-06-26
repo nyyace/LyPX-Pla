@@ -172,6 +172,9 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
   const [tier1Mutating, setTier1Mutating] = useState(false);
   const [tier1Error, setTier1Error] = useState<string | null>(null);
 
+  const [confirmingCancelId, setConfirmingCancelId] = useState<string | null>(null);
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
+
   const waInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -257,6 +260,16 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
     }
     setInviteSuccess(true);
     await refreshInviteRequests();
+  }
+
+  async function handleCancelInvite(id: string) {
+    setCancellingId(id);
+    const res = await fetch(`/api/operator/drivers/invite-request/${id}`, { method: "DELETE" });
+    setCancellingId(null);
+    setConfirmingCancelId(null);
+    if (res.ok) {
+      setInviteRequests((prev) => prev.filter((r) => r.id !== id));
+    }
   }
 
   async function handleRemoveTier1() {
@@ -375,33 +388,83 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                 </div>
                 {inviteRequests.map((r) => (
                   <div key={r.id} style={{ padding: "8px 12px", borderBottom: "1px solid var(--border)" }}>
-                    <div className="mono" style={{ fontSize: 12, color: "var(--text)", marginBottom: 2 }}>
-                      {r.driverWhatsapp}
-                    </div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
-                        {r.driverName ?? "—"}
-                      </span>
-                      <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                        <span style={{
-                          fontSize: 9, fontWeight: 600, textTransform: "uppercase",
-                          padding: "1px 5px", borderRadius: 3,
-                          background: r.status === "sent" ? "#1a3d2b" : "#3d2f00",
-                          color: r.status === "sent" ? "#4CAF6D" : "#E5A93C",
-                          border: `1px solid ${r.status === "sent" ? "#2d6b4a" : "#5a4500"}`,
-                        }}>
-                          {r.status}
-                        </span>
-                        {r.expiresAt && (
-                          <span style={{ fontSize: 9, color: "var(--text-faint)" }}>
-                            {daysUntilLabel(r.expiresAt)}
-                          </span>
-                        )}
+                    {confirmingCancelId === r.id ? (
+                      /* Inline confirmation */
+                      <div>
+                        <p style={{ fontSize: 11, color: "var(--text-dim)", margin: "0 0 8px" }}>
+                          Cancel this invite?
+                        </p>
+                        <div style={{ display: "flex", gap: 6 }}>
+                          <button
+                            onClick={() => handleCancelInvite(r.id)}
+                            disabled={cancellingId === r.id}
+                            style={{
+                              fontSize: 11, fontWeight: 600, padding: "4px 10px",
+                              background: "var(--red)", color: "#fff", border: "none",
+                              borderRadius: 4, cursor: "pointer",
+                              opacity: cancellingId === r.id ? 0.6 : 1,
+                            }}
+                          >
+                            {cancellingId === r.id ? "Cancelling…" : "Yes, cancel"}
+                          </button>
+                          <button
+                            onClick={() => setConfirmingCancelId(null)}
+                            style={{
+                              fontSize: 11, padding: "4px 10px",
+                              background: "none", color: "var(--text-dim)",
+                              border: "1px solid var(--border)", borderRadius: 4, cursor: "pointer",
+                            }}
+                          >
+                            Keep
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                    <p style={{ fontSize: 10, color: "var(--text-faint)", margin: "2px 0 0" }}>
-                      {daysAgo(r.createdAt)}
-                    </p>
+                    ) : (
+                      /* Normal row */
+                      <>
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                          <div className="mono" style={{ fontSize: 12, color: "var(--text)" }}>
+                            {r.driverWhatsapp}
+                          </div>
+                          <button
+                            onClick={() => setConfirmingCancelId(r.id)}
+                            style={{
+                              fontSize: 10, color: "var(--text-dim)", background: "none",
+                              border: "none", cursor: "pointer", padding: "0 2px", lineHeight: 1,
+                            }}
+                            onMouseEnter={(e) => (e.currentTarget.style.color = "var(--red)")}
+                            onMouseLeave={(e) => (e.currentTarget.style.color = "var(--text-dim)")}
+                            title="Cancel invite"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 2 }}>
+                          <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                            {r.driverName ?? "—"}
+                          </span>
+                          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <span style={{
+                              fontSize: 9, fontWeight: 600, textTransform: "uppercase",
+                              padding: "1px 5px", borderRadius: 3,
+                              background: r.status === "sent" ? "#1a3d2b" : "#3d2f00",
+                              color: r.status === "sent" ? "#4CAF6D" : "#E5A93C",
+                              border: `1px solid ${r.status === "sent" ? "#2d6b4a" : "#5a4500"}`,
+                            }}>
+                              {r.status}
+                            </span>
+                            {r.expiresAt && (
+                              <span style={{ fontSize: 9, color: "var(--text-faint)" }}>
+                                {daysUntilLabel(r.expiresAt)}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                        <p style={{ fontSize: 10, color: "var(--text-faint)", margin: "2px 0 0" }}>
+                          {daysAgo(r.createdAt)}
+                        </p>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
