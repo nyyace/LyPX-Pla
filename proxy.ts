@@ -13,6 +13,8 @@ export default authkitProxy({
       "/api/onboarding/submit",
       "/api/cron/compliance-sweep",
       "/api/cron/expire-claims",
+      "/api/cron/orchestrator",
+      "/api/webhooks/whatsapp",
       "/operator/suspended",
     ],
   },
