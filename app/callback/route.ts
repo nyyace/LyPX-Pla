@@ -10,12 +10,13 @@ const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
 export const GET = handleAuth({
   baseURL: BASE_URL,
   onError: async ({ error, request }) => {
+    const err = error instanceof Error ? error : new Error(String(error));
     const url = new URL(request.url);
     const hasCode = !!url.searchParams.get("code");
     const hasState = !!url.searchParams.get("state");
 
     console.error("[callback error]", {
-      message: error.message,
+      message: err.message,
       code: hasCode ? "present" : "missing",
       state: hasState ? "present" : "missing",
       url: url.pathname + url.search,
@@ -25,8 +26,8 @@ export const GET = handleAuth({
     // PKCE flow — there's no code/state to exchange. Redirect to sign-in so the
     // user can get a session now that their account is set up.
     if (
-      error.message === "Missing required auth parameter" ||
-      error.message.startsWith("Auth cookie missing")
+      err.message === "Missing required auth parameter" ||
+      err.message.startsWith("Auth cookie missing")
     ) {
       return NextResponse.redirect(new URL("/api/auth/signin", BASE_URL));
     }
