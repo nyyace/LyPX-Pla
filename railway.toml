@@ -5,3 +5,7 @@ startCommand = "curl -X POST -H 'x-cron-secret: $CRON_SECRET' https://lypx-pla-p
 [services.cron-claims]
 cronSchedule = "0 16 * * *"
 startCommand = "curl -X POST -H 'x-cron-secret: $CRON_SECRET' https://lypx-pla-production.up.railway.app/api/cron/expire-claims"
+
+[services.cron-orchestrator]
+cronSchedule = "* * * * *"
+startCommand = "curl -X POST -H 'x-cron-secret: $CRON_SECRET' https://lypx-pla-production.up.railway.app/api/cron/orchestrator"

@@ -31,7 +31,8 @@ export async function POST(req: Request) {
   const { accountId, tenantId, pickupTime, pickupLocation, dropoffLocation, driverId, vehicleId, notes, tripFare,
     serviceType, flightNumber, nameBoardText, disposalHours,
     fareAmount, fareCurrency, fareNote,
-    passengerName, passengerWhatsapp, sameAsRequestor } = body;
+    passengerName, passengerWhatsapp, sameAsRequestor,
+    timezone } = body;
 
   if (!accountId || !tenantId || !pickupTime || !pickupLocation || !dropoffLocation) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -68,6 +69,11 @@ export async function POST(req: Request) {
   }
 
   const order = await prisma.$transaction(async (tx: TxClient) => {
+    // Generate job reference: LYP-YY#####
+    const year = new Date().getFullYear().toString().slice(-2);
+    const count = await tx.order.count();
+    const jobReference = `LYP-${year}${String(count + 1).padStart(5, "0")}`;
+
     const o = await tx.order.create({
       data: {
         accountId,
@@ -89,6 +95,8 @@ export async function POST(req: Request) {
         passengerName: passengerName ?? null,
         passengerWhatsapp: passengerWhatsapp ?? null,
         sameAsRequestor: sameAsRequestor ?? false,
+        timezone: timezone ?? "Asia/Singapore",
+        jobReference,
         ...(feeData ?? {}),
       },
     });

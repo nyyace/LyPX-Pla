@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { SUPPORTED_TIMEZONES } from "@/lib/utils/date";
 
 const SERVICE_TYPES = [
   { value: "p2p",              label: "Point to Point" },
@@ -33,6 +34,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     flightNumber: "", nameBoardText: "", disposalHours: "",
     fareAmount: "", fareCurrency: "SGD", fareNote: "",
     sameAsRequestor: false, passengerName: "", passengerWhatsapp: "",
+    timezone: "Asia/Singapore",
   });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -100,6 +102,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         sameAsRequestor: form.sameAsRequestor,
         passengerName: form.sameAsRequestor ? null : form.passengerName.trim() || null,
         passengerWhatsapp: form.sameAsRequestor ? null : form.passengerWhatsapp.trim() || null,
+        timezone: form.timezone,
       }),
     });
     setSaving(false);
@@ -210,6 +213,18 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
               <label style={labelStyle}>Pickup Time *</label>
               <input type="time" value={form.pickupTime} onChange={e => set("pickupTime", e.target.value)} style={inputStyle} required />
             </div>
+          </div>
+
+          <div>
+            <label style={labelStyle}>Timezone</label>
+            <select value={form.timezone} onChange={e => set("timezone", e.target.value)} style={inputStyle}>
+              {SUPPORTED_TIMEZONES.map(tz => (
+                <option key={tz.value} value={tz.value}>{tz.label}</option>
+              ))}
+            </select>
+            <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3 }}>
+              Use the timezone of the pickup location. For Singapore trips, leave as default.
+            </p>
           </div>
 
           <div>

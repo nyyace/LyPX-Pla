@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { onTripCompleted } from "@/lib/claims/engine";
 import { getMarketplaceConfig, calculateMarketplaceFee } from "@/lib/utils/marketplace";
+import { emitEvent } from "@/lib/orchestrator/emitter";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   booked: ["assigned", "cancelled"],
@@ -109,6 +110,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   // Trigger claim engine on trip completion
   if (updates.status === "completed") {
     await onTripCompleted(id);
+  }
+
+  // Emit notification event when a driver is assigned
+  if (updates.status === "assigned") {
+    await emitEvent("order.assigned", { orderId: id }, prisma);
   }
 
   return NextResponse.json(updated);
