@@ -194,7 +194,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
                     value={form.passengerWhatsapp}
                     onChange={e => set("passengerWhatsapp", e.target.value)}
                     style={inputStyle}
-                    placeholder="+6591234567"
+                    placeholder="+65 XXXX XXXX"
                   />
                   <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3 }}>
                     Status updates will be sent to this number.
