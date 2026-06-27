@@ -131,6 +131,7 @@
   }
   html {
     font-family: var(--font-ui);
+    zoom: var(--ui-zoom, 1);
   }
 
   /* Scrollbar */

@@ -8,6 +8,7 @@ import {
   getStoredTheme,
   saveTheme,
 } from "@/lib/utils/theme";
+import { FontSizePref, applyFontSize, getStoredFontSize, saveFontSize } from "@/lib/utils/fontSize";
 
 function isValidHex(h: string): boolean {
   return /^#[0-9a-fA-F]{6}$/.test(h);
@@ -27,6 +28,7 @@ const TIMEZONES = [
 
 interface Props {
   tenantId: string;
+  userId: string;
   currentTimezone: string;
   currentAccent: string;
   currentLogoUrl: string | null;
@@ -38,6 +40,7 @@ interface Props {
 
 export function OperatorSettingsForm({
   tenantId,
+  userId,
   currentTimezone,
   currentAccent,
   currentLogoUrl,
@@ -72,6 +75,10 @@ export function OperatorSettingsForm({
   // Hex input field draft (allows typing incomplete hex without breaking color picker)
   const [hexDraft, setHexDraft] = useState(currentAccent);
 
+  // Font size
+  const [fontSize, setFontSize]           = useState<FontSizePref>("medium");
+  const [savedFontSize, setSavedFontSize] = useState<FontSizePref>("medium");
+
   // Load from localStorage on mount
   useEffect(() => {
     const stored = getStoredTheme(tenantId);
@@ -81,15 +88,24 @@ export function OperatorSettingsForm({
       setHexDraft(stored.accent);
       applyTheme(stored.bg, stored.accent);
     }
-  }, [tenantId]);
+    const storedSize = getStoredFontSize(userId);
+    setFontSize(storedSize);
+    setSavedFontSize(storedSize);
+    applyFontSize(storedSize);
+  }, [tenantId, userId]);
 
   // Live preview on every appearance change
   useEffect(() => {
     applyTheme(appearance.bg, appearance.accent);
   }, [appearance]);
 
+  // Live preview on font size change
+  useEffect(() => {
+    applyFontSize(fontSize);
+  }, [fontSize]);
+
   const hasFormChanges = JSON.stringify(form) !== JSON.stringify(savedSnapshot);
-  const hasAppearanceChanges = JSON.stringify(appearance) !== JSON.stringify(savedAppearance);
+  const hasAppearanceChanges = JSON.stringify(appearance) !== JSON.stringify(savedAppearance) || fontSize !== savedFontSize;
   const hasAnyChanges = hasFormChanges || hasAppearanceChanges;
 
   const [saving, setSaving] = useState(false);
@@ -189,8 +205,10 @@ export function OperatorSettingsForm({
     } else {
       setSavedSnapshot({ ...form });
       setSavedAppearance({ ...appearance });
+      setSavedFontSize(fontSize);
       setDbAccent(appearance.accent);
-      saveTheme(appearance.bg, appearance.accent, tenantId); // keep localStorage in sync
+      saveTheme(appearance.bg, appearance.accent, tenantId);
+      saveFontSize(fontSize, userId);
       setSaveStatus("success");
     }
   }
@@ -315,6 +333,17 @@ export function OperatorSettingsForm({
               <span style={{ color: appearance.accent, fontSize: 12 }}>● Active</span>
               <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${appearance.accent}`, paddingBottom: 2 }}>Dispatch Centre</span>
             </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--border)", marginBottom: 24 }} />
+
+          {/* Row 3: Text Size */}
+          <p style={subsectionTitle}>Text Size</p>
+          <p style={hint}>Adjusts the scale of all UI text and elements.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={toggleBtn(fontSize === "small")}  onClick={() => setFontSize("small")}>Small</button>
+            <button type="button" style={toggleBtn(fontSize === "medium")} onClick={() => setFontSize("medium")}>Medium</button>
+            <button type="button" style={toggleBtn(fontSize === "large")}  onClick={() => setFontSize("large")}>Large</button>
           </div>
 
         </div>

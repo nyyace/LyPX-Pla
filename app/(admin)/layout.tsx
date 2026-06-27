@@ -24,6 +24,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <AppShell
       role="admin"
       tenantId="lypx_direct"
+      userId={user.id}
       tabs={ADMIN_TABS}
       userDisplay={user.firstName ?? user.email}
       userInitials={initials}

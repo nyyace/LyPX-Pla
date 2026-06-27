@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { BgMode, applyTheme, getStoredTheme, saveTheme, DEFAULT_ACCENT } from "@/lib/utils/theme";
+import { FontSizePref, applyFontSize, getStoredFontSize, saveFontSize } from "@/lib/utils/fontSize";
 import { calculateMarketplaceFee } from "@/lib/utils/marketplace";
 import { formatTZ, SUPPORTED_TIMEZONES } from "@/lib/utils/date";
 
@@ -32,33 +33,44 @@ function FieldMeta({ updatedAt, updatedByName }: { updatedAt: string; updatedByN
 }
 
 interface Props {
+  userId: string;
   currentTimezone: string;
   configs: ConfigRow[];
 }
 
-export function AdminSettingsForm({ currentTimezone, configs }: Props) {
+export function AdminSettingsForm({ userId, currentTimezone, configs }: Props) {
   const router = useRouter();
 
   // ── Appearance ───────────────────────────────────────────────────────────
-  const [bg, setBg]           = useState<BgMode>("dark");
-  const [accent, setAccent]   = useState(DEFAULT_ACCENT);
+  const [bg, setBg]             = useState<BgMode>("dark");
+  const [accent, setAccent]     = useState(DEFAULT_ACCENT);
   const [hexDraft, setHexDraft] = useState(DEFAULT_ACCENT);
-  const [savedBg, setSavedBg]     = useState<BgMode>("dark");
-  const [savedAccent, setSavedAccent] = useState(DEFAULT_ACCENT);
+  const [savedBg, setSavedBg]           = useState<BgMode>("dark");
+  const [savedAccent, setSavedAccent]   = useState(DEFAULT_ACCENT);
+  const [fontSize, setFontSize]         = useState<FontSizePref>("medium");
+  const [savedFontSize, setSavedFontSize] = useState<FontSizePref>("medium");
 
   useEffect(() => {
     const stored = getStoredTheme(ADMIN_TENANT_ID);
     if (stored) {
-      setBg(stored.bg);      setSavedBg(stored.bg);
+      setBg(stored.bg);        setSavedBg(stored.bg);
       setAccent(stored.accent); setSavedAccent(stored.accent);
       setHexDraft(stored.accent);
       applyTheme(stored.bg, stored.accent);
     }
-  }, []);
+    const storedSize = getStoredFontSize(userId);
+    setFontSize(storedSize);
+    setSavedFontSize(storedSize);
+    applyFontSize(storedSize);
+  }, [userId]);
 
   useEffect(() => {
     applyTheme(bg, accent);
   }, [bg, accent]);
+
+  useEffect(() => {
+    applyFontSize(fontSize);
+  }, [fontSize]);
 
   function handleColorPick(e: React.ChangeEvent<HTMLInputElement>) {
     setHexDraft(e.target.value);
@@ -75,7 +87,7 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
     if (!isValidHex(hexDraft)) setHexDraft(accent);
   }
 
-  const hasAppearanceChanges = bg !== savedBg || accent !== savedAccent;
+  const hasAppearanceChanges = bg !== savedBg || accent !== savedAccent || fontSize !== savedFontSize;
 
   // ── Timezone ─────────────────────────────────────────────────────────────
   const [timezone, setTimezone] = useState(currentTimezone);
@@ -147,8 +159,10 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
 
     if (hasAppearanceChanges) {
       saveTheme(bg, accent, ADMIN_TENANT_ID);
+      saveFontSize(fontSize, userId);
       setSavedBg(bg);
       setSavedAccent(accent);
+      setSavedFontSize(fontSize);
     }
 
     if (hasTimezoneChanges) {
@@ -232,6 +246,7 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
         <p style={sectionLabel}>Appearance</p>
         <div style={card}>
 
+          {/* Row 1: Background */}
           <p style={subsectionTitle}>Background</p>
           <p style={hint}>Choose between dark and light console background.</p>
           <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
@@ -241,9 +256,10 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
 
           <div style={{ borderTop: "1px solid var(--border)", marginBottom: 24 }} />
 
+          {/* Row 2: Brand Colour */}
           <p style={subsectionTitle}>Brand Colour</p>
           <p style={hint}>Pick your brand colour. Changes apply instantly across the Admin Console.</p>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
             <input
               type="color"
               value={accent}
@@ -280,7 +296,7 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
           {/* Preview strip */}
           <div style={{
             background: "var(--surface-raised)", border: "1px solid var(--border)",
-            borderRadius: 6, padding: "14px 18px",
+            borderRadius: 6, padding: "14px 18px", marginBottom: 24,
           }}>
             <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>Preview</p>
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
@@ -289,6 +305,17 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
               <span style={{ color: accent, fontSize: 12 }}>● Active</span>
               <span style={{ color: "var(--text-primary)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${accent}`, paddingBottom: 2 }}>Compliance Queue</span>
             </div>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--border)", marginBottom: 24 }} />
+
+          {/* Row 3: Text Size */}
+          <p style={subsectionTitle}>Text Size</p>
+          <p style={hint}>Adjusts the scale of all UI text and elements.</p>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button type="button" style={toggleBtn(fontSize === "small")}  onClick={() => setFontSize("small")}>Small</button>
+            <button type="button" style={toggleBtn(fontSize === "medium")} onClick={() => setFontSize("medium")}>Medium</button>
+            <button type="button" style={toggleBtn(fontSize === "large")}  onClick={() => setFontSize("large")}>Large</button>
           </div>
         </div>
       </section>
@@ -394,6 +421,35 @@ export function AdminSettingsForm({ currentTimezone, configs }: Props) {
               <p style={{ fontSize: 13, color: "var(--text-faint)" }}>Enter a trip fare above to see the breakdown.</p>
             )}
           </div>
+        </div>
+      </section>
+
+      {/* ── Access Control ──────────────────────────────────────────────── */}
+      <section style={{ marginBottom: 32, borderTop: "1px solid var(--border)", paddingTop: 32 }}>
+        <p style={sectionLabel}>Access Control</p>
+        <div style={card}>
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 16 }}>
+            <div>
+              <p style={subsectionTitle}>Platform Role</p>
+              <p style={{ fontSize: 13, color: "var(--text-faint)", lineHeight: 1.6, marginTop: 4, marginBottom: 0 }}>
+                Your access level on the LyPX platform.
+              </p>
+            </div>
+            <span style={{
+              flexShrink: 0,
+              background: "rgba(229,169,60,0.15)", color: "var(--gold, #E5A93C)",
+              border: "1px solid rgba(229,169,60,0.3)", borderRadius: 4,
+              fontSize: 10, fontWeight: 700, padding: "4px 10px", letterSpacing: "0.5px",
+              marginTop: 2,
+            }}>
+              ADMIN
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: "var(--text-faint)", lineHeight: 1.6, marginTop: 16 }}>
+            To manage user roles, invite operators, or configure partner access, visit the{" "}
+            <a href="/users" style={{ color: "var(--accent-color)", textDecoration: "none" }}>Users page ↗</a>.
+            Roles available: Admin · Operator · Partner.
+          </p>
         </div>
       </section>
 

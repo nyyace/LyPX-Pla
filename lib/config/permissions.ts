@@ -1,4 +1,4 @@
-export type UserRole = "admin" | "operator";
+export type UserRole = "admin" | "operator" | "partner";
 
 export interface TabDef {
   href: string;
@@ -31,6 +31,10 @@ export const OPERATOR_TABS: TabDef[] = [
   { href: "/operator/settings",     label: "Settings" },
 ];
 
+export const PARTNER_TABS: TabDef[] = [];
+
 export function getTabsForRole(role: UserRole): TabDef[] {
-  return role === "admin" ? ADMIN_TABS : OPERATOR_TABS;
+  if (role === "admin") return ADMIN_TABS;
+  if (role === "partner") return PARTNER_TABS;
+  return OPERATOR_TABS;
 }

@@ -69,6 +69,7 @@ export default async function OperatorLayout({ children }: { children: React.Rea
     <AppShell
       role="operator"
       tenantId={tenant.id}
+      userId={user.id}
       tabs={OPERATOR_TABS}
       userDisplay={user.firstName ?? user.email ?? ""}
       userInitials={initials}

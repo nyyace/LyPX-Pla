@@ -31,6 +31,7 @@ export default async function OperatorSettingsPage() {
       <p className="panel-title" style={{ marginBottom: 28 }}>Settings</p>
       <OperatorSettingsForm
         tenantId={tenant.id}
+        userId={user.id}
         currentTimezone={currentTimezone}
         currentAccent={currentAccent}
         currentLogoUrl={currentLogoUrl}

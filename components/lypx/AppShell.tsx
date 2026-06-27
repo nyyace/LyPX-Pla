@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { applyTheme, getStoredTheme } from "@/lib/utils/theme";
+import { applyFontSize, getStoredFontSize } from "@/lib/utils/fontSize";
 import { AdminClock } from "./AdminClock";
 import { SignOutButton } from "./SignOutButton";
 import { WhatsAppInboxPanel } from "./WhatsAppInboxPanel";
@@ -12,6 +13,7 @@ import type { TabDef } from "@/lib/config/permissions";
 interface Props {
   role: "admin" | "operator";
   tenantId: string;
+  userId: string;
   tabs: TabDef[];
   userDisplay: string;
   userInitials: string;
@@ -25,6 +27,7 @@ interface Props {
 export function AppShell({
   role,
   tenantId,
+  userId,
   tabs,
   userDisplay,
   userInitials,
@@ -39,11 +42,12 @@ export function AppShell({
   const [unread, setUnread] = useState(0);
   const [gateCount, setGateCount] = useState(0);
 
-  // Apply stored theme on mount; fall back to DB accent
+  // Apply stored theme + font size on mount
   useEffect(() => {
     const stored = getStoredTheme(tenantId);
     applyTheme(stored?.bg ?? "dark", stored?.accent ?? accentColour);
-  }, [tenantId, accentColour]);
+    applyFontSize(getStoredFontSize(userId));
+  }, [tenantId, userId, accentColour]);
 
   // Gate queue badge — only active when a tab declares it
   const hasGateBadge = tabs.some(t => t.badge === "gate-queue");

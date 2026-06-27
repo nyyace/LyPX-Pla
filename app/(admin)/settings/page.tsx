@@ -37,7 +37,7 @@ export default async function SettingsPage() {
   return (
     <div style={{ padding: "32px 40px", maxWidth: 560 }}>
       <p className="panel-title" style={{ marginBottom: 28 }}>Settings</p>
-      <AdminSettingsForm currentTimezone={timezone} configs={configs} />
+      <AdminSettingsForm userId={user.id} currentTimezone={timezone} configs={configs} />
     </div>
   );
 }
