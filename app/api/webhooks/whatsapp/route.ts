@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
-// Meta webhook verification (GET)
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const mode      = searchParams.get("hub.mode");
@@ -14,10 +14,59 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 }
 
-// Incoming messages (POST)
 export async function POST(req: NextRequest) {
-  // Acknowledge immediately — Meta requires 200 within 20s
   const body = await req.json().catch(() => null);
-  console.log("[whatsapp webhook]", JSON.stringify(body));
+  if (!body) return NextResponse.json({ ok: true });
+
+  const entries = body?.entry ?? [];
+
+  for (const entry of entries) {
+    for (const change of entry?.changes ?? []) {
+      if (change?.field !== "messages") continue;
+
+      const statuses: unknown[] = change?.value?.statuses ?? [];
+
+      for (const s of statuses) {
+        const update = s as {
+          id?: string;
+          status?: string;
+          pricing?: { billable?: boolean; pricing_model?: string; category?: string };
+        };
+
+        const wamid  = update?.id;
+        const status = update?.status;
+        if (!wamid || !status) continue;
+
+        const pricing = update?.pricing;
+
+        try {
+          await prisma.whatsAppMessageLog.upsert({
+            where: { wamid },
+            update: {
+              status,
+              ...(pricing != null && {
+                billable:     pricing.billable     ?? false,
+                category:     pricing.category     ?? null,
+                pricingModel: pricing.pricing_model ?? null,
+              }),
+            },
+            create: {
+              wamid,
+              messageType:   "unknown",
+              recipient:     "unknown",
+              recipientPhone: "****",
+              status,
+              billable:     pricing?.billable     ?? false,
+              category:     pricing?.category     ?? null,
+              pricingModel: pricing?.pricing_model ?? null,
+            },
+          });
+        } catch (err) {
+          console.error("[whatsapp webhook] upsert failed:", err);
+        }
+      }
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

@@ -44,6 +44,8 @@ export async function PATCH(
       entityType: "driver_invite_request",
       entityId: id,
       actorId: user.id,
+      tenantId: request.tenantId,
+      recipient: "driver",
     });
   } catch {
     return NextResponse.json({ error: "Failed to send WhatsApp message" }, { status: 502 });

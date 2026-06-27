@@ -16,6 +16,7 @@ export const ADMIN_TABS: TabDef[] = [
   { href: "/orders",            label: "Reservations" },
   { href: "/marketplace",       label: "Marketplace" },
   { href: "/whatsapp",          label: "WhatsApp" },
+  { href: "/usage",             label: "Usage" },
   { href: "/users",             label: "Users" },
   { href: "/audit-log",         label: "Audit Log" },
   { href: "/settings",          label: "Settings" },

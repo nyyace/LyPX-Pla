@@ -41,6 +41,7 @@ model Tenant {
   whatsApp                 TenantWhatsApp?
   driverInviteRequests     DriverInviteRequest[]
   whatsappMessages         WhatsAppMessage[]
+  whatsappLogs             WhatsAppMessageLog[]
 }
 
 // ─────────────────────────────────────────────
@@ -442,6 +443,32 @@ model WhatsAppMessage {
   @@index([tenantId, direction, isRead])
   @@index([tenantId, from])
   @@index([tenantId, to])
+}
+
+// ─────────────────────────────────────────────
+// WHATSAPP MESSAGE LOG (billing + usage tracking)
+// ─────────────────────────────────────────────
+
+model WhatsAppMessageLog {
+  id             String    @id @default(cuid())
+  tenantId       String?   // null for platform-level sends not tied to an operator
+  messageType    String    // template key or orchestrator event type (e.g. "order.assigned")
+  recipient      String    @default("unknown") // "driver" | "passenger" | "requestor" | "admin" | "unknown"
+  recipientPhone String    // masked: +65****4499
+  wamid          String    @unique // Meta message ID — dedup key
+  status         String    @default("sent") // sent | delivered | read | failed
+  billable       Boolean   @default(false)
+  category       String?   // utility | marketing | authentication (from Meta pricing webhook)
+  pricingModel   String?   // e.g. "PMP" (from Meta pricing webhook)
+  sentAt         DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+  orderId        String?   // nullable — links to reservation if applicable
+
+  tenant         Tenant?   @relation(fields: [tenantId], references: [id])
+
+  @@index([tenantId, sentAt])
+  @@index([orderId])
+  @@index([billable, sentAt])
 }
 
 // ─────────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { WHATSAPP_TEMPLATES, type TemplateKey } from "./templates";
+import { maskPhone } from "@/lib/utils/phone";
 
 export { WHATSAPP_TEMPLATES, type TemplateKey };
 
@@ -15,6 +16,8 @@ export interface SendTemplateParams {
   entityType?: string;
   entityId?: string;
   actorId?: string;
+  tenantId?: string;
+  recipient?: string;
 }
 
 export async function sendWhatsAppTemplate({
@@ -25,6 +28,8 @@ export async function sendWhatsAppTemplate({
   entityType,
   entityId,
   actorId = "admin",
+  tenantId,
+  recipient = "driver",
 }: SendTemplateParams): Promise<{ messageId: string }> {
   const template = WHATSAPP_TEMPLATES[templateKey];
 
@@ -58,15 +63,30 @@ export async function sendWhatsAppTemplate({
 
   const messageId = data.messages?.[0]?.id ?? "unknown";
 
-  await prisma.auditLog.create({
-    data: {
-      entityType: entityType ?? "order",
-      entityId: entityId ?? orderId ?? "none",
-      action: "whatsapp_sent",
-      actorId,
-      metadata: { templateKey, to, messageId },
-    },
-  });
+  await Promise.all([
+    prisma.auditLog.create({
+      data: {
+        entityType: entityType ?? "order",
+        entityId: entityId ?? orderId ?? "none",
+        action: "whatsapp_sent",
+        actorId,
+        metadata: { templateKey, to, messageId },
+      },
+    }),
+    messageId !== "unknown"
+      ? prisma.whatsAppMessageLog.create({
+          data: {
+            tenantId:      tenantId ?? null,
+            messageType:   templateKey,
+            recipient,
+            recipientPhone: maskPhone(to),
+            wamid:         messageId,
+            status:        "sent",
+            orderId:       orderId ?? null,
+          },
+        }).catch((err) => console.error("[client] message log create failed:", err))
+      : Promise.resolve(),
+  ]);
 
   return { messageId };
 }

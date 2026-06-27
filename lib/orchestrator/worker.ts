@@ -3,12 +3,20 @@ import { TEMPLATE_REGISTRY, type OrderContext } from "./templates";
 import { resolveRecipients } from "@/lib/utils/recipients";
 import { sendWhatsAppTemplate } from "./sender";
 
-function getPhoneNumbers(
+function getPhoneNumbersWithTypes(
   recipientTypes: ("requestor" | "passenger" | "driver")[],
   resolved: { requestor: string | null; passenger: string | null; driver: string | null }
-): string[] {
-  const numbers = recipientTypes.map((t) => resolved[t]);
-  return [...new Set(numbers.filter((n): n is string => !!n))];
+): { phone: string; recipient: "requestor" | "passenger" | "driver" }[] {
+  const seen = new Set<string>();
+  const result: { phone: string; recipient: "requestor" | "passenger" | "driver" }[] = [];
+  for (const type of recipientTypes) {
+    const phone = resolved[type];
+    if (phone && !seen.has(phone)) {
+      seen.add(phone);
+      result.push({ phone, recipient: type });
+    }
+  }
+  return result;
 }
 
 export async function processEventQueue(): Promise<{
@@ -138,9 +146,9 @@ async function processEvent(
 
   const variables = template.resolveVariables(ctx);
   const resolved = await resolveRecipients(orderId, prisma);
-  const phoneNumbers = getPhoneNumbers(template.recipients, resolved);
+  const recipients = getPhoneNumbersWithTypes(template.recipients, resolved);
 
-  if (phoneNumbers.length === 0) {
+  if (recipients.length === 0) {
     await prisma.auditLog.create({
       data: {
         entityType: "whatsapp_send",
@@ -156,13 +164,16 @@ async function processEvent(
   let sent = 0, failed = 0;
   let lastError: string | undefined;
 
-  for (const phone of phoneNumbers) {
+  for (const { phone, recipient } of recipients) {
     const result = await sendWhatsAppTemplate({
       to: phone,
       templateName: template.templateName,
       language: template.language,
       variables,
       tenantId: order.tenantId,
+      messageType: eventType,
+      recipient,
+      orderId: order.id,
     });
 
     await prisma.auditLog.create({
@@ -175,7 +186,7 @@ async function processEvent(
           orderId,
           eventType,
           templateName: template.templateName,
-          recipient: phone,
+          recipient,
           messageId: result.messageId ?? null,
           error: result.error ?? null,
         },

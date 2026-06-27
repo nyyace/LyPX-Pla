@@ -1,4 +1,6 @@
+import { prisma } from "@/lib/prisma";
 import { resolveWhatsAppCredentials } from "./whatsapp";
+import { maskPhone } from "@/lib/utils/phone";
 
 export async function sendWhatsAppTemplate({
   to,
@@ -6,18 +8,25 @@ export async function sendWhatsAppTemplate({
   language,
   variables,
   tenantId,
+  messageType,
+  recipient,
+  orderId,
 }: {
   to: string;
   templateName: string;
   language: string;
   variables: string[];
   tenantId?: string;
+  messageType?: string;
+  recipient?: string;
+  orderId?: string;
 }): Promise<{ success: boolean; messageId?: string; error?: string }> {
   const creds = await resolveWhatsAppCredentials(tenantId ?? "lypx_direct");
+  const normalizedPhone = to.replace(/\s/g, "");
 
   const body = {
     messaging_product: "whatsapp",
-    to: to.replace(/\s/g, ""),
+    to: normalizedPhone,
     type: "template",
     template: {
       name: templateName,
@@ -50,7 +59,27 @@ export async function sendWhatsAppTemplate({
       return { success: false, error: data?.error?.message ?? `HTTP ${res.status}` };
     }
 
-    return { success: true, messageId: data?.messages?.[0]?.id };
+    const messageId: string | undefined = data?.messages?.[0]?.id;
+
+    if (messageId) {
+      try {
+        await prisma.whatsAppMessageLog.create({
+          data: {
+            tenantId:      tenantId ?? null,
+            messageType:   messageType ?? templateName,
+            recipient:     recipient  ?? "unknown",
+            recipientPhone: maskPhone(normalizedPhone),
+            wamid:         messageId,
+            status:        "sent",
+            orderId:       orderId ?? null,
+          },
+        });
+      } catch (logErr) {
+        console.error("[sender] message log create failed:", logErr);
+      }
+    }
+
+    return { success: true, messageId };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : "Unknown error" };
   }
