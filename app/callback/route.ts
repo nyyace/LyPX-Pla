@@ -7,7 +7,7 @@ const BASE_URL = process.env.RAILWAY_PUBLIC_DOMAIN
   ? `https://${process.env.RAILWAY_PUBLIC_DOMAIN}`
   : "http://localhost:3000";
 
-export const GET = handleAuth({
+const handler = handleAuth({
   baseURL: BASE_URL,
   onError: async ({ error, request }) => {
     const err = error instanceof Error ? error : new Error(String(error));
@@ -45,3 +45,8 @@ export const GET = handleAuth({
     );
   },
 });
+
+// WorkOS may redirect back via GET (standard OAuth) or POST (form-post response mode).
+// Both are valid — export the same handler for each.
+export const GET = handler;
+export const POST = handler;
