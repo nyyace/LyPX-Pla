@@ -60,7 +60,6 @@ export function OperatorSettingsForm({
   // DB accent — tracks what's currently in DB (separate from localStorage)
   const [dbAccent, setDbAccent] = useState(currentAccent);
 
-  // Appearance state — synced to localStorage via "Save Preferences"
   const [appearance, setAppearance] = useState<{ bg: BgMode; accent: string }>({
     bg: "dark",
     accent: currentAccent,
@@ -93,27 +92,16 @@ export function OperatorSettingsForm({
   const hasAppearanceChanges = JSON.stringify(appearance) !== JSON.stringify(savedAppearance);
   const hasAnyChanges = hasFormChanges || hasAppearanceChanges;
 
-  // Save status
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"success" | "error" | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  const [savingPrefs, setSavingPrefs] = useState(false);
-  const [prefSaveStatus, setPrefSaveStatus] = useState<"success" | null>(null);
-
   useEffect(() => {
     if (saveStatus === "success") {
-      const t = setTimeout(() => setSaveStatus(null), 3000);
+      const t = setTimeout(() => setSaveStatus(null), 2000);
       return () => clearTimeout(t);
     }
   }, [saveStatus]);
-
-  useEffect(() => {
-    if (prefSaveStatus === "success") {
-      const t = setTimeout(() => setPrefSaveStatus(null), 3000);
-      return () => clearTimeout(t);
-    }
-  }, [prefSaveStatus]);
 
   function set<K extends keyof typeof initial>(key: K, value: typeof initial[K]) {
     setForm(f => ({ ...f, [key]: value }));
@@ -138,15 +126,6 @@ export function OperatorSettingsForm({
     if (!isValidHex(hexDraft)) {
       setHexDraft(appearance.accent);
     }
-  }
-
-  // Save Preferences → localStorage only
-  function handleSavePreferences() {
-    setSavingPrefs(true);
-    saveTheme(appearance.bg, appearance.accent, tenantId);
-    setSavedAppearance({ ...appearance });
-    setSavingPrefs(false);
-    setPrefSaveStatus("success");
   }
 
   // Save Settings → DB (company details + timezone + accent)
@@ -338,27 +317,6 @@ export function OperatorSettingsForm({
             </div>
           </div>
 
-          {/* Row 3: Save Preferences button */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <button
-              type="button"
-              onClick={handleSavePreferences}
-              disabled={!hasAppearanceChanges || savingPrefs}
-              title={!hasAppearanceChanges ? "No appearance changes to save" : undefined}
-              style={{
-                background: hasAppearanceChanges && !savingPrefs ? "var(--accent)" : "var(--surface-raised)",
-                border: "none", borderRadius: 4,
-                color: hasAppearanceChanges && !savingPrefs ? "var(--primary-foreground)" : "var(--text-faint)",
-                fontSize: 12, fontWeight: 700, padding: "9px 20px",
-                cursor: hasAppearanceChanges && !savingPrefs ? "pointer" : "not-allowed",
-              }}
-            >
-              Save Preferences
-            </button>
-            {prefSaveStatus === "success" && (
-              <span style={{ fontSize: 12, color: "#22c55e" }}>✓ Saved to this device</span>
-            )}
-          </div>
         </div>
       </section>
 
@@ -437,7 +395,7 @@ export function OperatorSettingsForm({
           {saving ? "Saving…" : "Save Settings"}
         </button>
         {saveStatus === "success" && (
-          <span style={{ fontSize: 13, color: "#22c55e" }}>✓ Settings saved</span>
+          <span style={{ fontSize: 13, color: "var(--accent-color)" }}>✓ Settings saved</span>
         )}
         {saveStatus === "error" && (
           <span style={{ fontSize: 13, color: "#ef4444" }}>✗ {errorMsg}</span>
