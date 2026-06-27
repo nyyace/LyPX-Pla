@@ -5,33 +5,51 @@ export interface StoredTheme {
   accent: string;
 }
 
-const LEGACY_THEME_KEY = "lypx_operator_theme";
 // Written on every saveTheme() so the FOUC script can read it without knowing tenantId
 const LAST_THEME_KEY = "lypx_last_theme";
 
-function resolveKey(tenantId?: string): string {
-  return tenantId ? `theme_${tenantId}` : LEGACY_THEME_KEY;
+function modeKey(tenantId: string): string {
+  return `lypx_theme_${tenantId}_mode`;
+}
+function accentKey(tenantId: string): string {
+  return `lypx_theme_${tenantId}_accent`;
 }
 
 export const DEFAULT_ACCENT = "#E5A93C";
 export const DEFAULT_ACCENT_DIM = "#3A2F1A";
 
 export const DARK_TOKENS: Record<string, string> = {
-  "--bg":             "#0F0F11",
-  "--surface":        "#1B1B1F",
+  // Spec-canonical custom properties
+  "--bg-primary":    "#0a0a0a",
+  "--bg-secondary":  "#111111",
+  "--text-primary":  "#ffffff",
+  "--text-secondary":"#8a8a93",
+  "--menu-bg":       "#1a1a1a",
+  "--menu-text":     "#ffffff",
+  // Existing tokens (backward compat — components still reference these)
+  "--bg":             "#0a0a0a",
+  "--surface":        "#1b1b1f",
   "--surface-raised": "#202024",
-  "--border":         "#2C2C35",
-  "--text":           "#FFFFFF",
-  "--text-dim":       "#8A8A93",
-  "--text-faint":     "#55555E",
+  "--border":         "#2c2c35",
+  "--text":           "#ffffff",
+  "--text-dim":       "#8a8a93",
+  "--text-faint":     "#55555e",
 };
 
 export const LIGHT_TOKENS: Record<string, string> = {
-  "--bg":             "#FFFFFF",
-  "--surface":        "#F5F5F7",
-  "--surface-raised": "#EBEBEF",
-  "--border":         "#E0E0E8",
-  "--text":           "#0A0A0F",
+  // Spec-canonical custom properties
+  "--bg-primary":    "#ffffff",
+  "--bg-secondary":  "#f5f5f5",
+  "--text-primary":  "#0a0a0a",
+  "--text-secondary":"#555560",
+  "--menu-bg":       "#f0f0f0",
+  "--menu-text":     "#0a0a0a",
+  // Existing tokens
+  "--bg":             "#ffffff",
+  "--surface":        "#f5f5f7",
+  "--surface-raised": "#ebebef",
+  "--border":         "#e0e0e8",
+  "--text":           "#0a0a0f",
   "--text-dim":       "#555560",
   "--text-faint":     "#999999",
 };
@@ -72,8 +90,12 @@ export function applyBackground(mode: BgMode): void {
 export function applyAccent(accent: string, mode: BgMode = "dark"): void {
   if (typeof document === "undefined") return;
   const dim = computeAccentDim(accent, mode);
-  document.documentElement.style.setProperty("--accent", accent);
-  document.documentElement.style.setProperty("--accent-dim", dim);
+  const d = document.documentElement;
+  d.style.setProperty("--accent", accent);
+  d.style.setProperty("--accent-color", accent);
+  d.style.setProperty("--accent-dim", dim);
+  d.style.setProperty("--primary", accent);
+  d.style.setProperty("--ring", accent);
 }
 
 export function applyTheme(mode: BgMode, accent: string): void {
@@ -84,7 +106,13 @@ export function applyTheme(mode: BgMode, accent: string): void {
 export function getStoredTheme(tenantId?: string): StoredTheme | null {
   if (typeof localStorage === "undefined") return null;
   try {
-    const raw = localStorage.getItem(resolveKey(tenantId));
+    if (tenantId) {
+      const bg = localStorage.getItem(modeKey(tenantId)) as BgMode | null;
+      const accent = localStorage.getItem(accentKey(tenantId));
+      if (bg && accent) return { bg, accent };
+    }
+    // Fallback: last-used theme (written by saveTheme, read by FOUC script)
+    const raw = localStorage.getItem(LAST_THEME_KEY);
     return raw ? (JSON.parse(raw) as StoredTheme) : null;
   } catch {
     return null;
@@ -93,7 +121,10 @@ export function getStoredTheme(tenantId?: string): StoredTheme | null {
 
 export function saveTheme(bg: BgMode, accent: string, tenantId?: string): void {
   if (typeof localStorage === "undefined") return;
-  const value = JSON.stringify({ bg, accent });
-  localStorage.setItem(resolveKey(tenantId), value);
-  localStorage.setItem(LAST_THEME_KEY, value);
+  if (tenantId) {
+    localStorage.setItem(modeKey(tenantId), bg);
+    localStorage.setItem(accentKey(tenantId), accent);
+  }
+  // Always update the combined fallback so the FOUC script can read it
+  localStorage.setItem(LAST_THEME_KEY, JSON.stringify({ bg, accent }));
 }

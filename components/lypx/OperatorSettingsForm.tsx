@@ -245,7 +245,7 @@ export function OperatorSettingsForm({
     background: active ? "var(--accent)" : "var(--surface-raised)",
     border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
     borderRadius: 4,
-    color: active ? "#1A1305" : "var(--text-dim)",
+    color: active ? "var(--primary-foreground)" : "var(--text-dim)",
     fontSize: 12, fontWeight: active ? 700 : 500,
     padding: "7px 20px", cursor: "pointer",
   });
@@ -331,8 +331,8 @@ export function OperatorSettingsForm({
           }}>
             <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>Preview</p>
             <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-              <button style={{ background: appearance.accent, color: "#1A1305", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
-              <span style={{ background: appearance.accent, color: "#1A1305", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
+              <button style={{ background: appearance.accent, color: "var(--primary-foreground)", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
+              <span style={{ background: appearance.accent, color: "var(--primary-foreground)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
               <span style={{ color: appearance.accent, fontSize: 12 }}>● Active</span>
               <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${appearance.accent}`, paddingBottom: 2 }}>Dispatch Centre</span>
             </div>
@@ -348,7 +348,7 @@ export function OperatorSettingsForm({
               style={{
                 background: hasAppearanceChanges && !savingPrefs ? "var(--accent)" : "var(--surface-raised)",
                 border: "none", borderRadius: 4,
-                color: hasAppearanceChanges && !savingPrefs ? "#1A1305" : "var(--text-faint)",
+                color: hasAppearanceChanges && !savingPrefs ? "var(--primary-foreground)" : "var(--text-faint)",
                 fontSize: 12, fontWeight: 700, padding: "9px 20px",
                 cursor: hasAppearanceChanges && !savingPrefs ? "pointer" : "not-allowed",
               }}
@@ -429,7 +429,7 @@ export function OperatorSettingsForm({
           style={{
             background: hasAnyChanges && !saving ? "var(--accent)" : "var(--surface-raised)",
             border: "none", borderRadius: 4,
-            color: hasAnyChanges && !saving ? "#1A1305" : "var(--text-faint)",
+            color: hasAnyChanges && !saving ? "var(--primary-foreground)" : "var(--text-faint)",
             fontSize: 13, fontWeight: 700, padding: "10px 28px",
             cursor: hasAnyChanges && !saving ? "pointer" : "not-allowed",
           }}

@@ -1,0 +1,36 @@
+export type UserRole = "admin" | "operator";
+
+export interface TabDef {
+  href: string;
+  label: string;
+  badge?: "gate-queue";
+}
+
+export const ADMIN_TABS: TabDef[] = [
+  { href: "/dispatch",          label: "Dispatch Centre" },
+  { href: "/compliance-queue",  label: "Compliance Queue" },
+  { href: "/submissions",       label: "Submissions" },
+  { href: "/drivers",           label: "Drivers" },
+  { href: "/accounts",          label: "Accounts & Claims" },
+  { href: "/takeover-requests", label: "Takeover Requests" },
+  { href: "/orders",            label: "Reservations" },
+  { href: "/marketplace",       label: "Marketplace" },
+  { href: "/whatsapp",          label: "WhatsApp" },
+  { href: "/users",             label: "Users" },
+  { href: "/audit-log",         label: "Audit Log" },
+  { href: "/settings",          label: "Settings" },
+];
+
+export const OPERATOR_TABS: TabDef[] = [
+  { href: "/operator/dispatch",     label: "Dispatch Centre" },
+  { href: "/operator/reservations", label: "Reservations" },
+  { href: "/operator/accounts",     label: "Accounts" },
+  { href: "/operator/profiles",     label: "Profiles" },
+  { href: "/operator/gate-queue",   label: "Gate Queue", badge: "gate-queue" },
+  { href: "/operator/billing",      label: "Billing Logs" },
+  { href: "/operator/settings",     label: "Settings" },
+];
+
+export function getTabsForRole(role: UserRole): TabDef[] {
+  return role === "admin" ? ADMIN_TABS : OPERATOR_TABS;
+}

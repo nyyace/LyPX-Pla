@@ -3,16 +3,6 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { SUPPORTED_TIMEZONES } from "@/lib/utils/date";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { CheckCircle } from "lucide-react";
 
 interface Props {
   currentTimezone: string;
@@ -55,48 +45,58 @@ export function TimezoneSelector({ currentTimezone }: Props) {
     router.refresh();
   }
 
+  const noChanges = timezone === currentTimezone;
+
   return (
-    <div className="space-y-4">
-      <div className="space-y-1.5">
-        <p className="text-xs text-gray-500">
-          All timestamps in the Admin Console will display in this timezone.
-          Dates are stored in UTC — only the display changes.
-        </p>
-        <Select value={timezone} onValueChange={(v) => { setTimezone(v ?? currentTimezone); setSaved(false); }}>
-          <SelectTrigger className="bg-gray-800 border-gray-700 text-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent className="bg-gray-800 border-gray-700 w-full min-w-[var(--radix-select-trigger-width)]">
-            {SUPPORTED_TIMEZONES.map((tz) => (
-              <SelectItem key={tz.value} value={tz.value} className="text-white">
-                {tz.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <select
+        value={timezone}
+        onChange={(e) => { setTimezone(e.target.value); setSaved(false); }}
+        style={{
+          background: "var(--surface-raised)", border: "1px solid var(--border)",
+          borderRadius: 4, color: "var(--text-primary)", fontSize: 13,
+          padding: "8px 10px", width: "100%", cursor: "pointer", outline: "none",
+        }}
+      >
+        {SUPPORTED_TIMEZONES.map((tz) => (
+          <option key={tz.value} value={tz.value}>{tz.label}</option>
+        ))}
+      </select>
 
       {error && (
-        <Alert variant="destructive" className="border-red-800 bg-red-950">
-          <AlertDescription className="text-red-300">{error}</AlertDescription>
-        </Alert>
-      )}
-
-      {saved && (
-        <div className="flex items-center gap-2 text-green-400 text-sm bg-green-950 border border-green-800 rounded-md px-3 py-2">
-          <CheckCircle size={14} />
-          Timezone saved
+        <div style={{
+          background: "rgba(217,83,79,0.12)", border: "1px solid rgba(217,83,79,0.3)",
+          borderRadius: 4, padding: "8px 12px", color: "var(--red)", fontSize: 13,
+        }}>
+          {error}
         </div>
       )}
 
-      <Button
+      {saved && (
+        <div style={{
+          background: "rgba(76,175,109,0.12)", border: "1px solid rgba(76,175,109,0.3)",
+          borderRadius: 4, padding: "8px 12px", color: "var(--green)", fontSize: 13,
+          display: "flex", alignItems: "center", gap: 6,
+        }}>
+          ✓ Timezone saved
+        </div>
+      )}
+
+      <button
         onClick={handleSave}
-        disabled={saving || timezone === currentTimezone}
-        title={timezone === currentTimezone ? "No changes to save" : undefined}
-        size="sm"
+        disabled={saving || noChanges}
+        title={noChanges ? "No changes to save" : undefined}
+        style={{
+          alignSelf: "flex-start",
+          background: !noChanges && !saving ? "var(--accent-color)" : "var(--surface-raised)",
+          border: "none", borderRadius: 4,
+          color: !noChanges && !saving ? "var(--primary-foreground)" : "var(--text-faint)",
+          fontSize: 12, fontWeight: 700, padding: "9px 20px",
+          cursor: !noChanges && !saving ? "pointer" : "not-allowed",
+        }}
       >
-        {saving ? "Saving..." : "Save Display Settings"}
-      </Button>
+        {saving ? "Saving…" : "Save Display Settings"}
+      </button>
     </div>
   );
 }

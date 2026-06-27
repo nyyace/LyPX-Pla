@@ -6,12 +6,21 @@
 
 /* ─── LyPX Design Tokens ─── */
 :root {
-  /* Brand palette — fixed, never change */
-  --bg:            #0F0F11;
+  /* Spec-canonical CSS custom properties (overridden at runtime by theme.ts) */
+  --bg-primary:    #0a0a0a;
+  --bg-secondary:  #111111;
+  --text-primary:  #ffffff;
+  --text-secondary:#8A8A93;
+  --menu-bg:       #1a1a1a;
+  --menu-text:     #ffffff;
+  --accent-color:  #E5A93C;
+
+  /* Brand palette — backward compat aliases (overridden at runtime by theme.ts) */
+  --bg:            #0a0a0a;
   --surface:       #1B1B1F;
   --surface-raised:#202024;
   --border:        #2C2C35;
-  --text:          #FFFFFF;
+  --text:          #ffffff;
   --text-dim:      #8A8A93;
   --text-faint:    #55555E;
   --green:         #4CAF6D;
@@ -161,7 +170,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 0 24px;
-  background: var(--bg);
+  background: var(--menu-bg);
+  color: var(--menu-text);
   flex-shrink: 0;
 }
 
@@ -173,14 +183,14 @@
   align-items: center;
   gap: 4px;
   padding: 0 20px;
-  background: var(--bg);
+  background: var(--menu-bg);
   flex-shrink: 0;
 }
 
 .lypx-tab {
   font-size: 12.5px;
   font-weight: 500;
-  color: var(--text-dim);
+  color: var(--text-secondary);
   text-decoration: none;
   padding: 0 14px;
   height: 42px;
@@ -190,10 +200,10 @@
   transition: color 0.15s ease, border-color 0.15s ease;
   white-space: nowrap;
 }
-.lypx-tab:hover { color: var(--text); }
+.lypx-tab:hover { color: var(--menu-text); }
 .lypx-tab.active {
-  color: var(--text);
-  border-bottom-color: var(--accent);
+  color: var(--menu-text);
+  border-bottom-color: var(--accent-color);
   font-weight: 600;
 }
 
@@ -231,7 +241,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
-  background: #E5A93C;
+  background: var(--accent-color);
   box-shadow: 0 0 0 0 rgba(229,169,60,0.6);
   animation: lypx-pulse-amber 2s infinite;
   flex-shrink: 0;
@@ -257,7 +267,7 @@
   transition: border-color 0.15s ease, transform 0.15s ease;
 }
 .booking-card:hover {
-  border-color: #3D3D47;
+  border-color: var(--text-faint);
   transform: translateY(-1px);
 }
 .booking-card.unassigned {
@@ -285,8 +295,8 @@
 
 /* Assign button */
 .assign-btn {
-  background: var(--accent);
-  color: #1A1305;
+  background: var(--accent-color);
+  color: var(--primary-foreground);
   border: none;
   font-size: 11px;
   font-weight: 700;

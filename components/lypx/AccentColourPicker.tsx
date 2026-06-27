@@ -129,8 +129,8 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
       <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 6, padding: "16px 20px", marginBottom: 20 }}>
         <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 14 }}>Preview</p>
         <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
-          <button style={{ background: accent, color: "#1A1305", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
-          <span style={{ background: accent, color: "#1A1305", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
+          <button style={{ background: accent, color: "var(--primary-foreground)", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
+          <span style={{ background: accent, color: "var(--primary-foreground)", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
           <span style={{ color: accent, fontSize: 12 }}>● Active</span>
           <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${accent}`, paddingBottom: 2 }}>Dispatch Centre</span>
           <div style={{
@@ -152,7 +152,7 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
             background: saved ? "rgba(76,175,109,0.2)" : hasChanges && !saving ? accent : "var(--surface-raised)",
             border: saved ? "1px solid rgba(76,175,109,0.4)" : "none",
             borderRadius: 4,
-            color: saved ? "#4CAF6D" : hasChanges && !saving ? "#1A1305" : "var(--text-faint)",
+            color: saved ? "#4CAF6D" : hasChanges && !saving ? "var(--primary-foreground)" : "var(--text-faint)",
             fontSize: 13, fontWeight: 700, padding: "10px 24px",
             cursor: hasChanges && !saving ? "pointer" : "not-allowed",
             transition: "background 0.3s ease",

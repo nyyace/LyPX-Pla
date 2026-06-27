@@ -1,15 +1,12 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { redirect } from "next/navigation";
 import { getOperatorTenant } from "@/lib/utils/operator";
-import { OperatorShell } from "@/components/lypx/OperatorShell";
 import { prisma } from "@/lib/prisma";
 import { getPresignedUrl } from "@/lib/r2";
+import { AppShell } from "@/components/lypx/AppShell";
+import { OPERATOR_TABS } from "@/lib/config/permissions";
 
-export default async function OperatorLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default async function OperatorLayout({ children }: { children: React.ReactNode }) {
   const { user } = await withAuth({ ensureSignedIn: true });
   if (!user) redirect("/");
 
@@ -17,22 +14,15 @@ export default async function OperatorLayout({
 
   if (!tenant) {
     return (
-      <div style={{ background: "var(--bg)", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
+      <div style={{ background: "var(--bg-primary)", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12 }}>
         <span className="brand-mark" style={{ fontSize: 24 }}>LyPX</span>
-        <p style={{ color: "var(--text-dim)", fontSize: 14 }}>
-          Your account is not linked to an operator tenant.
-        </p>
-        <p style={{ color: "var(--text-faint)", fontSize: 12 }}>
-          Contact your LyPX administrator to set up operator access.
-        </p>
+        <p style={{ color: "var(--text-dim)", fontSize: 14 }}>Your account is not linked to an operator tenant.</p>
+        <p style={{ color: "var(--text-faint)", fontSize: 12 }}>Contact your LyPX administrator to set up operator access.</p>
       </div>
     );
   }
 
-  // Suspended operators see a notice page
-  if (tenant.status === "suspended") {
-    redirect("/operator/suspended");
-  }
+  if (tenant.status === "suspended") redirect("/operator/suspended");
 
   // First login after invite — auto-activate
   if (tenant.status === "invited") {
@@ -61,7 +51,6 @@ export default async function OperatorLayout({
   const accent = tenant.preference?.accentColour ?? "#E5A93C";
   const whatsappEnabled = tenant.preference?.whatsappEnabled ?? false;
 
-  // Resolve logo URL
   let logoUrl: string | null = null;
   const { R2_PUBLIC_URL } = process.env;
   if (tenant.preference?.logoKey) {
@@ -77,15 +66,18 @@ export default async function OperatorLayout({
   }
 
   return (
-    <OperatorShell
+    <AppShell
+      role="operator"
       tenantId={tenant.id}
-      tenantName={tenant.name}
+      tabs={OPERATOR_TABS}
+      userDisplay={user.firstName ?? user.email ?? ""}
       userInitials={initials}
-      accent={accent}
+      accentColour={accent}
+      tenantName={tenant.name}
       logoUrl={logoUrl}
       whatsappEnabled={whatsappEnabled}
     >
       {children}
-    </OperatorShell>
+    </AppShell>
   );
 }

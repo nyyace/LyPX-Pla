@@ -1,10 +1,10 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 import { TimezoneSelector } from "@/components/settings/TimezoneSelector";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { prisma } from "@/lib/prisma";
 import { workos } from "@/lib/workos/auth";
 import { MarketplaceConfigSection } from "@/components/settings/MarketplaceConfigSection";
+import { AdminAppearanceSection } from "@/components/admin/AdminAppearanceSection";
 
 async function resolveAdminName(userId: string | null): Promise<string | null> {
   if (!userId) return null;
@@ -23,7 +23,6 @@ export default async function SettingsPage() {
     prisma.platformConfig.findMany({ orderBy: { key: "asc" } }),
   ]);
 
-  // Resolve admin names for updatedBy fields (deduplicated)
   const uniqueUpdaterIds = [...new Set(rawConfigs.map((c) => c.updatedBy).filter(Boolean))] as string[];
   const nameEntries = await Promise.all(
     uniqueUpdaterIds.map(async (id) => [id, await resolveAdminName(id)] as const)
@@ -37,22 +36,41 @@ export default async function SettingsPage() {
     updatedByName: c.updatedBy ? (nameMap[c.updatedBy] ?? null) : null,
   }));
 
+  const card: React.CSSProperties = {
+    background: "var(--surface)",
+    border: "1px solid var(--border)",
+    borderRadius: 8,
+    padding: 24,
+    marginBottom: 24,
+  };
+
   return (
-    <div className="p-8 max-w-lg">
-      <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-white">Settings</h1>
-        <p className="text-sm text-gray-500 mt-1">Your personal preferences</p>
-      </div>
+    <div style={{ padding: "32px 40px", maxWidth: 560 }}>
+      <p className="panel-title" style={{ marginBottom: 28 }}>Settings</p>
 
-      <Card className="bg-gray-900 border-gray-800">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-gray-300">Display Timezone</CardTitle>
-        </CardHeader>
-        <CardContent>
+      {/* Appearance */}
+      <AdminAppearanceSection />
+
+      {/* Display Timezone */}
+      <section style={{ marginBottom: 32 }}>
+        <p style={{
+          fontSize: 11, color: "var(--text-faint)", fontWeight: 500,
+          textTransform: "uppercase", letterSpacing: "0.6px", marginBottom: 12,
+        }}>
+          Display
+        </p>
+        <div style={card}>
+          <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 6 }}>
+            Timezone
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 16 }}>
+            All timestamps in the Admin Console will display in this timezone. Dates are stored in UTC — only the display changes.
+          </p>
           <TimezoneSelector currentTimezone={timezone} />
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
+      {/* Marketplace Config */}
       <MarketplaceConfigSection configs={configs} />
     </div>
   );
