@@ -47,30 +47,3 @@ export async function resolveRecipients(
   return { requestor, passenger, driver };
 }
 
-/**
- * Determine which recipients receive a given template.
- * Returns a deduped array of phone numbers (nulls filtered out).
- */
-export function getTemplateRecipients(
-  templateName: string,
-  recipients: {
-    requestor: string | null;
-    passenger: string | null;
-    driver: string | null;
-  }
-): string[] {
-  const { requestor, passenger, driver } = recipients;
-
-  const sets: Record<string, (string | null)[]> = {
-    job_driver_assigned:     [requestor, passenger, driver],
-    job_driver_assigned_mng: [requestor, passenger, driver],
-    job_driver_otw:          [requestor, passenger],
-    job_driver_arrived:      [requestor, passenger],
-    job_trip_started:        [requestor, passenger],
-    job_trip_completed:      [requestor, passenger],
-    job_trip_feedback:       [passenger],
-  };
-
-  const numbers = sets[templateName] ?? [];
-  return [...new Set(numbers.filter((n): n is string => !!n))];
-}

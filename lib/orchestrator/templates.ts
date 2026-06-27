@@ -32,6 +32,10 @@ const SERVICE_TYPE_LABELS: Record<string, string> = {
   flexible:         "Flexible Booking",
 };
 
+function vehicleDesc(ctx: OrderContext): string {
+  return [ctx.vehicleColour, ctx.vehicleMake, ctx.vehicleModel].filter(Boolean).join(" ") || "—";
+}
+
 export const TEMPLATE_REGISTRY: Record<string, TemplateDefinition> = {
   "order.assigned": {
     templateName: "order_driver_assigned",
@@ -44,18 +48,12 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateDefinition> = {
         month: "2-digit",
         year: "numeric",
       });
-
       const localTime = new Date(ctx.pickupTime).toLocaleTimeString("en-GB", {
         timeZone: ctx.timezone,
         hour: "2-digit",
         minute: "2-digit",
         hour12: false,
       });
-
-      const vehicleDesc = [ctx.vehicleColour, ctx.vehicleMake, ctx.vehicleModel]
-        .filter(Boolean)
-        .join(" ");
-
       return [
         ctx.jobReference,
         SERVICE_TYPE_LABELS[ctx.serviceType] ?? ctx.serviceType,
@@ -65,9 +63,41 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateDefinition> = {
         ctx.dropoffAddress ?? "—",
         `${ctx.driverFirstName} ${ctx.driverLastName}`.trim(),
         ctx.driverPhone,
-        vehicleDesc || "—",
+        vehicleDesc(ctx),
         ctx.vehiclePlate ?? "—",
       ];
     },
+  },
+
+  "order.en_route": {
+    templateName: "order_driver_otw",
+    language: "en",
+    recipients: ["requestor", "passenger"],
+    resolveVariables: (ctx: OrderContext): string[] => [
+      ctx.jobReference,
+      `${ctx.driverFirstName} ${ctx.driverLastName}`.trim(),
+      vehicleDesc(ctx),
+      ctx.vehiclePlate ?? "—",
+    ],
+  },
+
+  "order.arrived": {
+    templateName: "order_driver_arrived",
+    language: "en",
+    recipients: ["requestor", "passenger"],
+    resolveVariables: (ctx: OrderContext): string[] => [
+      ctx.jobReference,
+      `${ctx.driverFirstName} ${ctx.driverLastName}`.trim(),
+      ctx.vehiclePlate ?? "—",
+    ],
+  },
+
+  "order.completed": {
+    templateName: "order_trip_completed",
+    language: "en",
+    recipients: ["requestor", "passenger"],
+    resolveVariables: (ctx: OrderContext): string[] => [
+      ctx.jobReference,
+    ],
   },
 };

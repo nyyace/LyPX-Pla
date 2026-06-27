@@ -342,7 +342,7 @@ export async function POST(req: Request) {
   try {
     await sendWhatsAppTemplate({
       to: phone,
-      templateKey: "hello_world",
+      templateKey: "onboarding_submitted",
       entityType: "driver",
       entityId: resultDriverId!,
       actorId: "system",

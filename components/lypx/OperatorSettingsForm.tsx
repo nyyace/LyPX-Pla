@@ -2,20 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { LogoUpload } from "@/components/lypx/LogoUpload";
-import { hueToAccent, applyAccent } from "@/lib/utils/theme";
+import {
+  BgMode,
+  applyTheme,
+  getStoredTheme,
+  saveTheme,
+} from "@/lib/utils/theme";
 
-function hexToHue(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  if (max === min) return 0;
-  const d = max - min;
-  let h = 0;
-  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  return Math.round((h / 6) * 360);
+function isValidHex(h: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(h);
 }
 
 const TIMEZONES = [
@@ -51,25 +46,60 @@ export function OperatorSettingsForm({
   contactEmail,
   contactPhone,
 }: Props) {
+  // DB-backed fields (company + timezone)
   const initial = {
-    hue: hexToHue(currentAccent),
     timezone: currentTimezone,
     name,
     contactName:  contactName  ?? "",
     contactEmail: contactEmail ?? "",
     contactPhone: contactPhone ?? "",
   };
-
   const [form, setForm] = useState(initial);
   const [savedSnapshot, setSavedSnapshot] = useState(initial);
-  const hasChanges = JSON.stringify(form) !== JSON.stringify(savedSnapshot);
 
-  const previewAccent = hueToAccent(form.hue);
-  useEffect(() => { applyAccent(previewAccent); }, [previewAccent]);
+  // DB accent — tracks what's currently in DB (separate from localStorage)
+  const [dbAccent, setDbAccent] = useState(currentAccent);
 
+  // Appearance state — synced to localStorage via "Save Preferences"
+  const [appearance, setAppearance] = useState<{ bg: BgMode; accent: string }>({
+    bg: "dark",
+    accent: currentAccent,
+  });
+  const [savedAppearance, setSavedAppearance] = useState<{ bg: BgMode; accent: string }>({
+    bg: "dark",
+    accent: currentAccent,
+  });
+
+  // Hex input field draft (allows typing incomplete hex without breaking color picker)
+  const [hexDraft, setHexDraft] = useState(currentAccent);
+
+  // Load from localStorage on mount
+  useEffect(() => {
+    const stored = getStoredTheme(tenantId);
+    if (stored) {
+      setAppearance(stored);
+      setSavedAppearance(stored);
+      setHexDraft(stored.accent);
+      applyTheme(stored.bg, stored.accent);
+    }
+  }, [tenantId]);
+
+  // Live preview on every appearance change
+  useEffect(() => {
+    applyTheme(appearance.bg, appearance.accent);
+  }, [appearance]);
+
+  const hasFormChanges = JSON.stringify(form) !== JSON.stringify(savedSnapshot);
+  const hasAppearanceChanges = JSON.stringify(appearance) !== JSON.stringify(savedAppearance);
+  const hasAnyChanges = hasFormChanges || hasAppearanceChanges;
+
+  // Save status
   const [saving, setSaving] = useState(false);
   const [saveStatus, setSaveStatus] = useState<"success" | "error" | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const [savingPrefs, setSavingPrefs] = useState(false);
+  const [prefSaveStatus, setPrefSaveStatus] = useState<"success" | null>(null);
 
   useEffect(() => {
     if (saveStatus === "success") {
@@ -78,11 +108,48 @@ export function OperatorSettingsForm({
     }
   }, [saveStatus]);
 
+  useEffect(() => {
+    if (prefSaveStatus === "success") {
+      const t = setTimeout(() => setPrefSaveStatus(null), 3000);
+      return () => clearTimeout(t);
+    }
+  }, [prefSaveStatus]);
+
   function set<K extends keyof typeof initial>(key: K, value: typeof initial[K]) {
     setForm(f => ({ ...f, [key]: value }));
     setSaveStatus(null);
   }
 
+  function handleColorPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const hex = e.target.value;
+    setHexDraft(hex);
+    setAppearance(a => ({ ...a, accent: hex }));
+  }
+
+  function handleHexInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/[^0-9a-fA-F]/g, "");
+    setHexDraft("#" + raw);
+    if (raw.length === 6) {
+      setAppearance(a => ({ ...a, accent: "#" + raw }));
+    }
+  }
+
+  function handleHexBlur() {
+    if (!isValidHex(hexDraft)) {
+      setHexDraft(appearance.accent);
+    }
+  }
+
+  // Save Preferences → localStorage only
+  function handleSavePreferences() {
+    setSavingPrefs(true);
+    saveTheme(appearance.bg, appearance.accent, tenantId);
+    setSavedAppearance({ ...appearance });
+    setSavingPrefs(false);
+    setPrefSaveStatus("success");
+  }
+
+  // Save Settings → DB (company details + timezone + accent)
   async function handleSave() {
     if (!form.name.trim()) {
       setErrorMsg("Company name is required");
@@ -96,12 +163,15 @@ export function OperatorSettingsForm({
 
     const errors: string[] = [];
 
-    const prefChanged = form.hue !== savedSnapshot.hue || form.timezone !== savedSnapshot.timezone;
+    const prefChanged =
+      appearance.accent !== dbAccent ||
+      form.timezone !== savedSnapshot.timezone;
+
     if (prefChanged) {
       const res = await fetch(`/api/operators/${tenantId}/preferences`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ timezone: form.timezone, accentColour: previewAccent }),
+        body: JSON.stringify({ timezone: form.timezone, accentColour: appearance.accent }),
       });
       if (!res.ok) {
         const d = await res.json().catch(() => ({}));
@@ -110,10 +180,11 @@ export function OperatorSettingsForm({
     }
 
     const accountChanged =
-      form.name !== savedSnapshot.name ||
-      form.contactName  !== savedSnapshot.contactName  ||
-      form.contactEmail !== savedSnapshot.contactEmail ||
-      form.contactPhone !== savedSnapshot.contactPhone;
+      form.name          !== savedSnapshot.name          ||
+      form.contactName   !== savedSnapshot.contactName   ||
+      form.contactEmail  !== savedSnapshot.contactEmail  ||
+      form.contactPhone  !== savedSnapshot.contactPhone;
+
     if (accountChanged) {
       const res = await fetch("/api/operator/settings/account", {
         method: "PATCH",
@@ -138,6 +209,9 @@ export function OperatorSettingsForm({
       setSaveStatus("error");
     } else {
       setSavedSnapshot({ ...form });
+      setSavedAppearance({ ...appearance });
+      setDbAccent(appearance.accent);
+      saveTheme(appearance.bg, appearance.accent, tenantId); // keep localStorage in sync
       setSaveStatus("success");
     }
   }
@@ -167,12 +241,127 @@ export function OperatorSettingsForm({
     fontSize: 13, color: "var(--text-faint)", marginBottom: 16,
   };
 
-  const spectrumGradient =
-    "linear-gradient(to right, hsl(0,75%,60%), hsl(30,75%,60%), hsl(60,75%,60%), hsl(90,75%,60%), hsl(120,75%,60%), hsl(150,75%,60%), hsl(180,75%,60%), hsl(210,75%,60%), hsl(240,75%,60%), hsl(270,75%,60%), hsl(300,75%,60%), hsl(330,75%,60%), hsl(360,75%,60%))";
+  const toggleBtn = (active: boolean): React.CSSProperties => ({
+    background: active ? "var(--accent)" : "var(--surface-raised)",
+    border: `1px solid ${active ? "var(--accent)" : "var(--border)"}`,
+    borderRadius: 4,
+    color: active ? "#1A1305" : "var(--text-dim)",
+    fontSize: 12, fontWeight: active ? 700 : 500,
+    padding: "7px 20px", cursor: "pointer",
+  });
 
   // ── Render ───────────────────────────────────────────────────────────────
   return (
     <div>
+      {/* Appearance */}
+      <section style={{ marginBottom: 36 }}>
+        <p style={sectionLabel}>Appearance</p>
+        <div style={card}>
+
+          {/* Row 1: Background toggle */}
+          <p style={subsectionTitle}>Background</p>
+          <p style={hint}>Choose between dark and light console background.</p>
+          <div style={{ display: "flex", gap: 8, marginBottom: 24 }}>
+            <button
+              type="button"
+              style={toggleBtn(appearance.bg === "dark")}
+              onClick={() => setAppearance(a => ({ ...a, bg: "dark" }))}
+            >
+              Dark
+            </button>
+            <button
+              type="button"
+              style={toggleBtn(appearance.bg === "light")}
+              onClick={() => setAppearance(a => ({ ...a, bg: "light" }))}
+            >
+              Light
+            </button>
+          </div>
+
+          <div style={{ borderTop: "1px solid var(--border)", marginBottom: 24 }} />
+
+          {/* Row 2: Brand Colour */}
+          <p style={subsectionTitle}>Brand Colour</p>
+          <p style={hint}>Pick your brand colour. Changes apply instantly.</p>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
+            {/* Native colour picker */}
+            <input
+              type="color"
+              value={appearance.accent}
+              onChange={handleColorPick}
+              style={{
+                width: 38, height: 38, borderRadius: 4, cursor: "pointer",
+                border: "1px solid var(--border)", padding: 2,
+                background: "var(--surface-raised)",
+              }}
+            />
+            {/* Hex text input */}
+            <div style={{
+              display: "flex", alignItems: "center",
+              background: "var(--surface-raised)", border: "1px solid var(--border)",
+              borderRadius: 4, overflow: "hidden",
+            }}>
+              <span style={{ padding: "8px 6px 8px 10px", color: "var(--text-faint)", fontSize: 13, userSelect: "none" }}>#</span>
+              <input
+                type="text"
+                value={hexDraft.replace(/^#/, "")}
+                onChange={handleHexInput}
+                onBlur={handleHexBlur}
+                maxLength={6}
+                spellCheck={false}
+                style={{
+                  background: "transparent", border: "none", outline: "none",
+                  color: "var(--text)", fontSize: 13, padding: "8px 10px 8px 0",
+                  width: 74, fontFamily: "monospace", textTransform: "uppercase",
+                }}
+              />
+            </div>
+            {/* Colour swatch */}
+            <div style={{
+              width: 38, height: 38, borderRadius: 4,
+              background: appearance.accent,
+              border: "1px solid var(--border)", flexShrink: 0,
+            }} />
+          </div>
+
+          {/* Preview strip */}
+          <div style={{
+            background: "var(--surface-raised)", border: "1px solid var(--border)",
+            borderRadius: 6, padding: "14px 18px", marginBottom: 24,
+          }}>
+            <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>Preview</p>
+            <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+              <button style={{ background: appearance.accent, color: "#1A1305", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
+              <span style={{ background: appearance.accent, color: "#1A1305", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
+              <span style={{ color: appearance.accent, fontSize: 12 }}>● Active</span>
+              <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${appearance.accent}`, paddingBottom: 2 }}>Dispatch Centre</span>
+            </div>
+          </div>
+
+          {/* Row 3: Save Preferences button */}
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <button
+              type="button"
+              onClick={handleSavePreferences}
+              disabled={!hasAppearanceChanges || savingPrefs}
+              title={!hasAppearanceChanges ? "No appearance changes to save" : undefined}
+              style={{
+                background: hasAppearanceChanges && !savingPrefs ? "var(--accent)" : "var(--surface-raised)",
+                border: "none", borderRadius: 4,
+                color: hasAppearanceChanges && !savingPrefs ? "#1A1305" : "var(--text-faint)",
+                fontSize: 12, fontWeight: 700, padding: "9px 20px",
+                cursor: hasAppearanceChanges && !savingPrefs ? "pointer" : "not-allowed",
+              }}
+            >
+              Save Preferences
+            </button>
+            {prefSaveStatus === "success" && (
+              <span style={{ fontSize: 12, color: "#22c55e" }}>✓ Saved to this device</span>
+            )}
+          </div>
+        </div>
+      </section>
+
       {/* Company Details */}
       <section style={{ marginBottom: 36 }}>
         <p style={sectionLabel}>Company Details</p>
@@ -206,43 +395,6 @@ export function OperatorSettingsForm({
           <p style={subsectionTitle}>Logo</p>
           <p style={hint}>Appears in the top navigation bar. Uploads immediately on file selection.</p>
           <LogoUpload currentLogoUrl={currentLogoUrl} />
-
-          <div style={{ borderTop: "1px solid var(--border)", margin: "24px 0" }} />
-
-          <p style={subsectionTitle}>Brand Accent Colour</p>
-          <p style={hint}>Choose one colour to represent your brand. Background will always remain dark.</p>
-
-          <div style={{ marginBottom: 20 }}>
-            <div style={{ position: "relative", height: 20, borderRadius: 10, background: spectrumGradient, marginBottom: 8 }}>
-              <input
-                type="range"
-                min={0}
-                max={360}
-                value={form.hue}
-                onChange={e => set("hue", parseInt(e.target.value))}
-                style={{ position: "absolute", inset: 0, width: "100%", height: "100%", opacity: 0, cursor: "pointer", margin: 0 }}
-              />
-              <div style={{
-                position: "absolute",
-                left: `calc(${form.hue / 360 * 100}% - 10px)`,
-                top: 0, width: 20, height: 20, borderRadius: "50%",
-                border: "2px solid white", background: previewAccent,
-                boxShadow: "0 1px 4px rgba(0,0,0,0.5)", pointerEvents: "none",
-              }} />
-            </div>
-            <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>{previewAccent.toUpperCase()}</p>
-          </div>
-
-          {/* Colour preview strip */}
-          <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 6, padding: "14px 18px" }}>
-            <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 12 }}>Preview</p>
-            <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-              <button style={{ background: previewAccent, color: "#1A1305", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
-              <span style={{ background: previewAccent, color: "#1A1305", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
-              <span style={{ color: previewAccent, fontSize: 12 }}>● Active</span>
-              <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${previewAccent}`, paddingBottom: 2 }}>Dispatch Centre</span>
-            </div>
-          </div>
         </div>
       </section>
 
@@ -268,18 +420,18 @@ export function OperatorSettingsForm({
         </div>
       </section>
 
-      {/* Single save button */}
+      {/* Save Settings — commits company + timezone + accent to DB */}
       <div style={{ borderTop: "1px solid var(--border)", paddingTop: 24, display: "flex", alignItems: "center", gap: 16 }}>
         <button
           onClick={handleSave}
-          disabled={!hasChanges || saving}
-          title={!hasChanges ? "No changes to save" : undefined}
+          disabled={!hasAnyChanges || saving}
+          title={!hasAnyChanges ? "No changes to save" : undefined}
           style={{
-            background: hasChanges && !saving ? "var(--accent)" : "var(--surface-raised)",
+            background: hasAnyChanges && !saving ? "var(--accent)" : "var(--surface-raised)",
             border: "none", borderRadius: 4,
-            color: hasChanges && !saving ? "#1A1305" : "var(--text-faint)",
+            color: hasAnyChanges && !saving ? "#1A1305" : "var(--text-faint)",
             fontSize: 13, fontWeight: 700, padding: "10px 28px",
-            cursor: hasChanges && !saving ? "pointer" : "not-allowed",
+            cursor: hasAnyChanges && !saving ? "pointer" : "not-allowed",
           }}
         >
           {saving ? "Saving…" : "Save Settings"}

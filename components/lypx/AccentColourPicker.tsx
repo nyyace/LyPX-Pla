@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { hueToAccent, applyAccent, computeAccentDim } from "@/lib/utils/theme";
+import { applyAccent, computeAccentDim, getStoredTheme, saveTheme } from "@/lib/utils/theme";
+
+function isValidHex(h: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(h);
+}
 
 interface Props {
   tenantId: string;
@@ -10,36 +14,47 @@ interface Props {
   saveLabel?: string;
 }
 
-function hexToHue(hex: string): number {
-  const r = parseInt(hex.slice(1, 3), 16) / 255;
-  const g = parseInt(hex.slice(3, 5), 16) / 255;
-  const b = parseInt(hex.slice(5, 7), 16) / 255;
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
-  if (max === min) return 0;
-  const d = max - min;
-  let h = 0;
-  if (max === r) h = (g - b) / d + (g < b ? 6 : 0);
-  else if (max === g) h = (b - r) / d + 2;
-  else h = (r - g) / d + 4;
-  return Math.round((h / 6) * 360);
-}
-
 export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save Colour" }: Props) {
   const router = useRouter();
-  const [hue, setHue] = useState(() => hexToHue(currentAccent));
-  const [initialHue, setInitialHue] = useState(() => hexToHue(currentAccent));
+  const [accent, setAccent] = useState(currentAccent);
+  const [savedAccent, setSavedAccent] = useState(currentAccent);
+  const [hexDraft, setHexDraft] = useState(currentAccent);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
 
-  const hasChanges = hue !== initialHue;
+  const hasChanges = accent !== savedAccent;
+  const previewDim = computeAccentDim(accent);
 
-  const previewAccent = hueToAccent(hue);
-  const previewDim = computeAccentDim(previewAccent);
+  // Sync with stored theme on mount
+  useEffect(() => {
+    const stored = getStoredTheme(tenantId);
+    if (stored?.accent) {
+      setAccent(stored.accent);
+      setSavedAccent(stored.accent);
+      setHexDraft(stored.accent);
+    }
+  }, [tenantId]);
 
   useEffect(() => {
-    applyAccent(previewAccent);
-  }, [previewAccent]);
+    applyAccent(accent);
+  }, [accent]);
+
+  function handleColorPick(e: React.ChangeEvent<HTMLInputElement>) {
+    const hex = e.target.value;
+    setHexDraft(hex);
+    setAccent(hex);
+  }
+
+  function handleHexInput(e: React.ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value.replace(/[^0-9a-fA-F]/g, "");
+    setHexDraft("#" + raw);
+    if (raw.length === 6) setAccent("#" + raw);
+  }
+
+  function handleHexBlur() {
+    if (!isValidHex(hexDraft)) setHexDraft(accent);
+  }
 
   async function save() {
     setSaving(true);
@@ -47,13 +62,15 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
     const res = await fetch(`/api/operators/${tenantId}/preferences`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ accentColour: previewAccent }),
+      body: JSON.stringify({ accentColour: accent }),
     });
     setSaving(false);
     if (res.ok) {
-      setInitialHue(hue);
+      setSavedAccent(accent);
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
+      const bg = getStoredTheme(tenantId)?.bg ?? "dark";
+      saveTheme(bg, accent, tenantId);
       router.refresh();
     } else {
       const d = await res.json().catch(() => ({}));
@@ -61,80 +78,68 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
     }
   }
 
-  const spectrumGradient =
-    "linear-gradient(to right, hsl(0,75%,60%), hsl(30,75%,60%), hsl(60,75%,60%), hsl(90,75%,60%), hsl(120,75%,60%), hsl(150,75%,60%), hsl(180,75%,60%), hsl(210,75%,60%), hsl(240,75%,60%), hsl(270,75%,60%), hsl(300,75%,60%), hsl(330,75%,60%), hsl(360,75%,60%))";
-
   return (
     <div style={{ background: "var(--surface)", border: "1px solid var(--border)", borderRadius: 8, padding: 24 }}>
       <p style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", letterSpacing: "0.7px", marginBottom: 6 }}>
         Brand Accent Colour
       </p>
       <p style={{ fontSize: 13, color: "var(--text-faint)", marginBottom: 20 }}>
-        Choose one colour to represent your brand. Background will always remain dark.
+        Choose one colour to represent your brand.
       </p>
 
-      {/* Hue slider */}
-      <div style={{ marginBottom: 20 }}>
-        <div style={{ position: "relative", height: 20, borderRadius: 10, background: spectrumGradient, marginBottom: 8 }}>
+      {/* Colour picker + hex input + swatch */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 20 }}>
+        <input
+          type="color"
+          value={accent}
+          onChange={handleColorPick}
+          style={{
+            width: 38, height: 38, borderRadius: 4, cursor: "pointer",
+            border: "1px solid var(--border)", padding: 2,
+            background: "var(--surface-raised)",
+          }}
+        />
+        <div style={{
+          display: "flex", alignItems: "center",
+          background: "var(--surface-raised)", border: "1px solid var(--border)",
+          borderRadius: 4, overflow: "hidden",
+        }}>
+          <span style={{ padding: "8px 6px 8px 10px", color: "var(--text-faint)", fontSize: 13, userSelect: "none" }}>#</span>
           <input
-            type="range"
-            min={0}
-            max={360}
-            value={hue}
-            onChange={e => setHue(parseInt(e.target.value))}
+            type="text"
+            value={hexDraft.replace(/^#/, "")}
+            onChange={handleHexInput}
+            onBlur={handleHexBlur}
+            maxLength={6}
+            spellCheck={false}
             style={{
-              position: "absolute", inset: 0, width: "100%", height: "100%",
-              opacity: 0, cursor: "pointer", margin: 0,
+              background: "transparent", border: "none", outline: "none",
+              color: "var(--text)", fontSize: 13, padding: "8px 10px 8px 0",
+              width: 74, fontFamily: "monospace", textTransform: "uppercase",
             }}
           />
-          <div style={{
-            position: "absolute",
-            left: `calc(${hue / 360 * 100}% - 10px)`,
-            top: 0,
-            width: 20,
-            height: 20,
-            borderRadius: "50%",
-            border: "2px solid white",
-            background: previewAccent,
-            boxShadow: "0 1px 4px rgba(0,0,0,0.5)",
-            pointerEvents: "none",
-          }} />
         </div>
-        <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)" }}>
-          {previewAccent.toUpperCase()}
-        </p>
+        <div style={{
+          width: 38, height: 38, borderRadius: 4,
+          background: accent, border: "1px solid var(--border)", flexShrink: 0,
+        }} />
       </div>
 
       {/* Live preview */}
       <div style={{ background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 6, padding: "16px 20px", marginBottom: 20 }}>
         <p style={{ fontSize: 10, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 14 }}>Preview</p>
-        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-          {/* Button */}
-          <button style={{
-            background: previewAccent, color: "#1A1305", border: "none", borderRadius: 4,
-            fontSize: 11, fontWeight: 700, padding: "7px 16px", cursor: "pointer",
-          }}>ASSIGN</button>
-          {/* Badge */}
-          <span style={{
-            background: previewAccent, color: "#1A1305", fontSize: 11, fontWeight: 600,
-            padding: "2px 8px", borderRadius: 4,
-          }}>3</span>
-          {/* Active status */}
-          <span style={{ color: previewAccent, fontSize: 12 }}>● Active</span>
-          {/* Nav tab underline */}
-          <span style={{
-            color: "var(--text)", fontSize: 12.5, fontWeight: 600,
-            borderBottom: `2px solid ${previewAccent}`, paddingBottom: 2,
-          }}>Dispatch Centre</span>
-          {/* Wheel preview */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          <button style={{ background: accent, color: "#1A1305", border: "none", borderRadius: 4, fontSize: 11, fontWeight: 700, padding: "7px 16px" }}>ASSIGN</button>
+          <span style={{ background: accent, color: "#1A1305", fontSize: 11, fontWeight: 600, padding: "2px 8px", borderRadius: 4 }}>3</span>
+          <span style={{ color: accent, fontSize: 12 }}>● Active</span>
+          <span style={{ color: "var(--text)", fontSize: 12.5, fontWeight: 600, borderBottom: `2px solid ${accent}`, paddingBottom: 2 }}>Dispatch Centre</span>
           <div style={{
             width: 28, height: 28, borderRadius: "50%",
-            background: `conic-gradient(${previewAccent} 60%, var(--surface) 0)`,
-            display: "flex", alignItems: "center", justifyContent: "center",
-            position: "relative",
+            background: `conic-gradient(${accent} 60%, var(--surface) 0)`,
+            display: "flex", alignItems: "center", justifyContent: "center", position: "relative",
           }}>
             <div style={{ width: 20, height: 20, borderRadius: "50%", background: "var(--bg)", position: "absolute" }} />
-            <span className="mono" style={{ fontSize: 7, fontWeight: 700, color: previewAccent, position: "relative", zIndex: 1 }}>OTW</span>
+            <span className="mono" style={{ fontSize: 7, fontWeight: 700, color: accent, position: "relative", zIndex: 1 }}>OTW</span>
           </div>
         </div>
       </div>
@@ -143,9 +148,8 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
         <button
           onClick={save}
           disabled={!hasChanges || saving}
-          title={!hasChanges ? "No changes to save" : undefined}
           style={{
-            background: saved ? "rgba(76,175,109,0.2)" : hasChanges && !saving ? previewAccent : "var(--surface-raised)",
+            background: saved ? "rgba(76,175,109,0.2)" : hasChanges && !saving ? accent : "var(--surface-raised)",
             border: saved ? "1px solid rgba(76,175,109,0.4)" : "none",
             borderRadius: 4,
             color: saved ? "#4CAF6D" : hasChanges && !saving ? "#1A1305" : "var(--text-faint)",
@@ -158,6 +162,12 @@ export function AccentColourPicker({ tenantId, currentAccent, saveLabel = "Save 
         {saveError && (
           <span style={{ fontSize: 12, color: "#ef4444" }}>✗ {saveError}</span>
         )}
+      </div>
+
+      {/* dim swatch for reference */}
+      <div style={{ marginTop: 16, display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ width: 16, height: 16, borderRadius: 3, background: previewDim, border: "1px solid var(--border)" }} />
+        <span style={{ fontSize: 11, color: "var(--text-faint)", fontFamily: "monospace" }}>{previewDim.toUpperCase()} dim</span>
       </div>
     </div>
   );

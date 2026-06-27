@@ -112,10 +112,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await onTripCompleted(id);
   }
 
-  // Emit notification event when a driver is assigned
-  if (updates.status === "assigned") {
-    await emitEvent("order.assigned", { orderId: id }, prisma);
-  }
+  if (updates.status === "assigned")  await emitEvent("order.assigned",   { orderId: id }, prisma);
+  if (updates.status === "en_route")  await emitEvent("order.en_route",   { orderId: id }, prisma);
+  if (updates.status === "arrived")   await emitEvent("order.arrived",    { orderId: id }, prisma);
+  if (updates.status === "completed") await emitEvent("order.completed",  { orderId: id }, prisma);
 
   return NextResponse.json(updated);
 }

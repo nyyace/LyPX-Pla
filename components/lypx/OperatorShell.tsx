@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { applyAccent } from "@/lib/utils/theme";
+import { applyAccent, applyTheme, getStoredTheme } from "@/lib/utils/theme";
 import { AdminClock } from "./AdminClock";
 import { WhatsAppInboxPanel } from "./WhatsAppInboxPanel";
 
@@ -34,8 +34,13 @@ export function OperatorShell({ tenantId, tenantName, userInitials, accent, logo
   const [gateCount, setGateCount] = useState(0);
 
   useEffect(() => {
-    applyAccent(accent);
-  }, [accent]);
+    const stored = getStoredTheme(tenantId);
+    if (stored) {
+      applyTheme(stored.bg, stored.accent);
+    } else {
+      applyAccent(accent);
+    }
+  }, [accent, tenantId]);
 
   // Poll Gate Queue attention count every 60s
   useEffect(() => {
