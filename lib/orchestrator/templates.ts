@@ -92,6 +92,18 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateDefinition> = {
     ],
   },
 
+  "order.started": {
+    templateName: "order_trip_started",
+    language: "en",
+    recipients: ["requestor", "passenger"],
+    resolveVariables: (ctx: OrderContext): string[] => [
+      ctx.jobReference,
+      `${ctx.driverFirstName} ${ctx.driverLastName}`.trim(),
+      vehicleDesc(ctx),
+      ctx.vehiclePlate ?? "—",
+    ],
+  },
+
   "order.completed": {
     templateName: "order_trip_completed",
     language: "en",

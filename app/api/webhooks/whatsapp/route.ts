@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { resolveWhatsAppCredentials } from "@/lib/orchestrator/whatsapp";
+import { handleInboundDriverMessage } from "@/lib/whatsapp/handleInboundDriver";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,7 +26,68 @@ export async function POST(req: NextRequest) {
     for (const change of entry?.changes ?? []) {
       if (change?.field !== "messages") continue;
 
-      const statuses: unknown[] = change?.value?.statuses ?? [];
+      const value = change?.value;
+
+      // ── Resolve tenantId from the receiving phone number ──────────────────
+      const receivingPhoneId: string | null = value?.metadata?.phone_number_id ?? null;
+      const tenantWhatsApp = receivingPhoneId
+        ? await prisma.tenantWhatsApp.findFirst({
+            where: { phoneNumberId: receivingPhoneId, status: "connected" },
+            select: { tenantId: true },
+          })
+        : null;
+      const tenantId = tenantWhatsApp?.tenantId ?? null;
+
+      // ── Inbound messages (driver commands) ───────────────────────────────
+      const messages: unknown[] = value?.messages ?? [];
+      for (const m of messages) {
+        const message = m as {
+          from?: string;
+          id?: string;
+          type?: string;
+          text?: { body?: string };
+        };
+
+        if (message.type !== "text") continue;
+
+        const result = await handleInboundDriverMessage(
+          {
+            from:     message.from    ?? "",
+            body:     message.text?.body ?? "",
+            wamid:    message.id      ?? "",
+            tenantId,
+          },
+          prisma
+        );
+
+        if (result.handled && result.reply) {
+          try {
+            const creds = await resolveWhatsAppCredentials(tenantId ?? "lypx_direct");
+            await fetch(
+              `https://graph.facebook.com/v19.0/${creds.phoneNumberId}/messages`,
+              {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${creds.accessToken}`,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  messaging_product: "whatsapp",
+                  to:   message.from,
+                  type: "text",
+                  text: { body: result.reply },
+                }),
+              }
+            );
+          } catch (replyErr) {
+            // Non-fatal — order was already updated even if reply fails
+            console.error("[InboundDriver] Reply send failed:", replyErr);
+          }
+        }
+      }
+
+      // ── Outbound delivery status updates (unchanged) ─────────────────────
+      const statuses: unknown[] = value?.statuses ?? [];
 
       for (const s of statuses) {
         const update = s as {
@@ -52,8 +115,8 @@ export async function POST(req: NextRequest) {
             },
             create: {
               wamid,
-              messageType:   "unknown",
-              recipient:     "unknown",
+              messageType:    "unknown",
+              recipient:      "unknown",
               recipientPhone: "****",
               status,
               billable:     pricing?.billable     ?? false,
