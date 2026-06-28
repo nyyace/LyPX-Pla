@@ -7,7 +7,7 @@ export const WHATSAPP_TEMPLATES = {
   },
   // ── Onboarding ────────────────────────────────────────────────────────
   driver_invite: {
-    name: "driver_invite",
+    name: "driver_onboard_invite",
     language: "en",
     description: "Invite driver to self-onboard via operator referral",
   },
