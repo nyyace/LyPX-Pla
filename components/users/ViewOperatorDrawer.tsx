@@ -52,9 +52,28 @@ export function ViewOperatorDrawer({
   const [confirming, setConfirming] = useState<"suspend" | "reinstate" | null>(null);
   const [waEnabled, setWaEnabled] = useState(operator.preference?.whatsappEnabled ?? false);
   const [waTogglingPending, setWaTogglingPending] = useState(false);
+  const [contactName,  setContactName]  = useState(operator.contactName  ?? "");
+  const [contactEmail, setContactEmail] = useState(operator.contactEmail ?? "");
+  const [contactPhone, setContactPhone] = useState(operator.contactPhone ?? "");
+  const [contactSaving,  setContactSaving]  = useState(false);
+  const [contactSaveStatus, setContactSaveStatus] = useState<"success" | "error" | null>(null);
+
   const [planTier, setPlanTier] = useState(operator.planTier ?? "starter");
   const [driverLimit, setDriverLimit] = useState(operator.driverLimit ?? 10);
   const [planSaving, setPlanSaving] = useState(false);
+
+  async function saveContact() {
+    setContactSaving(true);
+    setContactSaveStatus(null);
+    const res = await fetch(`/api/admin/operators/${operator.id}/contact`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ contactName, contactEmail, contactPhone }),
+    });
+    setContactSaving(false);
+    setContactSaveStatus(res.ok ? "success" : "error");
+    if (res.ok) setTimeout(() => setContactSaveStatus(null), 2000);
+  }
 
   async function savePlanTier() {
     setPlanSaving(true);
@@ -111,9 +130,55 @@ export function ViewOperatorDrawer({
         {/* Content */}
         <div style={{ flex: 1, overflowY: "auto", padding: "24px 28px" }}>
           <div style={{ marginBottom: 24 }}>
-            <Row label="Contact Name" value={operator.contactName} />
-            <Row label="Contact Email" value={operator.contactEmail} />
-            <Row label="Contact Phone" value={operator.contactPhone} />
+            <p style={{ fontSize: 11, color: "var(--text-faint)", fontWeight: 500, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 8 }}>Contact Details</p>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 10 }}>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 3 }}>Contact Name</label>
+                <input
+                  value={contactName}
+                  onChange={e => setContactName(e.target.value)}
+                  placeholder="e.g. John Tan"
+                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 3 }}>Contact Email</label>
+                <input
+                  type="email"
+                  value={contactEmail}
+                  onChange={e => setContactEmail(e.target.value)}
+                  placeholder="e.g. john@company.com"
+                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 3 }}>Contact Phone (WhatsApp)</label>
+                <input
+                  type="tel"
+                  value={contactPhone}
+                  onChange={e => setContactPhone(e.target.value)}
+                  placeholder="+65 9123 4567"
+                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
+                />
+                <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+                  Used as the requestor WhatsApp number for all trip notifications
+                </p>
+              </div>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={saveContact}
+                disabled={contactSaving}
+                style={{ padding: "7px 14px", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text-dim)", fontSize: 12, cursor: "pointer", opacity: contactSaving ? 0.6 : 1 }}
+              >
+                {contactSaving ? "Saving…" : "Save Contact"}
+              </button>
+              {contactSaveStatus === "success" && <span style={{ fontSize: 12, color: "#22c55e" }}>✓ Saved</span>}
+              {contactSaveStatus === "error"   && <span style={{ fontSize: 12, color: "#ef4444" }}>✗ Failed</span>}
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 24 }}>
             <Row label="Timezone" value={operator.preference?.timezone ?? "Asia/Singapore"} />
             <Row label="Marketplace" value={operator.marketplaceParticipation ? "Enabled" : "Disabled"} />
           </div>
