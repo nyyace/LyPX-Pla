@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -43,6 +45,12 @@ export default async function VehiclesPage() {
           <h1 className="text-2xl font-semibold text-white">Vehicles</h1>
           <p className="text-sm text-gray-500 mt-1">Global vehicle registry</p>
         </div>
+        <Link href="/vehicles/new">
+          <Button size="sm" className="gap-1.5">
+            <Plus size={14} />
+            Add Vehicle
+          </Button>
+        </Link>
       </div>
 
       <div className="rounded-md border border-gray-800 overflow-hidden">

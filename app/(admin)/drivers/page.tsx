@@ -1,4 +1,7 @@
 import { prisma } from "@/lib/prisma";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 import { AdminDriversClient } from "@/components/profiles/AdminDriversClient";
 
 export default async function DriversPage() {
@@ -33,11 +36,19 @@ export default async function DriversPage() {
 
   return (
     <div style={{ height: "100%", display: "flex", flexDirection: "column", overflow: "hidden" }}>
-      <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0 }}>
-        <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>Drivers</h1>
-        <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "4px 0 0" }}>
-          {list.length} driver{list.length !== 1 ? "s" : ""} on platform
-        </p>
+      <div style={{ padding: "20px 24px 16px", borderBottom: "1px solid var(--border)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <h1 style={{ fontSize: 18, fontWeight: 700, color: "var(--text)", margin: 0 }}>Drivers</h1>
+          <p style={{ fontSize: 12, color: "var(--text-dim)", margin: "4px 0 0" }}>
+            {list.length} driver{list.length !== 1 ? "s" : ""} on platform
+          </p>
+        </div>
+        <Link href="/drivers/new">
+          <Button size="sm" className="gap-1.5">
+            <Plus size={14} />
+            Add Driver
+          </Button>
+        </Link>
       </div>
       <div style={{ flex: 1, overflow: "hidden" }}>
         <AdminDriversClient drivers={list} />
