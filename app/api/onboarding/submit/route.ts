@@ -328,13 +328,15 @@ export async function POST(req: Request) {
       },
     });
 
+    const inviteId = form.get("inviteId") as string | null;
+
     await tx.auditLog.create({
       data: {
         entityType: "driver",
         entityId: driver.id,
         action: isResubmission ? "self_onboarding_resubmission" : "self_onboarding_submitted",
         actorId: "self",
-        metadata: { phone, vehiclePlate, vehicleRelationship: hasVehicle ? vehicleRelationship : null, isResubmission },
+        metadata: { phone, vehiclePlate, vehicleRelationship: hasVehicle ? vehicleRelationship : null, isResubmission, inviteId },
       },
     });
   });

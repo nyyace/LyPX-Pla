@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useRef, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle, Upload, X, FileText, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, Upload, X, FileText, ChevronDown, ChevronUp, AlertCircle } from "lucide-react";
 
 type Step = "phone" | "otp" | "form" | "success";
 const STEPS: Step[] = ["phone", "otp", "form"];
@@ -83,36 +83,38 @@ function SectionHeader({ children }: { children: React.ReactNode }) {
   );
 }
 
-export default function OnboardPage() {
+function OnboardContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const inviteId = searchParams.get("invite");
+
+  const [inviteState, setInviteState] = useState<"loading" | "valid" | "expired" | "not_found" | "none">(
+    inviteId ? "loading" : "none"
+  );
+
   const [step, setStep] = useState<Step>("phone");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Phone / OTP
   const [phone, setPhone] = useState("");
   const [verificationId, setVerificationId] = useState("");
   const [testCode, setTestCode] = useState<string | null>(null);
   const [otp, setOtp] = useState("");
 
-  // Section 1 — Personal
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [nricNumber, setNricNumber] = useState("");
 
-  // Section 2 — Driving credentials
   const [drivingLicenceNumber, setDrivingLicenceNumber] = useState("");
   const [drivingLicenceIssuedDate, setDrivingLicenceIssuedDate] = useState("");
   const [vocationalLicenceNumber, setVocationalLicenceNumber] = useState("");
   const [vocationalLicenceExpiryDate, setVocationalLicenceExpiryDate] = useState("");
 
-  // Section 3 — Document uploads (all required)
   const [nricFile, setNricFile] = useState<File | null>(null);
   const [drivingLicenceFile, setDrivingLicenceFile] = useState<File | null>(null);
   const [vocationalLicenceFile, setVocationalLicenceFile] = useState<File | null>(null);
   const [vocationalLicenceExpiryFile, setVocationalLicenceExpiryFile] = useState<File | null>(null);
 
-  // Section 4 — Vehicle (optional)
   const [vehicleExpanded, setVehicleExpanded] = useState(false);
   const [vehicleMake, setVehicleMake] = useState("");
   const [vehicleModel, setVehicleModel] = useState("");
@@ -121,9 +123,29 @@ export default function OnboardPage() {
   const [vehicleLogCardFile, setVehicleLogCardFile] = useState<File | null>(null);
   const [rentalAgreementFile, setRentalAgreementFile] = useState<File | null>(null);
 
+  // Validate invite on mount
+  useEffect(() => {
+    if (!inviteId) return;
+    fetch(`/api/onboarding/invite/${inviteId}`)
+      .then(async (res) => {
+        const data = await res.json();
+        if (!res.ok || !data.valid) {
+          setInviteState(data.reason === "expired" ? "expired" : "not_found");
+          return;
+        }
+        if (data.phone) setPhone(data.phone);
+        if (data.name) {
+          const parts = (data.name as string).trim().split(" ");
+          setFirstName(parts[0] ?? "");
+          setLastName(parts.slice(1).join(" ") ?? "");
+        }
+        setInviteState("valid");
+      })
+      .catch(() => setInviteState("not_found"));
+  }, [inviteId]);
+
   function setErr(msg: string) { setError(msg); setLoading(false); }
 
-  // ── Step 1: Send OTP ───────────────────────────────────────────────────────
   async function sendOtp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -141,7 +163,6 @@ export default function OnboardPage() {
     setStep("otp");
   }
 
-  // ── Step 2: Verify OTP ────────────────────────────────────────────────────
   async function verifyOtp(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -157,30 +178,22 @@ export default function OnboardPage() {
     setStep("form");
   }
 
-  // ── Step 3: Submit full form ───────────────────────────────────────────────
   async function submitForm(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
 
-    // Section 1 validation
     if (!firstName.trim() || !lastName.trim()) return setErr("First and last name are required");
     if (!nricNumber.trim()) return setErr("NRIC / Passport number is required");
-
-    // Section 2 validation
     if (!drivingLicenceNumber.trim()) return setErr("Driving licence number is required");
     if (!drivingLicenceIssuedDate) return setErr("Driving licence issued date is required");
     if (drivingLicenceIssuedDate >= TODAY) return setErr("Driving licence issued date must be in the past");
     if (!vocationalLicenceNumber.trim()) return setErr("Vocational licence number is required");
     if (!vocationalLicenceExpiryDate) return setErr("Vocational licence expiry date is required");
     if (vocationalLicenceExpiryDate <= TODAY) return setErr("Vocational licence must not be expired — please contact admin");
-
-    // Section 3 validation
     if (!nricFile) return setErr("NRIC / Passport document upload is required");
     if (!drivingLicenceFile) return setErr("Driving licence document upload is required");
     if (!vocationalLicenceFile) return setErr("Vocational licence document upload is required");
     if (!vocationalLicenceExpiryFile) return setErr("Vocational licence expiry page upload is required");
-
-    // Section 4 validation (vehicle is optional, but if expanded, validate)
     if (vehicleExpanded) {
       if (!vehiclePlate.trim()) return setErr("Vehicle plate number is required");
       if (!vehicleLogCardFile) return setErr("Vehicle log card upload is required");
@@ -204,6 +217,7 @@ export default function OnboardPage() {
     form.append("drivingLicenceFile", drivingLicenceFile!);
     form.append("vocationalLicenceFile", vocationalLicenceFile!);
     form.append("vocationalLicenceExpiryFile", vocationalLicenceExpiryFile!);
+    if (inviteId) form.append("inviteId", inviteId);
 
     if (vehicleExpanded && vehiclePlate.trim()) {
       form.append("vehicleMake", vehicleMake.trim());
@@ -227,11 +241,40 @@ export default function OnboardPage() {
     );
   }
 
+  // Invite not found or expired — show error screen
+  if (inviteState === "expired" || inviteState === "not_found") {
+    return (
+      <Card className="bg-gray-900 border-gray-800 w-full max-w-lg">
+        <CardContent className="pt-8 pb-8 flex flex-col items-center text-center gap-4">
+          <div className="w-12 h-12 rounded-full bg-red-950 border border-red-800 flex items-center justify-center">
+            <AlertCircle size={22} className="text-red-400" />
+          </div>
+          <div>
+            <p className="text-white font-semibold text-base mb-1">
+              {inviteState === "expired" ? "Invite link has expired" : "Invite link not found"}
+            </p>
+            <p className="text-sm text-gray-500">
+              {inviteState === "expired"
+                ? "This onboarding link is no longer valid. Please ask your operator to send a new invite."
+                : "This link is invalid or has already been used. Contact your operator for assistance."}
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Still validating invite
+  if (inviteState === "loading") {
+    return (
+      <div className="text-gray-500 text-sm">Validating invite…</div>
+    );
+  }
+
   const stepIndex = STEPS.indexOf(step);
 
   return (
     <div className="w-full max-w-lg">
-      {/* Step indicator */}
       {step !== "success" && (
         <div className="flex items-center gap-1.5 mb-6">
           {STEPS.map((s, i) => (
@@ -263,7 +306,11 @@ export default function OnboardPage() {
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader>
             <CardTitle className="text-white">Driver Registration</CardTitle>
-            <p className="text-sm text-gray-500">Enter your WhatsApp number to begin.</p>
+            <p className="text-sm text-gray-500">
+              {inviteState === "valid"
+                ? "Verify your WhatsApp number to begin."
+                : "Enter your WhatsApp number to begin."}
+            </p>
           </CardHeader>
           <CardContent>
             <form onSubmit={sendOtp} className="space-y-4">
@@ -320,7 +367,6 @@ export default function OnboardPage() {
       {step === "form" && (
         <form onSubmit={submitForm} className="space-y-6">
 
-          {/* Section 1 — Personal Information */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="pt-5">
               <SectionHeader>Personal Information</SectionHeader>
@@ -347,7 +393,6 @@ export default function OnboardPage() {
             </CardContent>
           </Card>
 
-          {/* Section 2 — Driving Credentials */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="pt-5">
               <SectionHeader>Driving Credentials</SectionHeader>
@@ -382,7 +427,6 @@ export default function OnboardPage() {
             </CardContent>
           </Card>
 
-          {/* Section 3 — Document Uploads */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="pt-5">
               <SectionHeader>Document Uploads</SectionHeader>
@@ -403,7 +447,6 @@ export default function OnboardPage() {
             </CardContent>
           </Card>
 
-          {/* Section 4 — Vehicle (optional, expandable) */}
           <Card className="bg-gray-900 border-gray-800">
             <CardContent className="pt-5">
               <button
@@ -475,7 +518,14 @@ export default function OnboardPage() {
           </Button>
         </form>
       )}
-
     </div>
+  );
+}
+
+export default function OnboardPage() {
+  return (
+    <Suspense fallback={<div className="text-gray-500 text-sm">Loading…</div>}>
+      <OnboardContent />
+    </Suspense>
   );
 }
