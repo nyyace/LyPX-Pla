@@ -8,6 +8,8 @@ export default authkitProxy({
       "/callback",
       "/api/auth/signin",
       "/onboard",
+      "/onboard/:path*",
+      "/api/onboarding/invite/:id",
       "/api/onboarding/otp/send",
       "/api/onboarding/otp/verify",
       "/api/onboarding/submit",
