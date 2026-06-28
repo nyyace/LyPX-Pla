@@ -6,6 +6,11 @@ export const WHATSAPP_TEMPLATES = {
     description: "Meta built-in test template",
   },
   // ── Onboarding ────────────────────────────────────────────────────────
+  driver_otp: {
+    name: "driver_otp",
+    language: "en",
+    description: "OTP verification code for driver self-onboarding",
+  },
   driver_invite: {
     name: "driver_onboard_invite",
     language: "en",

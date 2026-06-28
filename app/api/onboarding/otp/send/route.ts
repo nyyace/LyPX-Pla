@@ -35,24 +35,27 @@ export async function POST(req: Request) {
     data: { phone, code, expiresAt },
   });
 
-  // Attempt WhatsApp send — falls back gracefully if template not yet approved.
-  // In production, swap hello_world for an approved OTP template with the code as a variable.
   let whatsappSent = false;
   try {
     await sendWhatsAppTemplate({
       to: phone,
-      templateKey: "hello_world",
+      templateKey: "driver_otp",
+      components: [{
+        type: "button",
+        sub_type: "url",
+        index: "0",
+        parameters: [{ type: "payload", payload: code }],
+      }],
       actorId: "system",
     });
     whatsappSent = true;
   } catch {
-    // WhatsApp send failed — OTP still valid, returned in response for Phase 1 testing
+    // WhatsApp send failed — OTP still valid, returned in response for fallback display
   }
 
   return NextResponse.json({
     verificationId: verification.id,
     whatsappSent,
-    // Phase 1 testing only — remove when real OTP template is approved
-    testCode: code,
+    ...(!whatsappSent && { testCode: code }),
   });
 }
