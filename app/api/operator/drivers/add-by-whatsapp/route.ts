@@ -2,12 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getOperatorTenant } from "@/lib/utils/operator";
-
-function normalizePhone(raw: string): string {
-  let cleaned = raw.replace(/[\s\-()]/g, "");
-  if (!cleaned.startsWith("+")) cleaned = "+" + cleaned;
-  return cleaned;
-}
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -22,6 +17,9 @@ export async function POST(req: Request) {
   }
 
   const normalized = normalizePhone(driverWhatsapp.trim());
+  if (!normalized) {
+    return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
+  }
 
   // When duplicate phone entries exist, pick the best-standing one.
   const STATUS_PRIORITY = ["active", "expiring_soon", "pending", "suspended"];

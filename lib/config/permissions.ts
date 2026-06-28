@@ -32,7 +32,12 @@ export const OPERATOR_TABS: TabDef[] = [
   { href: "/operator/settings",     label: "Settings" },
 ];
 
-export const PARTNER_TABS: TabDef[] = [];
+export const PARTNER_TABS: TabDef[] = [
+  { href: "/partner",          label: "Dashboard" },
+  { href: "/partner/bookings", label: "My Bookings" },
+  { href: "/partner/billing",  label: "Billing" },
+  { href: "/partner/settings", label: "Settings" },
+];
 
 export function getTabsForRole(role: UserRole): TabDef[] {
   if (role === "admin") return ADMIN_TABS;

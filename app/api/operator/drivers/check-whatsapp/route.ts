@@ -2,12 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getOperatorTenant } from "@/lib/utils/operator";
-
-function normalizePhone(raw: string): string {
-  let cleaned = raw.replace(/[\s\-()]/g, "");
-  if (!cleaned.startsWith("+")) cleaned = "+" + cleaned;
-  return cleaned;
-}
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export async function GET(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -20,6 +15,7 @@ export async function GET(req: Request) {
   if (!raw) return NextResponse.json({ error: "number param required" }, { status: 400 });
 
   const normalized = normalizePhone(raw);
+  if (!normalized) return NextResponse.json({ status: "not_found" });
 
   // Prefer the best-standing record when duplicate phone numbers exist.
   // Try active/expiring_soon first, then fall back to any match.

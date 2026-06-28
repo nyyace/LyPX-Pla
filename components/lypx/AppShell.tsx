@@ -11,7 +11,7 @@ import { WhatsAppInboxPanel } from "./WhatsAppInboxPanel";
 import type { TabDef } from "@/lib/config/permissions";
 
 interface Props {
-  role: "admin" | "operator";
+  role: "admin" | "operator" | "partner";
   tenantId: string;
   userId: string;
   tabs: TabDef[];

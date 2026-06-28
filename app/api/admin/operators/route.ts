@@ -3,6 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { workos } from "@/lib/workos/auth";
 import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/utils/admin";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 // GET /api/admin/operators — list all operator tenants
 export async function GET() {
@@ -77,7 +78,7 @@ export async function POST(req: Request) {
         marketplaceParticipation: marketplaceParticipation ?? false,
         contactName: contactName.trim(),
         contactEmail: contactEmail.trim(),
-        contactPhone: contactPhone?.trim() ?? null,
+        contactPhone: normalizePhone(contactPhone ?? null) ?? (contactPhone?.trim() ?? null),
         status: "invited",
         workosOrganisationId: orgId,
         workosInvitationId: invitationId,

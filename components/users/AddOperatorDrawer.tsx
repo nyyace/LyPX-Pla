@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 
 const TIMEZONES = [
   "Asia/Singapore",
@@ -170,16 +171,11 @@ export function AddOperatorDrawer({
               />
             </div>
 
-            <div>
-              <label style={labelStyle}>Contact Phone</label>
-              <input
-                type="tel"
-                value={contactPhone}
-                onChange={(e) => setContactPhone(e.target.value)}
-                placeholder="+65 9123 4567"
-                style={inputStyle}
-              />
-            </div>
+            <PhoneInput
+              label="Contact Phone"
+              value={contactPhone}
+              onChange={setContactPhone}
+            />
 
             <div>
               <label style={labelStyle}>Timezone</label>

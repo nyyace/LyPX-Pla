@@ -47,9 +47,18 @@ export default async function AccountDetailPage({
         </Link>
         <div className="flex items-start justify-between">
           <div>
-            <h1 className="text-2xl font-semibold text-white">{account.name}</h1>
-            <p className="text-sm text-gray-500 mt-1">
-              {account.customerSegment.replace("_", " ")} · {account.sourceType === "lypx_sourced" ? "LyPX Direct" : "Operator Sourced"}
+            <div className="flex items-center gap-2 mb-1">
+              <h1 className="text-2xl font-semibold text-white">{account.name}</h1>
+              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                account.accountType === "individual"
+                  ? "bg-blue-900/40 text-blue-300 border border-blue-700"
+                  : "bg-gray-800 text-gray-400 border border-gray-700"
+              }`}>
+                {account.accountType === "individual" ? "Individual / Direct" : "Business Entity"}
+              </span>
+            </div>
+            <p className="text-sm text-gray-500">
+              {account.customerSegment.replace(/_/g, " ")} · {account.sourceType === "lypx_sourced" ? "LyPX Direct" : "Operator Sourced"}
             </p>
           </div>
           {activeClaim && (

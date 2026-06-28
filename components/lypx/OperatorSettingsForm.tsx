@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { LogoUpload } from "@/components/lypx/LogoUpload";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import {
   BgMode,
   applyTheme,
@@ -367,10 +368,11 @@ export function OperatorSettingsForm({
               <label style={fieldLabel}>Contact Email</label>
               <input type="email" value={form.contactEmail} onChange={e => set("contactEmail", e.target.value)} style={inputStyle} placeholder="e.g. john@company.com" />
             </div>
-            <div>
-              <label style={fieldLabel}>Contact Phone (WhatsApp)</label>
-              <input type="tel" value={form.contactPhone} onChange={e => set("contactPhone", e.target.value)} style={inputStyle} placeholder="+65 9123 4567" />
-            </div>
+            <PhoneInput
+              label="Contact Phone (WhatsApp)"
+              value={form.contactPhone ?? ""}
+              onChange={(e164) => set("contactPhone", e164)}
+            />
           </div>
         </div>
       </section>

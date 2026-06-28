@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useTransition, useRef } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
 
   // Add Driver drawer state
   const [addDriverOpen, setAddDriverOpen] = useState(false);
-  const [waInput, setWaInput] = useState("+65 ");
+  const [waInput, setWaInput] = useState("");
   const [checkResult, setCheckResult] = useState<CheckResult | null>(null);
   const [checking, setChecking] = useState(false);
   const [nameInput, setNameInput] = useState("");
@@ -188,7 +189,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
 
   useEffect(() => {
     if (addDriverOpen) {
-      setWaInput("+65 ");
+      setWaInput("");
       setCheckResult(null);
       setNameInput("");
       setDrawerError(null);
@@ -209,7 +210,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
 
   async function handleCheckWhatsapp(e: React.FormEvent) {
     e.preventDefault();
-    if (!waInput.trim() || waInput.trim() === "+65") return;
+    if (!waInput) return;
     setChecking(true);
     setCheckResult(null);
     setDrawerError(null);
@@ -518,25 +519,20 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                 <label style={{ fontSize: 12, color: "var(--text-dim)", fontWeight: 500, marginBottom: 6, display: "block" }}>
                   Driver&apos;s WhatsApp Number <span style={{ color: "#ef4444" }}>*</span>
                 </label>
-                <form onSubmit={handleCheckWhatsapp} style={{ display: "flex", gap: 8 }}>
-                  <input
-                    ref={waInputRef}
-                    type="tel"
-                    value={waInput}
-                    onChange={(e) => { setWaInput(e.target.value); setCheckResult(null); setDrawerError(null); setInviteSuccess(false); }}
-                    placeholder="+65 9123 4567"
-                    style={{
-                      flex: 1, background: "var(--surface-raised)", border: "1px solid var(--border)",
-                      borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "9px 12px", outline: "none",
-                    }}
-                  />
+                <form onSubmit={handleCheckWhatsapp} style={{ display: "flex", gap: 8, alignItems: "flex-end" }}>
+                  <div style={{ flex: 1 }}>
+                    <PhoneInput
+                      value={waInput}
+                      onChange={(e164) => { setWaInput(e164); setCheckResult(null); setDrawerError(null); setInviteSuccess(false); }}
+                    />
+                  </div>
                   <button
                     type="submit"
-                    disabled={!waInput.trim() || waInput.trim() === "+65" || checking}
+                    disabled={!waInput || checking}
                     style={{
                       padding: "9px 16px", fontSize: 13, fontWeight: 600, background: "var(--accent)",
                       color: "#000", border: "none", borderRadius: 4, cursor: "pointer", flexShrink: 0,
-                      opacity: (!waInput.trim() || waInput.trim() === "+65" || checking) ? 0.5 : 1,
+                      opacity: (!waInput || checking) ? 0.5 : 1,
                     }}
                   >
                     {checking ? "Checking…" : "Check Number →"}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 
 type Operator = {
   id: string;
@@ -151,19 +152,12 @@ export function ViewOperatorDrawer({
                   style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
                 />
               </div>
-              <div>
-                <label style={{ fontSize: 11, color: "var(--text-faint)", display: "block", marginBottom: 3 }}>Contact Phone (WhatsApp)</label>
-                <input
-                  type="tel"
-                  value={contactPhone}
-                  onChange={e => setContactPhone(e.target.value)}
-                  placeholder="+65 9123 4567"
-                  style={{ width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)", borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "6px 8px", boxSizing: "border-box" }}
-                />
-                <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
-                  Used as the requestor WhatsApp number for all trip notifications
-                </p>
-              </div>
+              <PhoneInput
+                label="Contact Phone (WhatsApp)"
+                value={contactPhone ?? ""}
+                onChange={(e164) => setContactPhone(e164)}
+                hint="Used as the requestor WhatsApp number for all trip notifications"
+              />
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <button

@@ -1,6 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export async function PATCH(
   req: Request,
@@ -27,7 +28,7 @@ export async function PATCH(
   const updates: { contactName?: string | null; contactEmail?: string | null; contactPhone?: string | null } = {};
   if (body.contactName  !== undefined) updates.contactName  = body.contactName.trim()  || null;
   if (body.contactEmail !== undefined) updates.contactEmail = body.contactEmail.trim() || null;
-  if (body.contactPhone !== undefined) updates.contactPhone = body.contactPhone.trim() || null;
+  if (body.contactPhone !== undefined) updates.contactPhone = normalizePhone(body.contactPhone) ?? (body.contactPhone.trim() || null);
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

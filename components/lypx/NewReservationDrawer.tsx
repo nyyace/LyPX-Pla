@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 import { SUPPORTED_TIMEZONES } from "@/lib/utils/date";
 
 const SERVICE_TYPES = [
@@ -187,19 +188,13 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
                     placeholder="e.g. David Lee"
                   />
                 </div>
-                <div>
-                  <label style={labelStyle}>Passenger WhatsApp *</label>
-                  <input
-                    type="text"
-                    value={form.passengerWhatsapp}
-                    onChange={e => set("passengerWhatsapp", e.target.value)}
-                    style={inputStyle}
-                    placeholder="+65 XXXX XXXX"
-                  />
-                  <p style={{ fontSize: 10, color: "var(--text-faint)", marginTop: 3 }}>
-                    Status updates will be sent to this number.
-                  </p>
-                </div>
+                <PhoneInput
+                  label="Passenger WhatsApp"
+                  required
+                  value={form.passengerWhatsapp ?? ""}
+                  onChange={(e164) => set("passengerWhatsapp", e164)}
+                  hint="Status updates will be sent to this number."
+                />
               </>
             )}
           </div>

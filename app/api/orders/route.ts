@@ -3,6 +3,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { onTripCompleted } from "@/lib/claims/engine";
 import { getMarketplaceConfig, calculateMarketplaceFee } from "@/lib/utils/marketplace";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
@@ -93,7 +94,7 @@ export async function POST(req: Request) {
         fareCurrency: fareCurrency ?? "SGD",
         fareNote: fareNote ?? null,
         passengerName: passengerName ?? null,
-        passengerWhatsapp: passengerWhatsapp ?? null,
+        passengerWhatsapp: passengerWhatsapp ? (normalizePhone(passengerWhatsapp) ?? passengerWhatsapp.trim()) : null,
         sameAsRequestor: sameAsRequestor ?? false,
         timezone: timezone ?? "Asia/Singapore",
         jobReference,

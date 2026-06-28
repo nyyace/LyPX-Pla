@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { PhoneInput } from "@/components/ui/PhoneInput";
 
 interface Props {
   name: string;
@@ -90,16 +91,11 @@ export function OperatorAccountSection({ name, contactName, contactEmail, contac
           placeholder="e.g. john@company.com"
         />
       </div>
-      <div>
-        <label style={labelStyle}>Contact Phone (WhatsApp)</label>
-        <input
-          type="tel"
-          value={current.contactPhone}
-          onChange={e => setCurrent(c => ({ ...c, contactPhone: e.target.value }))}
-          style={inputStyle}
-          placeholder="+65 9123 4567"
-        />
-      </div>
+      <PhoneInput
+        label="Contact Phone (WhatsApp)"
+        value={current.contactPhone ?? ""}
+        onChange={(e164) => setCurrent(c => ({ ...c, contactPhone: e164 }))}
+      />
 
       <div style={{ display: "flex", alignItems: "center", gap: 12, paddingTop: 4 }}>
         <button

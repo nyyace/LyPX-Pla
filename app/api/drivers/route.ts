@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 function makeIdentityHash(licenseNumber: string, nationalId: string): string {
   const normalized = `${licenseNumber.trim().toUpperCase()}::${nationalId.trim().toUpperCase()}`;
@@ -42,6 +43,11 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  const normalizedPhone = normalizePhone(phoneNumber);
+  if (!normalizedPhone) {
+    return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
+  }
+
   const identityHash = makeIdentityHash(licenseNumber, nationalId);
 
   const existing = await prisma.driver.findUnique({ where: { identityHash } });
@@ -58,7 +64,7 @@ export async function POST(req: Request) {
         identityHash,
         firstName: firstName.trim(),
         lastName: lastName.trim(),
-        phoneNumber: phoneNumber.trim(),
+        phoneNumber: normalizedPhone,
       },
     });
 

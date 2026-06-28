@@ -162,9 +162,10 @@ model Account {
   id              String   @id @default(cuid())
   name            String
   uen             String?  @unique  // Singapore UEN — primary dedup key
-  customerSegment String   // hotel | mice | tdm | dmc | corporate_general
+  customerSegment String   // hotel | mice | tdm | dmc | corporate_general | individual
   sourceType      String   // "operator_sourced" | "lypx_sourced"
-  picName         String?  // Person in Charge — full name
+  accountType     String   @default("business_entity") // "business_entity" | "individual"
+  picName         String?  // Person in Charge / liaise contact
   picWhatsapp     String?  // PIC WhatsApp number for trip status updates
   picEmail        String?  // PIC email, optional, for invoice delivery
   createdAt       DateTime @default(now())
@@ -173,6 +174,7 @@ model Account {
   takeoverRequests TakeoverRequest[]
   orders           Order[]
   claimConflicts   ClaimConflict[]
+  accountUsers     AccountUser[]
 }
 
 model ClaimConflict {
@@ -348,6 +350,19 @@ model TenantUser {
   tenant   Tenant @relation(fields: [tenantId], references: [id])
 
   @@unique([userId, tenantId])
+  @@index([userId])
+}
+
+model AccountUser {
+  id        String   @id @default(cuid())
+  userId    String   // WorkOS user ID
+  accountId String
+  role      String   @default("member")
+  createdAt DateTime @default(now())
+
+  account   Account  @relation(fields: [accountId], references: [id])
+
+  @@unique([userId, accountId])
   @@index([userId])
 }
 

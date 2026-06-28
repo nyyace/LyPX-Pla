@@ -2,17 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getOperatorTenant } from "@/lib/utils/operator";
-
-function normalizePhone(raw: string): string {
-  let cleaned = raw.replace(/[\s\-()]/g, "");
-  if (!cleaned.startsWith("+")) cleaned = "+" + cleaned;
-  return cleaned;
-}
-
-function isValidPhone(raw: string): boolean {
-  const cleaned = raw.replace(/[\s\-()]/g, "").replace(/^\+/, "");
-  return /^\d{8,15}$/.test(cleaned);
-}
+import { normalizePhone } from "@/lib/utils/normalizePhone";
 
 export async function GET() {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -54,11 +44,11 @@ export async function POST(req: Request) {
   if (!driverWhatsapp?.trim()) {
     return NextResponse.json({ error: "driverWhatsapp is required" }, { status: 400 });
   }
-  if (!isValidPhone(driverWhatsapp)) {
-    return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
-  }
 
   const normalized = normalizePhone(driverWhatsapp.trim());
+  if (!normalized) {
+    return NextResponse.json({ error: "Invalid phone number format" }, { status: 400 });
+  }
 
   // Prevent duplicate pending request for same number + tenant
   const existing = await prisma.driverInviteRequest.findFirst({

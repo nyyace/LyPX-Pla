@@ -1,9 +1,9 @@
 /**
- * Normalize an inbound WhatsApp sender number to E.164 format.
- * Meta sends `from` as digits without the leading +, e.g. "6591234567".
- * Handles: 65XXXXXXXX, +65XXXXXXXX, 8XXXXXXX (SG local), or any other
- * country code already present in the digit string.
- * Returns null if the input is empty or too short to be valid.
+ * Normalize a phone number to E.164 format.
+ * DEFAULT_COUNTRY_CODE is +65 (Singapore) — move to platform settings for multi-country.
+ * Handles: 91234567, 6591234567, +6591234567, "65 9123 4567", "+65 9123 4567", and any
+ * number carrying a longer international prefix (e.g. Malaysia +60...).
+ * Returns null if the input cannot be normalised.
  */
 export function normalizePhone(raw: string | null | undefined): string | null {
   if (!raw) return null;
