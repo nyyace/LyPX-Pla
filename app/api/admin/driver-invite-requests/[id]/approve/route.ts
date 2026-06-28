@@ -23,7 +23,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Request is not pending" }, { status: 422 });
   }
 
-  const appBase = process.env.NEXT_PUBLIC_APP_URL ?? "https://lypx.co";
+  const appBase = process.env.APP_URL ?? "https://workspace.lymo-x.com";
   const onboardLink = `${appBase}/onboard?invite=${id}`;
   const now = new Date();
 
