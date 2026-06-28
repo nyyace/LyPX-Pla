@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     passengerName, passengerWhatsapp, sameAsRequestor,
     timezone } = body;
 
-  if (!accountId || !tenantId || !pickupTime || !pickupLocation || !dropoffLocation) {
+  if (!accountId || !tenantId || !pickupTime || !pickupLocation) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
