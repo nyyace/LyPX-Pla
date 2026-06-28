@@ -12,7 +12,7 @@ export const WHATSAPP_TEMPLATES = {
     description: "OTP verification code for driver self-onboarding",
   },
   driver_invite: {
-    name: "driver_onboard_invite",
+    name: "driver_onboard_invite_v2",
     language: "en",
     description: "Invite driver to self-onboard via operator referral",
   },
