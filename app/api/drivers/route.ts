@@ -65,6 +65,7 @@ export async function POST(req: Request) {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
         phoneNumber: normalizedPhone,
+        licenseNumber: licenseNumber.trim(),
       },
     });
 

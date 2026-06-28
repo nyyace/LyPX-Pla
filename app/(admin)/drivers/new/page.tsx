@@ -23,9 +23,13 @@ export default function NewDriverPage() {
   const [inviteName,  setInviteName]  = useState("");
   const [invitePhone, setInvitePhone] = useState("");
 
-  const [manualPhone,  setManualPhone]  = useState("");
-  const [manualRelType, setManualRelType] = useState("contracted");
-  const [sendInvite,   setSendInvite]  = useState(false);
+  const [manualPhone,    setManualPhone]    = useState("");
+  const [manualFirst,    setManualFirst]    = useState("");
+  const [manualLast,     setManualLast]     = useState("");
+  const [manualLicense,  setManualLicense]  = useState("");
+  const [manualNationalId, setManualNationalId] = useState("");
+  const [manualRelType,  setManualRelType]  = useState("contracted");
+  const [sendInvite,     setSendInvite]     = useState(false);
 
   function switchTab(t: Tab) {
     setTab(t);
@@ -56,43 +60,48 @@ export default function NewDriverPage() {
     setInvitePhone("");
   }
 
-  async function handleManual(e: React.FormEvent<HTMLFormElement>) {
+  async function handleManual(e: React.FormEvent) {
     e.preventDefault();
-    setLoading(true);
-    setError(null);
-    const form = new FormData(e.currentTarget);
-    const firstName = String(form.get("firstName") ?? "");
-    const lastName  = String(form.get("lastName")  ?? "");
-    const res = await fetch("/api/drivers", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        firstName,
-        lastName,
-        phoneNumber:      manualPhone,
-        licenseNumber:    form.get("licenseNumber"),
-        nationalId:       form.get("nationalId"),
-        relationshipType: manualRelType,
-      }),
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      setLoading(false);
-      setError(data.error ?? "Failed to create driver");
+    if (!manualFirst.trim() || !manualLast.trim() || !manualPhone || !manualLicense.trim() || !manualNationalId.trim()) {
+      setError("All fields are required");
       return;
     }
-    if (sendInvite && manualPhone) {
-      await fetch("/api/admin/driver-invite-requests", {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch("/api/drivers", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          driverWhatsapp: manualPhone,
-          driverName: `${firstName} ${lastName}`.trim(),
+          firstName:        manualFirst.trim(),
+          lastName:         manualLast.trim(),
+          phoneNumber:      manualPhone,
+          licenseNumber:    manualLicense.trim(),
+          nationalId:       manualNationalId.trim(),
+          relationshipType: manualRelType,
         }),
       });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to create driver");
+        return;
+      }
+      if (sendInvite && manualPhone) {
+        await fetch("/api/admin/driver-invite-requests", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            driverWhatsapp: manualPhone,
+            driverName: `${manualFirst} ${manualLast}`.trim(),
+          }),
+        });
+      }
+      router.push(`/drivers/${data.id}`);
+    } catch {
+      setError("Unexpected error — please try again");
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-    router.push(`/drivers/${data.id}`);
   }
 
   const tabBtnStyle = (active: boolean): React.CSSProperties => ({
@@ -186,12 +195,14 @@ export default function NewDriverPage() {
         <form onSubmit={handleManual} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <Label htmlFor="firstName" className="text-gray-300">First name</Label>
-              <Input id="firstName" name="firstName" required className="bg-gray-900 border-gray-700" />
+              <Label className="text-gray-300">First name</Label>
+              <Input value={manualFirst} onChange={e => setManualFirst(e.target.value)}
+                placeholder="e.g. Ahmad" className="bg-gray-900 border-gray-700" />
             </div>
             <div className="space-y-1.5">
-              <Label htmlFor="lastName" className="text-gray-300">Last name</Label>
-              <Input id="lastName" name="lastName" required className="bg-gray-900 border-gray-700" />
+              <Label className="text-gray-300">Last name</Label>
+              <Input value={manualLast} onChange={e => setManualLast(e.target.value)}
+                placeholder="e.g. bin Ismail" className="bg-gray-900 border-gray-700" />
             </div>
           </div>
 
@@ -199,17 +210,18 @@ export default function NewDriverPage() {
             label="Phone Number"
             value={manualPhone}
             onChange={setManualPhone}
-            required
           />
 
           <div className="space-y-1.5">
-            <Label htmlFor="licenseNumber" className="text-gray-300">Driver license number</Label>
-            <Input id="licenseNumber" name="licenseNumber" required className="bg-gray-900 border-gray-700" />
+            <Label className="text-gray-300">Driver license number</Label>
+            <Input value={manualLicense} onChange={e => setManualLicense(e.target.value)}
+              placeholder="e.g. S12345A" className="bg-gray-900 border-gray-700" />
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="nationalId" className="text-gray-300">National ID (NRIC/FIN)</Label>
-            <Input id="nationalId" name="nationalId" required className="bg-gray-900 border-gray-700" />
+            <Label className="text-gray-300">National ID (NRIC/FIN)</Label>
+            <Input value={manualNationalId} onChange={e => setManualNationalId(e.target.value)}
+              placeholder="e.g. S1234567A" className="bg-gray-900 border-gray-700" />
           </div>
 
           <div className="space-y-1.5">
