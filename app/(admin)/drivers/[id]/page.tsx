@@ -51,7 +51,7 @@ export default async function DriverDetailPage({
     prisma.vehicleOwnership.findMany({
       where: { driverId: id, terminatedAt: { not: null } },
       include: {
-        vehicle: { select: { plateNumber: true, make: true, model: true } },
+        vehicle: { select: { id: true, plateNumber: true, make: true, model: true } },
       },
       orderBy: { terminatedAt: "desc" },
       take: 10,
@@ -79,7 +79,12 @@ export default async function DriverDetailPage({
     relationshipType: b.relationshipType,
     terminatedAt:     b.terminatedAt?.toISOString() ?? null,
     notes:            b.notes,
-    vehicle:          b.vehicle,
+    vehicle: {
+      id:          b.vehicle.id,
+      plateNumber: b.vehicle.plateNumber,
+      make:        b.vehicle.make,
+      model:       b.vehicle.model,
+    },
   }));
 
   const inlineDocs: InlineDoc[] = driver.documents.map((d) => ({

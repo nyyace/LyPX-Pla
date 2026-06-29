@@ -11,6 +11,7 @@ export const ADMIN_TABS: TabDef[] = [
   { href: "/compliance-queue",  label: "Compliance Queue" },
   { href: "/submissions",       label: "Submissions" },
   { href: "/drivers",           label: "Drivers" },
+  { href: "/vehicles",          label: "Vehicles" },
   { href: "/accounts",          label: "Accounts & Claims" },
   { href: "/takeover-requests", label: "Takeover Requests" },
   { href: "/orders",            label: "Reservations" },

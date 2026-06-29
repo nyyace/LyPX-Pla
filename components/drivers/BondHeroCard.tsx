@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
@@ -30,6 +31,7 @@ export interface PastBond {
   terminatedAt:    string | null; // ISO
   notes:           string | null;
   vehicle: {
+    id:          string;
     plateNumber: string;
     make:        string;
     model:       string;
@@ -168,7 +170,12 @@ export function BondHeroCard({ driverId, activeBond, pastBonds }: Props) {
               <>
                 <p className="text-base font-semibold text-white">
                   {activeBond.vehicle.make} {activeBond.vehicle.model}
-                  <span className="ml-2 font-mono text-gray-300">{activeBond.vehicle.plateNumber}</span>
+                  <Link
+                    href={`/vehicles/${activeBond.vehicle.id}`}
+                    className="ml-2 font-mono text-gray-300 hover:text-white hover:underline"
+                  >
+                    {activeBond.vehicle.plateNumber}
+                  </Link>
                 </p>
                 <p className="text-sm text-gray-400 mt-0.5">
                   {VEHICLE_CLASS_LABELS[activeBond.vehicle.vehicleClass ?? ""] ||
@@ -267,7 +274,12 @@ export function BondHeroCard({ driverId, activeBond, pastBonds }: Props) {
               {pastBonds.map((bond) => (
                 <div key={bond.id} className="p-3 bg-gray-900/60 rounded border border-gray-800 opacity-70 text-sm">
                   <div className="flex justify-between items-start">
-                    <span className="font-medium font-mono text-gray-300">{bond.vehicle.plateNumber}</span>
+                    <Link
+                      href={`/vehicles/${bond.vehicle.id}`}
+                      className="font-medium font-mono text-gray-300 hover:text-white hover:underline"
+                    >
+                      {bond.vehicle.plateNumber}
+                    </Link>
                     <span className="text-gray-600 text-xs">
                       {bond.relationshipType === "owned" ? "Owned" : "Rental"}
                     </span>
