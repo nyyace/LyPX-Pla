@@ -172,3 +172,52 @@ export async function PATCH(
 
   return NextResponse.json({ ok: true, complianceStatus: updated.complianceStatus });
 }
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: Promise<{ driverId: string }> }
+) {
+  const { user } = await withAuth({ ensureSignedIn: true });
+  if (!user || !(await isAdminUser(user.id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { driverId } = await params;
+
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    select: { id: true, deletedAt: true, _count: { select: { orders: true } } },
+  });
+  if (!driver) return NextResponse.json({ error: "Not found" }, { status: 404 });
+  if (driver.deletedAt) return NextResponse.json({ error: "Already removed" }, { status: 409 });
+  if (driver._count.orders > 0) {
+    return NextResponse.json(
+      { error: "Cannot remove a driver with existing orders" },
+      { status: 422 }
+    );
+  }
+
+  await prisma.$transaction(async (tx) => {
+    await tx.vehicleOwnership.updateMany({
+      where: { driverId, terminatedAt: null },
+      data: { terminatedAt: new Date(), notes: "Driver removed by admin" },
+    });
+
+    await tx.driver.update({
+      where: { id: driverId },
+      data: { deletedAt: new Date() },
+    });
+
+    await tx.auditLog.create({
+      data: {
+        entityType: "driver",
+        entityId: driverId,
+        action: "driver_removed",
+        actorId: user.id,
+        metadata: {},
+      },
+    });
+  });
+
+  return NextResponse.json({ ok: true });
+}

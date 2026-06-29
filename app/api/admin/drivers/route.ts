@@ -12,15 +12,18 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const search = searchParams.get("search")?.trim();
 
-  const where = search
-    ? {
-        OR: [
-          { firstName:   { contains: search, mode: "insensitive" as const } },
-          { lastName:    { contains: search, mode: "insensitive" as const } },
-          { phoneNumber: { contains: search, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  const where = {
+    deletedAt: null,
+    ...(search
+      ? {
+          OR: [
+            { firstName:   { contains: search, mode: "insensitive" as const } },
+            { lastName:    { contains: search, mode: "insensitive" as const } },
+            { phoneNumber: { contains: search, mode: "insensitive" as const } },
+          ],
+        }
+      : {}),
+  };
 
   const drivers = await prisma.driver.findMany({
     where,

@@ -9,6 +9,7 @@ export async function GET(req: Request) {
 
   const vehicles = await prisma.vehicle.findMany({
     where: {
+      deletedAt: null,
       ...(status ? { status } : {}),
       ...(q
         ? {

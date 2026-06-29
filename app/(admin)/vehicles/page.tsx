@@ -23,6 +23,7 @@ function fmtDate(d: Date) {
 
 export default async function VehiclesPage() {
   const vehicles = await prisma.vehicle.findMany({
+    where: { deletedAt: null },
     orderBy: { plateNumber: "asc" },
     select: {
       id:           true,

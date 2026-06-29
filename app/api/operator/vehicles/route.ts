@@ -11,7 +11,7 @@ export async function GET() {
   if (!tenant) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const vehicles = await prisma.vehicle.findMany({
-    where: { registeredByTenantId: tenant.id },
+    where: { registeredByTenantId: tenant.id, deletedAt: null },
     include: {
       ownership: {
         where: { contractStatus: "active" },

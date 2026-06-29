@@ -59,6 +59,7 @@ model Driver {
   complianceStatus  String   @default("pending") // pending | active | expiring_soon | suspended
   tier2Qualified    Boolean  @default(false)
   sourceType        String   @default("operator_added") // "operator_added" | "self_submitted"
+  deletedAt         DateTime?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -95,6 +96,7 @@ model Vehicle {
   year                 Int?
   colour               String?
   seatingCapacity      Int?
+  deletedAt            DateTime?
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

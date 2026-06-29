@@ -8,6 +8,7 @@ import { getUserTimezone } from "@/lib/utils/timezone";
 import { VehicleProfileEditor } from "@/components/vehicles/VehicleProfileEditor";
 import { InlineDocPanel, type InlineDoc } from "@/components/compliance/InlineDocPanel";
 import { VehicleAssignmentsPanel, type AssignmentRow } from "@/components/vehicles/VehicleAssignmentsPanel";
+import { VehicleActions } from "@/components/vehicles/VehicleActions";
 
 const statusColors: Record<string, string> = {
   active:   "bg-green-900 text-green-300 border-green-700",
@@ -90,6 +91,8 @@ export default async function VehicleDetailPage({
           Status is derived from compliance documents and driver status — not directly editable.
         </p>
       </div>
+
+      <VehicleActions vehicleId={vehicle.id} />
 
       <Separator className="my-6 bg-gray-800" />
 

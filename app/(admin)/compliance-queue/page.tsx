@@ -36,6 +36,7 @@ export default async function ComplianceQueuePage() {
       where: {
         sourceType: "self_submitted",
         complianceStatus: "pending",
+        deletedAt: null,
       },
       orderBy: { createdAt: "desc" },
       include: {

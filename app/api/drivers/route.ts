@@ -16,6 +16,7 @@ export async function GET(req: Request) {
 
   const drivers = await prisma.driver.findMany({
     where: {
+      deletedAt: null,
       ...(status ? { complianceStatus: status } : {}),
       ...(q
         ? {

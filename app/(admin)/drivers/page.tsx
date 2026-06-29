@@ -6,6 +6,7 @@ import { AdminDriversClient } from "@/components/profiles/AdminDriversClient";
 
 export default async function DriversPage() {
   const drivers = await prisma.driver.findMany({
+    where: { deletedAt: null },
     orderBy: { createdAt: "desc" },
     include: {
       memberships: {

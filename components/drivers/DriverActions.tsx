@@ -55,6 +55,24 @@ export function DriverActions({ driverId, tier2Qualified }: Props) {
     router.refresh();
   }
 
+  async function removeDriver() {
+    if (!confirm("Remove this driver? This cannot be undone from the UI.")) return;
+
+    setLoading(true);
+    setError(null);
+
+    const res = await fetch(`/api/admin/drivers/${driverId}`, { method: "DELETE" });
+    const data = await res.json();
+    setLoading(false);
+
+    if (!res.ok) {
+      setError(data.error ?? "Failed to remove driver");
+      return;
+    }
+
+    router.push("/drivers");
+  }
+
   return (
     <div>
       {error && (
@@ -80,6 +98,15 @@ export function DriverActions({ driverId, tier2Qualified }: Props) {
           disabled={loading}
         >
           Re-evaluate Compliance
+        </Button>
+        <Button
+          size="sm"
+          variant="outline"
+          className="border-red-900 text-red-400 text-xs hover:bg-red-950"
+          onClick={removeDriver}
+          disabled={loading}
+        >
+          Remove Driver
         </Button>
       </div>
     </div>

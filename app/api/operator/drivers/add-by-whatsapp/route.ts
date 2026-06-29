@@ -24,7 +24,7 @@ export async function POST(req: Request) {
   // When duplicate phone entries exist, pick the best-standing one.
   const STATUS_PRIORITY = ["active", "expiring_soon", "pending", "suspended"];
   const allMatches = await prisma.driver.findMany({
-    where: { phoneNumber: normalized },
+    where: { phoneNumber: normalized, deletedAt: null },
     select: { id: true, complianceStatus: true },
   });
 
