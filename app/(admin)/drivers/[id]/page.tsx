@@ -7,8 +7,8 @@ import { Separator } from "@/components/ui/separator";
 import { DriverActions } from "@/components/drivers/DriverActions";
 import { OnboardingNotifyButtons } from "@/components/drivers/OnboardingNotifyButtons";
 import { DriverProfileEditor } from "@/components/drivers/DriverProfileEditor";
+import { BondHeroCard, type ActiveBond, type PastBond } from "@/components/drivers/BondHeroCard";
 import { InlineDocPanel, type InlineDoc } from "@/components/compliance/InlineDocPanel";
-import { VehicleAssignmentsPanel, type AssignmentRow } from "@/components/vehicles/VehicleAssignmentsPanel";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 
@@ -28,28 +28,59 @@ export default async function DriverDetailPage({
   const { user } = await withAuth({ ensureSignedIn: true });
   await getUserTimezone(user.id);
 
-  const driver = await prisma.driver.findUnique({
-    where: { id },
-    include: {
-      documents: {
-        orderBy: { expiryDate: "asc" },
-        include: { file: { select: { fileName: true, mimeType: true } } },
+  const [driver, activeBondRaw, pastBondsRaw] = await Promise.all([
+    prisma.driver.findUnique({
+      where: { id },
+      include: {
+        documents: {
+          orderBy: { expiryDate: "asc" },
+          include: { file: { select: { fileName: true, mimeType: true } } },
+        },
+        memberships: { include: { tenant: true } },
       },
-      memberships: { include: { tenant: true } },
-      vehicleOwnerships: {
-        orderBy: { createdAt: "desc" },
-        include: {
-          vehicle: {
-            select: {
-              id: true, make: true, model: true, plateNumber: true, vehicleClass: true,
-            },
-          },
+    }),
+    prisma.vehicleOwnership.findFirst({
+      where: { driverId: id, terminatedAt: null },
+      include: {
+        vehicle: {
+          select: { id: true, plateNumber: true, make: true, model: true, vehicleClass: true, status: true },
         },
       },
-    },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.vehicleOwnership.findMany({
+      where: { driverId: id, terminatedAt: { not: null } },
+      include: {
+        vehicle: { select: { plateNumber: true, make: true, model: true } },
+      },
+      orderBy: { terminatedAt: "desc" },
+      take: 10,
+    }),
+  ]);
 
   if (!driver) notFound();
+
+  // Serialise bond data for client components (Dates → ISO strings)
+  const activeBond: ActiveBond | null = activeBondRaw
+    ? {
+        id:               activeBondRaw.id,
+        relationshipType: activeBondRaw.relationshipType as "owned" | "contracted",
+        contractStatus:   activeBondRaw.contractStatus,
+        contractExpiry:   activeBondRaw.contractExpiry?.toISOString() ?? null,
+        verifiedAt:       activeBondRaw.verifiedAt?.toISOString() ?? null,
+        verifiedBy:       activeBondRaw.verifiedBy,
+        notes:            activeBondRaw.notes,
+        vehicle:          activeBondRaw.vehicle,
+      }
+    : null;
+
+  const pastBonds: PastBond[] = pastBondsRaw.map((b) => ({
+    id:               b.id,
+    relationshipType: b.relationshipType,
+    terminatedAt:     b.terminatedAt?.toISOString() ?? null,
+    notes:            b.notes,
+    vehicle:          b.vehicle,
+  }));
 
   const inlineDocs: InlineDoc[] = driver.documents.map((d) => ({
     id:         d.id,
@@ -61,25 +92,9 @@ export default async function DriverDetailPage({
     isPdf:      d.file?.mimeType === "application/pdf",
   }));
 
-  const assignments: AssignmentRow[] = driver.vehicleOwnerships.map((o) => ({
-    id:               o.id,
-    driverId:         driver.id,
-    driverName:       `${driver.firstName} ${driver.lastName}`,
-    vehicleId:        o.vehicle.id,
-    vehiclePlate:     o.vehicle.plateNumber,
-    vehicleMake:      o.vehicle.make,
-    vehicleModel:     o.vehicle.model,
-    vehicleClass:     o.vehicle.vehicleClass,
-    relationshipType: o.relationshipType,
-    contractStatus:   o.contractStatus,
-    contractExpiry:   o.contractExpiry?.toISOString() ?? null,
-    verifiedAt:       o.verifiedAt?.toISOString() ?? null,
-    terminatedAt:     o.terminatedAt?.toISOString() ?? null,
-    notes:            o.notes,
-  }));
-
   return (
     <div className="p-8 max-w-4xl">
+      {/* Breadcrumb + header */}
       <div className="mb-6">
         <Link href="/drivers" className="text-xs text-gray-500 hover:text-gray-300 mb-3 block">
           ← Drivers
@@ -124,7 +139,10 @@ export default async function DriverDetailPage({
 
       <Separator className="my-6 bg-gray-800" />
 
-      {/* Two-column layout */}
+      {/* Bond hero card — full width, above two-column grid */}
+      <BondHeroCard driverId={driver.id} activeBond={activeBond} pastBonds={pastBonds} />
+
+      {/* Two-column: profile left, documents right */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Left: Profile editor + memberships */}
         <div className="space-y-6">
@@ -167,8 +185,8 @@ export default async function DriverDetailPage({
           )}
         </div>
 
-        {/* Right: Documents + Vehicle assignments */}
-        <div className="space-y-6">
+        {/* Right: Compliance documents */}
+        <div>
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm text-gray-300">Compliance Documents</CardTitle>
@@ -180,12 +198,6 @@ export default async function DriverDetailPage({
               />
             </CardContent>
           </Card>
-
-          <VehicleAssignmentsPanel
-            assignments={assignments}
-            entityType="driver"
-            entityId={driver.id}
-          />
         </div>
       </div>
     </div>
