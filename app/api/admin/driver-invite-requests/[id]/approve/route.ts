@@ -30,7 +30,7 @@ export async function PATCH(
   // Send WhatsApp invite to driver
   try {
     await sendWhatsAppTemplate({
-      to: request.driverWhatsapp,
+      to: request.driverWhatsapp!,
       templateKey: "driver_invite",
       components: [
         {
@@ -59,7 +59,7 @@ export async function PATCH(
         approvedBy: user.id,
         approvedAt: now,
         sentAt: now,
-        expiresAt: addDays(now, 7),
+        expiresAt: addDays(now, 3),
       },
     });
 

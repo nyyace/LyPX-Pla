@@ -15,12 +15,8 @@ export async function POST(req: Request) {
   const body = await req.json() as { driverWhatsapp?: string; driverName?: string };
   const { driverWhatsapp, driverName } = body;
 
-  if (!driverWhatsapp?.trim()) {
-    return NextResponse.json({ error: "driverWhatsapp is required" }, { status: 400 });
-  }
-
-  const phone = normalizePhone(driverWhatsapp);
-  if (!phone) {
+  const phone = driverWhatsapp?.trim() ? normalizePhone(driverWhatsapp) : null;
+  if (driverWhatsapp?.trim() && !phone) {
     return NextResponse.json({ error: "Invalid phone number" }, { status: 400 });
   }
 
@@ -36,11 +32,25 @@ export async function POST(req: Request) {
       approvedBy: user.id,
       approvedAt: now,
       sentAt: now,
-      expiresAt: addDays(now, 7),
+      expiresAt: addDays(now, 3),
     },
   });
 
   const onboardLink = `${appBase}/onboard?invite=${request.id}`;
+
+  // Mass invite (no phone): skip WhatsApp, return link directly
+  if (!phone) {
+    await prisma.auditLog.create({
+      data: {
+        entityType: "driver_invite_request",
+        entityId: request.id,
+        action: "mass_invite_link_created",
+        actorId: user.id,
+        metadata: { onboardLink },
+      },
+    });
+    return NextResponse.json({ ...request, onboardLink }, { status: 201 });
+  }
 
   try {
     await sendWhatsAppTemplate({
@@ -79,7 +89,7 @@ export async function POST(req: Request) {
     },
   });
 
-  return NextResponse.json(request, { status: 201 });
+  return NextResponse.json({ ...request, onboardLink }, { status: 201 });
 }
 
 export async function GET() {

@@ -10,7 +10,13 @@ export default async function ComplianceQueuePage() {
 
   const [pending, expired, selfSubmitted] = await Promise.all([
     prisma.complianceDocument.findMany({
-      where: { status: "pending_review", driver: { sourceType: { not: "self_submitted" } } },
+      where: {
+        status: "pending_review",
+        OR: [
+          { entityType: "vehicle" },
+          { driver: { sourceType: { not: "self_submitted" } } },
+        ],
+      },
       orderBy: { uploadedAt: "asc" },
       include: {
         driver: { select: { id: true, firstName: true, lastName: true, sourceType: true } },

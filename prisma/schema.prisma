@@ -91,7 +91,7 @@ model Vehicle {
   plateNumber          String   @unique
   status               String   @default("inactive") // active | inactive | suspended — DERIVED
   insuranceCompany     String?
-  vehicleClass         String?  // "VVV" | "AVF" | "NVE"
+  vehicleClass         String?  // standard_sedan | standard_mpv_nve | executive_sedan_eclass | luxury_sedan_sclass | executive_mpv_avf | prestige_mpv_lexus | luxury_executive_van_vvv | group_van_combi | prestige_collection
   year                 Int?
   colour               String?
   seatingCapacity      Int?
@@ -111,6 +111,11 @@ model VehicleOwnership {
   relationshipType String    // "owned" | "contracted"
   contractStatus   String?   // "active" | "expired" | "terminated" — null if owned
   contractExpiry   DateTime?
+  verifiedBy       String?   // WorkOS user ID of admin who verified
+  verifiedAt       DateTime?
+  terminatedAt     DateTime?
+  terminatedBy     String?   // WorkOS user ID of admin who terminated
+  notes            String?
   createdAt        DateTime  @default(now())
 
   vehicle          Vehicle   @relation(fields: [vehicleId], references: [id])
@@ -493,7 +498,7 @@ model WhatsAppMessageLog {
 model DriverInviteRequest {
   id             String    @id @default(cuid())
   tenantId       String
-  driverWhatsapp String
+  driverWhatsapp String?
   driverName     String?
   status         String    @default("pending") // pending | approved | rejected | sent | expired
   adminNote      String?

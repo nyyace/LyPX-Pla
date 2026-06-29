@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { SubmissionReviewActions } from "@/components/submissions/SubmissionReviewActions";
+import { DocReviewPanel, type DocEntry } from "@/components/submissions/DocReviewPanel";
 import { formatTZDate, DEFAULT_TIMEZONE, isWithinDays } from "@/lib/utils/date";
 
 function deriveStatus(s: { reviewedAt: Date | null; rejectionReason: string | null; flagReason: string | null }) {
@@ -22,34 +23,6 @@ const statusStyles: Record<string, string> = {
   rejected: "border-red-700 text-red-300",
   flagged:  "border-orange-700 text-orange-300",
 };
-
-function DocLink({ doc, label }: {
-  doc: { id: string; file: { mimeType: string } | null } | null | undefined;
-  label: string;
-}) {
-  if (!doc?.file) {
-    return (
-      <div>
-        <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-        <span className="text-xs text-gray-600 italic">Document not available</span>
-      </div>
-    );
-  }
-  const ispdf = doc.file.mimeType === "application/pdf";
-  return (
-    <div>
-      <p className="text-xs text-gray-500 mb-0.5">{label}</p>
-      <a
-        href={`/api/compliance/${doc.id}/file`}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="inline-flex items-center gap-1.5 text-xs text-blue-400 hover:text-blue-300"
-      >
-        📄 View {ispdf ? "PDF" : "document"} ↗
-      </a>
-    </div>
-  );
-}
 
 function Field({ label, value }: { label: string; value?: string | null }) {
   return (
@@ -101,17 +74,55 @@ export default async function SubmissionDetailPage({
   const { driver } = submission;
   const status = deriveStatus(submission);
 
-  // Map driver docs by type (take first match per type)
   const driverDocByType = Object.fromEntries(
     driver.documents.map((d) => [d.docType, d])
   );
 
-  // Vocational licence expiry — check if expiring soon
   const vocExpiry = submission.vocationalLicenceExpiryDate;
   const vocExpiryExpiringSoon = isWithinDays(vocExpiry, 30);
 
+  // Build doc entries for the DocReviewPanel ─────────────────────────────────
+  function makeEntry(
+    doc: typeof driver.documents[number] | undefined,
+    label: string,
+    crossCheckNote?: string,
+  ): DocEntry {
+    return {
+      id:    doc?.id ?? "",
+      label,
+      status: doc?.status ?? "pending_review",
+      hasFile: !!doc?.file,
+      isPdf: doc?.file?.mimeType === "application/pdf",
+      crossCheckNote,
+    };
+  }
+
+  const driverDocs: DocEntry[] = [
+    makeEntry(driverDocByType["nric"],                     "NRIC / Passport"),
+    makeEntry(driverDocByType["driving_licence"],          "Driving Licence"),
+    makeEntry(driverDocByType["vocational_licence"],       "Vocational Licence"),
+    makeEntry(
+      driverDocByType["vocational_licence_expiry"],
+      "Vocational Licence — Expiry Page",
+      `Driver entered expiry: ${formatTZDate(vocExpiry, timezone)}${vocExpiryExpiringSoon ? " ⚠ Expiring soon" : ""} — confirm the document shows this date.`,
+    ),
+  ].filter((e) => e.id);
+
+  const vehicleSections: { plate: string; docs: DocEntry[] }[] = [];
+  for (const ownership of driver.vehicleOwnerships) {
+    const v = ownership.vehicle;
+    const vDocByType = Object.fromEntries(v.documents.map((d) => [d.docType, d]));
+    const vDocs: DocEntry[] = [
+      makeEntry(vDocByType["vehicle_log_card"], `${v.plateNumber} — Log Card`),
+      ...(submission.vehicleRelationship === "rented"
+        ? [makeEntry(vDocByType["rental_agreement"], `${v.plateNumber} — Rental Agreement`)]
+        : []),
+    ].filter((e) => e.id);
+    if (vDocs.length) vehicleSections.push({ plate: v.plateNumber, docs: vDocs });
+  }
+
   return (
-    <div className="p-8 max-w-4xl">
+    <div className="p-8 max-w-5xl">
       <div className="mb-6">
         <Link href="/submissions" className="text-xs text-gray-500 hover:text-gray-300 mb-3 block">
           ← Submissions
@@ -131,10 +142,10 @@ export default async function SubmissionDetailPage({
         </div>
       </div>
 
-      {/* Review Decision */}
+      {/* Batch review decision */}
       <Card className="bg-gray-900 border-gray-800 mb-6">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-gray-300">Review Decision</CardTitle>
+          <CardTitle className="text-sm text-gray-300">Batch Review Decision</CardTitle>
         </CardHeader>
         <CardContent>
           {status !== "pending" && (
@@ -154,6 +165,9 @@ export default async function SubmissionDetailPage({
               )}
             </div>
           )}
+          <p className="text-xs text-gray-600 mb-3">
+            Approve or reject all pending documents at once — or use the per-document controls below.
+          </p>
           <SubmissionReviewActions
             submissionId={submission.id}
             currentStatus={status as "pending" | "approved" | "flagged" | "rejected"}
@@ -161,29 +175,29 @@ export default async function SubmissionDetailPage({
         </CardContent>
       </Card>
 
-      {/* Two-column: details + documents */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+      {/* Two-column: details left, documents right */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
-        {/* Left column — Submitted details */}
+        {/* Left — submitted details */}
         <Card className="bg-gray-900 border-gray-800">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm text-gray-300">Submitted Details</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
             <div>
-              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">Personal Information</p>
+              <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">Personal</p>
               <dl className="space-y-3">
-                <Field label="First name" value={submission.firstName} />
-                <Field label="Last name" value={submission.lastName} />
-                <Field label="NRIC Number" value={submission.nricNumber} />
-                <Field label="Phone Number" value={submission.phoneNumber} />
+                <Field label="First name"    value={submission.firstName} />
+                <Field label="Last name"     value={submission.lastName} />
+                <Field label="NRIC Number"   value={submission.nricNumber} />
+                <Field label="Phone Number"  value={submission.phoneNumber} />
               </dl>
             </div>
             <Separator className="bg-gray-800" />
             <div>
               <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">Driving Credentials</p>
               <dl className="space-y-3">
-                <Field label="Driving Licence No." value={submission.drivingLicenceNumber} />
+                <Field label="Driving Licence No."   value={submission.drivingLicenceNumber} />
                 <div>
                   <dt className="text-xs text-gray-500">Driving Licence Issued</dt>
                   <dd className="text-sm text-white mt-0.5">
@@ -208,11 +222,11 @@ export default async function SubmissionDetailPage({
                 <div>
                   <p className="text-xs text-gray-500 uppercase tracking-wide font-medium mb-3">Vehicle</p>
                   <dl className="space-y-3">
-                    <Field label="Plate No." value={submission.vehiclePlate} />
+                    <Field label="Plate No."      value={submission.vehiclePlate} />
                     {submission.vehicleMake && (
                       <Field label="Make / Model" value={`${submission.vehicleMake} ${submission.vehicleModel ?? ""}`.trim()} />
                     )}
-                    <Field label="Relationship" value={submission.vehicleRelationship ?? undefined} />
+                    <Field label="Relationship"   value={submission.vehicleRelationship ?? undefined} />
                   </dl>
                 </div>
               </>
@@ -221,7 +235,7 @@ export default async function SubmissionDetailPage({
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-500">Driver record:</span>
               <Link href={`/drivers/${driver.id}`} className="text-xs text-blue-400 hover:text-blue-300">
-                View driver profile ↗
+                View profile ↗
               </Link>
               <Badge variant="outline" className="text-xs border-gray-700 text-gray-400">
                 {driver.complianceStatus.replace("_", " ")}
@@ -230,54 +244,22 @@ export default async function SubmissionDetailPage({
           </CardContent>
         </Card>
 
-        {/* Right column — Documents */}
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-gray-300">Documents</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-5">
-            <DocLink doc={driverDocByType["nric"]} label="NRIC / Passport" />
-            <DocLink doc={driverDocByType["driving_licence"]} label="Driving Licence" />
-            <DocLink doc={driverDocByType["vocational_licence"]} label="Vocational Licence" />
+        {/* Right — per-document inline review */}
+        <div className="space-y-4">
+          <div>
+            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">Driver Documents</p>
+            <DocReviewPanel docs={driverDocs} />
+          </div>
 
-            {/* Expiry page — with cross-check note */}
-            <div className="space-y-1.5">
-              <DocLink doc={driverDocByType["vocational_licence_expiry"]} label="Vocational Licence (Expiry Page)" />
-              <div className="mt-1.5 px-3 py-2 rounded-md bg-gray-800 border border-gray-700 text-xs space-y-0.5">
-                <p className="text-gray-400">
-                  Expiry entered by driver:{" "}
-                  <span className={`font-mono font-medium ${vocExpiryExpiringSoon ? "text-red-400" : "text-white"}`}>
-                    {formatTZDate(vocExpiry, timezone)}
-                  </span>
-                </p>
-                <p className="text-gray-600">⚠ Cross-check: confirm the document above shows this expiry date.</p>
-              </div>
+          {vehicleSections.map((section) => (
+            <div key={section.plate}>
+              <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
+                Vehicle — {section.plate}
+              </p>
+              <DocReviewPanel docs={section.docs} />
             </div>
-
-            {/* Vehicle documents (if vehicle submitted) */}
-            {submission.vehiclePlate && driver.vehicleOwnerships.length > 0 && (
-              <>
-                <Separator className="bg-gray-800" />
-                <p className="text-xs text-gray-500 uppercase tracking-wide font-medium">
-                  Vehicle — {submission.vehiclePlate}
-                </p>
-                {driver.vehicleOwnerships.map((o) => {
-                  const vehicleDocByType = Object.fromEntries(
-                    o.vehicle.documents.map((d) => [d.docType, d])
-                  );
-                  return (
-                    <div key={o.id} className="space-y-4">
-                      <DocLink doc={vehicleDocByType["vehicle_log_card"]} label="Vehicle Log Card" />
-                      {submission.vehicleRelationship === "rented" && (
-                        <DocLink doc={vehicleDocByType["rental_agreement"]} label="Rental Agreement" />
-                      )}
-                    </div>
-                  );
-                })}
-              </>
-            )}
-          </CardContent>
-        </Card>
+          ))}
+        </div>
       </div>
     </div>
   );

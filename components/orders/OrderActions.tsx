@@ -34,12 +34,14 @@ export function OrderActions({ orderId, currentStatus, driverId, vehicleId }: Pr
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [complianceFailures, setComplianceFailures] = useState<{ check: string; message: string }[]>([]);
 
   const nextStatus = NEXT_STATUS[currentStatus];
 
   async function transition(status: string) {
     setLoading(true);
     setError(null);
+    setComplianceFailures([]);
 
     const res = await fetch(`/api/orders/${orderId}`, {
       method: "PATCH",
@@ -51,7 +53,11 @@ export function OrderActions({ orderId, currentStatus, driverId, vehicleId }: Pr
     setLoading(false);
 
     if (!res.ok) {
-      setError(data.error ?? "Failed to update status");
+      if (res.status === 422 && data.failures?.length) {
+        setComplianceFailures(data.failures);
+      } else {
+        setError(data.error ?? "Failed to update status");
+      }
       return;
     }
 
@@ -66,6 +72,22 @@ export function OrderActions({ orderId, currentStatus, driverId, vehicleId }: Pr
         <Alert variant="destructive" className="mb-3 border-red-800 bg-red-950">
           <AlertDescription className="text-red-300">{error}</AlertDescription>
         </Alert>
+      )}
+      {complianceFailures.length > 0 && (
+        <div className="mb-3 p-3 bg-red-950/40 border border-red-800/50 rounded-md">
+          <p className="text-xs font-semibold text-red-400 mb-2">Cannot assign — compliance issues:</p>
+          <ul className="space-y-1">
+            {complianceFailures.map((f, i) => (
+              <li key={i} className="text-xs text-red-400 flex items-start gap-2">
+                <span className="shrink-0 mt-0.5">✗</span>
+                <span>{f.message}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="text-xs text-gray-500 mt-2">
+            Resolve these issues in the driver or vehicle compliance screen, then retry.
+          </p>
+        </div>
       )}
       <div className="flex gap-2 flex-wrap">
         {nextStatus && (

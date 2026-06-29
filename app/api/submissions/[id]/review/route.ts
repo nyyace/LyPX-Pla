@@ -1,6 +1,7 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { evaluateAndSyncDriverCompliance } from "@/lib/compliance/state-machine";
 
 export async function PATCH(
   req: Request,
@@ -34,7 +35,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Flag reason is required" }, { status: 400 });
   }
 
-  const now = new Date();
+  const now       = new Date();
+  const driverId  = submission.driverId;
   const reviewerId = user.id;
 
   await prisma.$transaction(async (tx) => {
@@ -49,45 +51,51 @@ export async function PATCH(
           rejectionReason: null,
         },
       });
-      await tx.driver.update({
-        where: { id: submission.driverId },
-        data: { complianceStatus: "active" },
+
+      // Mark all pending driver documents as verified with reviewer name
+      await tx.complianceDocument.updateMany({
+        where: { driverId, status: "pending_review" },
+        data: { status: "verified", reviewedBy: reviewerId, reviewedAt: now },
       });
+
       await tx.auditLog.create({
         data: {
           entityType: "driver",
-          entityId: submission.driverId,
-          action: "submission_approved",
-          actorId: reviewerId,
-          metadata: { submissionId: id, notes: notes ?? null },
+          entityId:   driverId,
+          action:     "submission_approved",
+          actorId:    reviewerId,
+          metadata:   { submissionId: id, notes: notes ?? null },
         },
       });
     } else if (action === "reject") {
       await tx.driverSubmission.update({
         where: { id },
         data: {
-          reviewedBy: reviewerId,
-          reviewedAt: now,
+          reviewedBy:      reviewerId,
+          reviewedAt:      now,
           rejectionReason: reason!.trim(),
-          adminNotes: notes?.trim() || null,
-          flagReason: null,
+          adminNotes:      notes?.trim() || null,
+          flagReason:      null,
         },
       });
-      await tx.driver.update({
-        where: { id: submission.driverId },
-        data: { complianceStatus: "suspended" },
+
+      // Mark all pending driver documents as rejected with reviewer name
+      await tx.complianceDocument.updateMany({
+        where: { driverId, status: "pending_review" },
+        data: { status: "rejected", reviewedBy: reviewerId, reviewedAt: now },
       });
+
       await tx.auditLog.create({
         data: {
           entityType: "driver",
-          entityId: submission.driverId,
-          action: "submission_rejected",
-          actorId: reviewerId,
-          metadata: { submissionId: id, reason: reason, notes: notes ?? null },
+          entityId:   driverId,
+          action:     "submission_rejected",
+          actorId:    reviewerId,
+          metadata:   { submissionId: id, reason, notes: notes ?? null },
         },
       });
     } else {
-      // flag
+      // flag — leaves documents in current state, just marks submission
       await tx.driverSubmission.update({
         where: { id },
         data: {
@@ -98,17 +106,23 @@ export async function PATCH(
           rejectionReason: null,
         },
       });
+
       await tx.auditLog.create({
         data: {
           entityType: "driver",
-          entityId: submission.driverId,
-          action: "submission_flagged",
-          actorId: reviewerId,
-          metadata: { submissionId: id, reason: reason, notes: notes ?? null },
+          entityId:   driverId,
+          action:     "submission_flagged",
+          actorId:    reviewerId,
+          metadata:   { submissionId: id, reason, notes: notes ?? null },
         },
       });
     }
   });
+
+  // Let the compliance engine derive the correct driver status from actual document states
+  if (action !== "flag") {
+    await evaluateAndSyncDriverCompliance(driverId, reviewerId);
+  }
 
   return NextResponse.json({ ok: true });
 }

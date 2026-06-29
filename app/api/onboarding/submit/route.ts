@@ -3,11 +3,9 @@ import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
 import { uploadToR2, makeR2Key } from "@/lib/r2";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
-
-const ALLOWED_MIMES = [
-  "image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf",
-];
-const MAX_FILE_SIZE = 5 * 1024 * 1024;
+import { processDocumentUpload, DocumentUploadError, type ProcessResult } from "@/lib/documents/processUpload";
+import { sendEmail, ADMIN_EMAIL } from "@/lib/email/client";
+import { driverSubmissionEmail } from "@/lib/email/templates";
 
 function makeIdentityHash(drivingLicenceNumber: string, nricNumber: string): string {
   const normalized = `${drivingLicenceNumber.trim().toUpperCase()}::${nricNumber.trim().toUpperCase()}`;
@@ -17,8 +15,8 @@ function makeIdentityHash(drivingLicenceNumber: string, nricNumber: string): str
 async function validateFile(
   file: FormDataEntryValue | null,
   fieldLabel: string,
-  required: boolean
-): Promise<{ buffer: Buffer; filename: string; mimeType: string } | null | NextResponse> {
+  required: boolean,
+): Promise<ProcessResult | null | NextResponse> {
   if (!file || typeof file === "string") {
     if (required) return NextResponse.json({ error: `${fieldLabel} is required` }, { status: 400 });
     return null;
@@ -28,13 +26,19 @@ async function validateFile(
     if (required) return NextResponse.json({ error: `${fieldLabel} is required` }, { status: 400 });
     return null;
   }
-  if (f.size > MAX_FILE_SIZE) {
-    return NextResponse.json({ error: `${fieldLabel} must be under 5 MB` }, { status: 400 });
+  const inputBuffer = Buffer.from(await f.arrayBuffer());
+  try {
+    const result = await processDocumentUpload(inputBuffer, f.type);
+    console.log(`[Upload] ${fieldLabel}: ${result.format}, ${result.sizeKB}KB` +
+      (result.width ? `, ${result.width}×${result.height}px` : ""));
+    return result;
+  } catch (err) {
+    if (err instanceof DocumentUploadError) {
+      return NextResponse.json({ error: `${fieldLabel}: ${err.userMessage}` }, { status: 400 });
+    }
+    console.error(`[Upload] Unexpected error for ${fieldLabel}:`, err);
+    return NextResponse.json({ error: `${fieldLabel}: Upload failed. Please try again.` }, { status: 500 });
   }
-  if (!ALLOWED_MIMES.includes(f.type)) {
-    return NextResponse.json({ error: `${fieldLabel}: only images and PDF accepted` }, { status: 400 });
-  }
-  return { buffer: Buffer.from(await f.arrayBuffer()), filename: f.name, mimeType: f.type };
 }
 
 function isNextResponse(v: unknown): v is NextResponse {
@@ -127,16 +131,16 @@ export async function POST(req: Request) {
   // ── Upload driver files to R2 before transaction ──────────────────────────
   const driverPrefix = existingDriver?.id ?? `pending/${identityHash.slice(0, 12)}`;
 
-  const nricKey = nricFileResult ? makeR2Key(driverPrefix, "nric", nricFileResult.filename) : null;
-  const drivingLicenceKey = drivingLicenceFileResult ? makeR2Key(driverPrefix, "driving_licence", drivingLicenceFileResult.filename) : null;
-  const vocationalLicenceKey = vocationalLicenceFileResult ? makeR2Key(driverPrefix, "vocational_licence", vocationalLicenceFileResult.filename) : null;
-  const vocationalLicenceExpiryKey = vocationalLicenceExpiryFileResult ? makeR2Key(driverPrefix, "vocational_licence_expiry", vocationalLicenceExpiryFileResult.filename) : null;
+  const nricKey = nricFileResult ? makeR2Key(driverPrefix, "nric", "doc" + nricFileResult.extension) : null;
+  const drivingLicenceKey = drivingLicenceFileResult ? makeR2Key(driverPrefix, "driving_licence", "doc" + drivingLicenceFileResult.extension) : null;
+  const vocationalLicenceKey = vocationalLicenceFileResult ? makeR2Key(driverPrefix, "vocational_licence", "doc" + vocationalLicenceFileResult.extension) : null;
+  const vocationalLicenceExpiryKey = vocationalLicenceExpiryFileResult ? makeR2Key(driverPrefix, "vocational_licence_expiry", "doc" + vocationalLicenceExpiryFileResult.extension) : null;
 
   await Promise.all([
-    nricFileResult && nricKey ? uploadToR2(nricKey, nricFileResult.buffer, nricFileResult.mimeType) : null,
-    drivingLicenceFileResult && drivingLicenceKey ? uploadToR2(drivingLicenceKey, drivingLicenceFileResult.buffer, drivingLicenceFileResult.mimeType) : null,
-    vocationalLicenceFileResult && vocationalLicenceKey ? uploadToR2(vocationalLicenceKey, vocationalLicenceFileResult.buffer, vocationalLicenceFileResult.mimeType) : null,
-    vocationalLicenceExpiryFileResult && vocationalLicenceExpiryKey ? uploadToR2(vocationalLicenceExpiryKey, vocationalLicenceExpiryFileResult.buffer, vocationalLicenceExpiryFileResult.mimeType) : null,
+    nricFileResult && nricKey ? uploadToR2(nricKey, nricFileResult.buffer, nricFileResult.contentType) : null,
+    drivingLicenceFileResult && drivingLicenceKey ? uploadToR2(drivingLicenceKey, drivingLicenceFileResult.buffer, drivingLicenceFileResult.contentType) : null,
+    vocationalLicenceFileResult && vocationalLicenceKey ? uploadToR2(vocationalLicenceKey, vocationalLicenceFileResult.buffer, vocationalLicenceFileResult.contentType) : null,
+    vocationalLicenceExpiryFileResult && vocationalLicenceExpiryKey ? uploadToR2(vocationalLicenceExpiryKey, vocationalLicenceExpiryFileResult.buffer, vocationalLicenceExpiryFileResult.contentType) : null,
   ].filter(Boolean) as Promise<void>[]);
 
   let resultDriverId: string;
@@ -176,7 +180,7 @@ export async function POST(req: Request) {
     // Helper to upsert a compliance document + file record
     async function createDocWithFile(
       docData: Parameters<TxClient["complianceDocument"]["create"]>[0]["data"],
-      fileResult: { buffer: Buffer; filename: string; mimeType: string } | null,
+      fileResult: ProcessResult | null,
       storageKey: string | null
     ) {
       const doc = await tx.complianceDocument.create({ data: docData });
@@ -184,8 +188,8 @@ export async function POST(req: Request) {
         await tx.documentFile.create({
           data: {
             complianceDocumentId: doc.id,
-            fileName: fileResult.filename,
-            mimeType: fileResult.mimeType,
+            fileName: "document" + fileResult.extension,
+            mimeType: fileResult.contentType,
             size: fileResult.buffer.length,
             storageKey,
           },
@@ -265,8 +269,8 @@ export async function POST(req: Request) {
 
       // Vehicle log card
       if (vehicleLogCardFileResult) {
-        const logCardKey = makeR2Key(vehicle.id, "vehicle_log_card", vehicleLogCardFileResult.filename);
-        await uploadToR2(logCardKey, vehicleLogCardFileResult.buffer, vehicleLogCardFileResult.mimeType);
+        const logCardKey = makeR2Key(vehicle.id, "vehicle_log_card", "doc" + vehicleLogCardFileResult.extension);
+        await uploadToR2(logCardKey, vehicleLogCardFileResult.buffer, vehicleLogCardFileResult.contentType);
         await createDocWithFile({
           entityType: "vehicle", vehicleId: vehicle.id,
           docType: "vehicle_log_card",
@@ -277,8 +281,8 @@ export async function POST(req: Request) {
 
       // Rental agreement
       if (vehicleRelationship === "rented" && rentalAgreementFileResult) {
-        const rentalKey = makeR2Key(vehicle.id, "rental_agreement", rentalAgreementFileResult.filename);
-        await uploadToR2(rentalKey, rentalAgreementFileResult.buffer, rentalAgreementFileResult.mimeType);
+        const rentalKey = makeR2Key(vehicle.id, "rental_agreement", "doc" + rentalAgreementFileResult.extension);
+        await uploadToR2(rentalKey, rentalAgreementFileResult.buffer, rentalAgreementFileResult.contentType);
         await createDocWithFile({
           entityType: "vehicle", vehicleId: vehicle.id,
           docType: "rental_agreement",
@@ -341,17 +345,27 @@ export async function POST(req: Request) {
     });
   });
 
-  try {
-    await sendWhatsAppTemplate({
+  const appBase = process.env.APP_URL ?? "https://workspace.lymo-x.com";
+
+  await Promise.allSettled([
+    sendWhatsAppTemplate({
       to: phone,
       templateKey: "onboarding_submitted",
       entityType: "driver",
       entityId: resultDriverId!,
       actorId: "system",
-    });
-  } catch {
-    // Non-blocking
-  }
+    }),
+    sendEmail({
+      to: ADMIN_EMAIL,
+      ...driverSubmissionEmail({
+        driverName: `${firstName} ${lastName}`,
+        phone,
+        vehiclePlate: vehiclePlate ?? null,
+        isResubmission,
+        reviewUrl: `${appBase}/drivers/${resultDriverId!}`,
+      }),
+    }),
+  ]);
 
   return NextResponse.json({ driverId: resultDriverId!, isResubmission }, { status: 201 });
 }

@@ -90,3 +90,55 @@ export async function sendWhatsAppTemplate({
 
   return { messageId };
 }
+
+export interface SendTextParams {
+  to:          string;
+  message:     string;
+  entityType?: string;
+  entityId?:   string;
+  actorId?:    string;
+}
+
+export async function sendWhatsAppText({
+  to,
+  message,
+  entityType,
+  entityId,
+  actorId = "admin",
+}: SendTextParams): Promise<{ messageId: string }> {
+  const body = {
+    messaging_product: "whatsapp",
+    to,
+    type: "text",
+    text: { body: message },
+  };
+
+  const res = await fetch(`${BASE_URL}/${PHONE_NUMBER_ID}/messages`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${ACCESS_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+
+  const data = await res.json();
+
+  if (!res.ok) {
+    throw new Error(`WhatsApp API error ${res.status}: ${JSON.stringify(data)}`);
+  }
+
+  const messageId = data.messages?.[0]?.id ?? "unknown";
+
+  await prisma.auditLog.create({
+    data: {
+      entityType: entityType ?? "driver",
+      entityId:   entityId   ?? "none",
+      action:     "whatsapp_text_sent",
+      actorId,
+      metadata:   { to, messageId, preview: message.slice(0, 120) },
+    },
+  });
+
+  return { messageId };
+}

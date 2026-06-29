@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
-import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
+import { sendWhatsAppTemplate, sendWhatsAppText } from "@/lib/whatsapp/client";
 import { evaluateAndSyncDriverCompliance } from "@/lib/compliance/state-machine";
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -65,15 +65,19 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     });
 
     try {
-      await sendWhatsAppTemplate({
-        to: driver.phoneNumber,
-        templateKey: "hello_world",
-        entityType: "driver",
-        entityId: id,
-        actorId: user.id,
+      await sendWhatsAppText({
+        to:          driver.phoneNumber,
+        message:     message.trim(),
+        entityType:  "driver",
+        entityId:    id,
+        actorId:     user.id,
       });
-    } catch {
-      // Non-blocking
+    } catch (err) {
+      console.error("[notify] request_info send failed:", err);
+      return NextResponse.json(
+        { error: "Driver has no active WhatsApp session — message not delivered. The note has been saved to the audit log." },
+        { status: 502 }
+      );
     }
   } else {
     // rejected

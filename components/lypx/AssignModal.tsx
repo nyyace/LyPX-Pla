@@ -31,6 +31,7 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
+  const [complianceFailures, setComplianceFailures] = useState<{ check: string; message: string }[]>([]);
 
   useEffect(() => {
     fetch(`/api/operators/${tenantId}/drivers?compliant=true`)
@@ -43,6 +44,7 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
     if (!selected) return;
     setSaving(true);
     setAssignError(null);
+    setComplianceFailures([]);
     const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -51,7 +53,11 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
     setSaving(false);
     if (!res.ok) {
       const d = await res.json().catch(() => ({}));
-      setAssignError(d.error ?? "Failed to assign driver — they may not meet compliance requirements.");
+      if (res.status === 422 && d.failures?.length) {
+        setComplianceFailures(d.failures);
+      } else {
+        setAssignError(d.error ?? "Failed to assign driver.");
+      }
       return;
     }
     onClose();
@@ -85,6 +91,28 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
             borderRadius: 4, padding: "8px 12px", color: "#D9534F", fontSize: 12, marginBottom: 12,
           }}>
             {assignError}
+          </div>
+        )}
+
+        {complianceFailures.length > 0 && (
+          <div style={{
+            background: "rgba(217,83,79,0.08)", border: "1px solid rgba(217,83,79,0.25)",
+            borderRadius: 6, padding: "10px 14px", marginBottom: 12,
+          }}>
+            <p style={{ fontSize: 12, fontWeight: 700, color: "#D9534F", marginBottom: 8 }}>
+              Cannot assign — compliance issues:
+            </p>
+            <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+              {complianceFailures.map((f, i) => (
+                <li key={i} style={{ display: "flex", alignItems: "flex-start", gap: 6, fontSize: 12, color: "#D9534F" }}>
+                  <span style={{ flexShrink: 0, marginTop: 1 }}>✗</span>
+                  <span>{f.message}</span>
+                </li>
+              ))}
+            </ul>
+            <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 8 }}>
+              Resolve these issues in the driver or vehicle compliance screen, then retry.
+            </p>
           </div>
         )}
 

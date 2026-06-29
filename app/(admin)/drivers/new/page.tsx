@@ -22,6 +22,8 @@ export default function NewDriverPage() {
 
   const [inviteName,  setInviteName]  = useState("");
   const [invitePhone, setInvitePhone] = useState("");
+  const [inviteLink,  setInviteLink]  = useState<string | null>(null);
+  const [linkCopied,  setLinkCopied]  = useState(false);
 
   const [manualPhone,    setManualPhone]    = useState("");
   const [manualFirst,    setManualFirst]    = useState("");
@@ -45,19 +47,30 @@ export default function NewDriverPage() {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        driverWhatsapp: invitePhone,
+        driverWhatsapp: invitePhone || undefined,
         driverName: inviteName.trim() || null,
       }),
     });
     const data = await res.json();
     setLoading(false);
     if (!res.ok) {
-      setError(data.error ?? "Failed to send invite");
+      setError(data.error ?? "Failed to create invite");
       return;
     }
-    setSuccess(invitePhone);
+    if (!invitePhone) {
+      setInviteLink(data.onboardLink);
+    } else {
+      setSuccess(invitePhone);
+    }
     setInviteName("");
     setInvitePhone("");
+  }
+
+  async function copyLink() {
+    if (!inviteLink) return;
+    await navigator.clipboard.writeText(inviteLink);
+    setLinkCopied(true);
+    setTimeout(() => setLinkCopied(false), 2000);
   }
 
   async function handleManual(e: React.FormEvent) {
@@ -149,10 +162,45 @@ export default function NewDriverPage() {
           }}>
             <p className="text-green-400 font-semibold text-sm mb-1">Invite sent</p>
             <p className="text-gray-400 text-sm">
-              WhatsApp self-boarding link sent to {success}. The driver has 7 days to complete onboarding.
+              WhatsApp self-boarding link sent to {success}. The driver has 24 hours to complete onboarding.
             </p>
             <div className="flex gap-3 mt-4">
               <Button size="sm" onClick={() => setSuccess(null)}>Send another</Button>
+              <Button size="sm" variant="outline" className="border-gray-700 text-gray-300"
+                onClick={() => router.push("/drivers")}>
+                Back to drivers
+              </Button>
+            </div>
+          </div>
+        ) : inviteLink ? (
+          <div style={{
+            background: "rgba(34, 197, 94, 0.08)",
+            border: "1px solid rgba(34, 197, 94, 0.3)",
+            borderRadius: 8,
+            padding: "20px 24px",
+          }}>
+            <p className="text-green-400 font-semibold text-sm mb-1">Mass onboarding link ready</p>
+            <p className="text-gray-400 text-sm mb-3">
+              Share this link with any number of drivers. Anyone with the link can onboard. Expires in 24 hours.
+            </p>
+            <div style={{
+              background: "rgba(0,0,0,0.3)",
+              border: "1px solid rgba(255,255,255,0.1)",
+              borderRadius: 6,
+              padding: "10px 14px",
+              fontFamily: "monospace",
+              fontSize: 12,
+              color: "#a0a0a0",
+              wordBreak: "break-all",
+              marginBottom: 12,
+            }}>
+              {inviteLink}
+            </div>
+            <div className="flex gap-3">
+              <Button size="sm" onClick={copyLink}>
+                {linkCopied ? "Copied!" : "Copy link"}
+              </Button>
+              <Button size="sm" onClick={() => setInviteLink(null)}>Generate another</Button>
               <Button size="sm" variant="outline" className="border-gray-700 text-gray-300"
                 onClick={() => router.push("/drivers")}>
                 Back to drivers
@@ -174,13 +222,13 @@ export default function NewDriverPage() {
             </div>
             <PhoneInput
               label="WhatsApp Number"
+              hint="Leave blank to generate a shareable link for mass onboarding"
               value={invitePhone}
               onChange={setInvitePhone}
-              required
             />
             <div className="flex gap-3 pt-2">
-              <Button type="submit" disabled={loading || !invitePhone}>
-                {loading ? "Sending…" : "Send Self-Boarding Invite"}
+              <Button type="submit" disabled={loading}>
+                {loading ? "Creating…" : invitePhone ? "Send Self-Boarding Invite" : "Generate Mass Invite Link"}
               </Button>
               <Button type="button" variant="outline" className="border-gray-700 text-gray-300"
                 onClick={() => router.back()}>

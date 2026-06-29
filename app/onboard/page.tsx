@@ -11,10 +11,14 @@ import { CheckCircle, Upload, X, FileText, ChevronDown, ChevronUp, AlertCircle }
 
 type Step = "phone" | "otp" | "form" | "success";
 const STEPS: Step[] = ["phone", "otp", "form"];
+const PROGRESS_STEPS = STEPS;
 const STEP_LABELS = ["Phone", "Verify", "Details"];
 
-const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
-const MAX_SIZE = 5 * 1024 * 1024;
+const ALLOWED_TYPES = [
+  "image/jpeg", "image/jpg", "image/png", "image/heic", "image/heif",
+  "image/webp", "image/tiff", "image/bmp", "application/pdf",
+];
+const MAX_SIZE = 10 * 1024 * 1024;
 const TODAY = new Date().toISOString().split("T")[0];
 
 function FileField({
@@ -41,7 +45,7 @@ function FileField({
       return;
     }
     if (f.size > MAX_SIZE) {
-      alert("File must be under 5 MB.");
+      alert("File must be under 10 MB.");
       e.target.value = "";
       return;
     }
@@ -54,11 +58,11 @@ function FileField({
         {label}{required && <span className="text-red-400 ml-0.5">*</span>}
       </Label>
       {hint && <p className="text-xs text-gray-600">{hint}</p>}
-      <input ref={ref} type="file" accept="image/*,application/pdf" onChange={handleChange} className="hidden" />
+      <input ref={ref} type="file" accept="image/jpeg,image/png,image/heic,image/heif,image/webp,image/tiff,image/bmp,application/pdf" onChange={handleChange} className="hidden" />
       {file ? (
         <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-800 bg-green-950">
           <FileText size={14} className="text-green-400 flex-shrink-0" />
-          <span className="text-xs text-green-300 truncate flex-1">{file.name}</span>
+          <span className="text-xs text-green-300 truncate flex-1">{file.name} <span className="text-green-600">({(file.size / 1024 / 1024).toFixed(1)} MB)</span></span>
           <button type="button" onClick={() => { onChange(null); if (ref.current) ref.current.value = ""; }}
             className="text-gray-500 hover:text-red-400 flex-shrink-0">
             <X size={12} />
@@ -66,9 +70,9 @@ function FileField({
         </div>
       ) : (
         <button type="button" onClick={() => ref.current?.click()}
-          className="w-full flex items-center gap-2 px-3 py-3 rounded-md border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 transition-colors text-xs">
-          <Upload size={14} />
-          Click to upload image or PDF
+          className="w-full flex flex-col items-center gap-1 px-3 py-3 rounded-md border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 transition-colors text-xs">
+          <span className="flex items-center gap-2"><Upload size={14} /> Click to upload</span>
+          <span className="text-gray-700">JPG · PNG · HEIC (iPhone) · PDF · max 10 MB</span>
         </button>
       )}
     </div>
@@ -235,10 +239,7 @@ function OnboardContent() {
     setLoading(false);
 
     if (!res.ok) return setErr(data.error ?? "Submission failed");
-    const driverId: string = data.driverId ?? "";
-    router.push(
-      `/onboard/status?driverId=${encodeURIComponent(driverId)}&name=${encodeURIComponent(firstName.trim())}`
-    );
+    setStep("success");
   }
 
   // Invite not found or expired — show error screen
@@ -517,6 +518,23 @@ function OnboardContent() {
             {loading ? "Submitting..." : "Submit Application"}
           </Button>
         </form>
+      )}
+
+      {/* ── Success ─────────────────────────────────────────────────────── */}
+      {step === "success" && (
+        <Card className="bg-gray-900 border-gray-800 w-full max-w-lg">
+          <CardContent className="pt-10 pb-10 flex flex-col items-center text-center gap-4">
+            <div className="w-14 h-14 rounded-full bg-green-950 border border-green-700 flex items-center justify-center">
+              <CheckCircle size={28} className="text-green-400" />
+            </div>
+            <div>
+              <p className="text-white font-semibold text-lg mb-1">Application submitted</p>
+              <p className="text-sm text-gray-400">
+                Your documents have been received. Our team will review your application and contact you via WhatsApp.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       )}
     </div>
   );

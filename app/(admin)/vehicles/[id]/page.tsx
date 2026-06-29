@@ -2,27 +2,27 @@ import { prisma } from "@/lib/prisma";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { ComplianceDocumentList } from "@/components/compliance/ComplianceDocumentList";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
-import { formatTZDate } from "@/lib/utils/date";
+import { VehicleProfileEditor } from "@/components/vehicles/VehicleProfileEditor";
+import { InlineDocPanel, type InlineDoc } from "@/components/compliance/InlineDocPanel";
+import { VehicleAssignmentsPanel, type AssignmentRow } from "@/components/vehicles/VehicleAssignmentsPanel";
 
 const statusColors: Record<string, string> = {
-  active: "bg-green-900 text-green-300 border-green-700",
+  active:   "bg-green-900 text-green-300 border-green-700",
   inactive: "bg-gray-800 text-gray-400 border-gray-700",
-  suspended: "bg-red-900 text-red-300 border-red-700",
+  suspended:"bg-red-900 text-red-300 border-red-700",
 };
 
 export default async function VehicleDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
   const { user } = await withAuth({ ensureSignedIn: true });
-  const tz = await getUserTimezone(user.id);
+  await getUserTimezone(user.id);
 
   const vehicle = await prisma.vehicle.findUnique({
     where: { id },
@@ -32,15 +32,43 @@ export default async function VehicleDetailPage({
         include: { file: { select: { fileName: true, mimeType: true } } },
       },
       ownership: {
-        include: { driver: true },
+        orderBy: { createdAt: "desc" },
+        include: { driver: { select: { id: true, firstName: true, lastName: true } } },
       },
     },
   });
 
   if (!vehicle) notFound();
 
+  const inlineDocs: InlineDoc[] = vehicle.documents.map((d) => ({
+    id:         d.id,
+    docType:    d.docType,
+    status:     d.status,
+    expiryDate: d.expiryDate.toISOString(),
+    issuedDate: d.issuedDate?.toISOString() ?? null,
+    hasFile:    !!d.file,
+    isPdf:      d.file?.mimeType === "application/pdf",
+  }));
+
+  const assignments: AssignmentRow[] = vehicle.ownership.map((o) => ({
+    id:               o.id,
+    driverId:         o.driver.id,
+    driverName:       `${o.driver.firstName} ${o.driver.lastName}`,
+    vehicleId:        vehicle.id,
+    vehiclePlate:     vehicle.plateNumber,
+    vehicleMake:      vehicle.make,
+    vehicleModel:     vehicle.model,
+    vehicleClass:     vehicle.vehicleClass,
+    relationshipType: o.relationshipType,
+    contractStatus:   o.contractStatus,
+    contractExpiry:   o.contractExpiry?.toISOString() ?? null,
+    verifiedAt:       o.verifiedAt?.toISOString() ?? null,
+    terminatedAt:     o.terminatedAt?.toISOString() ?? null,
+    notes:            o.notes,
+  }));
+
   return (
-    <div className="p-8 max-w-3xl">
+    <div className="p-8 max-w-4xl">
       <div className="mb-6">
         <Link href="/vehicles" className="text-xs text-gray-500 hover:text-gray-300 mb-3 block">
           ← Vehicles
@@ -63,61 +91,40 @@ export default async function VehicleDetailPage({
         </p>
       </div>
 
-      {/* Compliance Documents */}
-      <Card className="bg-gray-900 border-gray-800 mb-6">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm text-gray-300">Compliance Documents</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <ComplianceDocumentList
-            documents={vehicle.documents}
+      <Separator className="my-6 bg-gray-800" />
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left: Vehicle details editor */}
+        <div className="space-y-6">
+          <VehicleProfileEditor
+            vehicleId={vehicle.id}
+            make={vehicle.make}
+            model={vehicle.model}
+            year={vehicle.year}
+            colour={vehicle.colour}
+            vehicleClass={vehicle.vehicleClass}
+            seatingCapacity={vehicle.seatingCapacity}
+            insuranceCompany={vehicle.insuranceCompany}
+          />
+        </div>
+
+        {/* Right: Documents + Driver assignments */}
+        <div className="space-y-6">
+          <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
+            <p className="text-sm font-medium text-gray-300 mb-3">Compliance Documents</p>
+            <InlineDocPanel
+              docs={inlineDocs}
+              upload={{ entityType: "vehicle", entityId: vehicle.id }}
+            />
+          </div>
+
+          <VehicleAssignmentsPanel
+            assignments={assignments}
             entityType="vehicle"
             entityId={vehicle.id}
-            timezone={tz}
           />
-        </CardContent>
-      </Card>
-
-      {/* Owner/Driver Linkages */}
-      {vehicle.ownership.length > 0 && (
-        <Card className="bg-gray-900 border-gray-800">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm text-gray-300">Driver Ownership</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {vehicle.ownership.map((o) => (
-                <div key={o.id} className="flex items-center justify-between py-2 border-b border-gray-800 last:border-0">
-                  <div>
-                    <Link
-                      href={`/drivers/${o.driver.id}`}
-                      className="text-sm text-white hover:underline"
-                    >
-                      {o.driver.firstName} {o.driver.lastName}
-                    </Link>
-                    <p className="text-xs text-gray-500">
-                      {o.relationshipType}
-                      {o.contractExpiry && ` · expires ${formatTZDate(o.contractExpiry, tz)}`}
-                    </p>
-                  </div>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs ${
-                      o.driver.complianceStatus === "active"
-                        ? "border-green-700 text-green-300"
-                        : o.driver.complianceStatus === "suspended"
-                        ? "border-red-700 text-red-300"
-                        : "border-gray-700 text-gray-400"
-                    }`}
-                  >
-                    driver: {o.driver.complianceStatus}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+        </div>
+      </div>
     </div>
   );
 }

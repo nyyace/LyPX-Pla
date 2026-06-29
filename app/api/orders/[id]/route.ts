@@ -4,6 +4,7 @@ import { prisma, type TxClient } from "@/lib/prisma";
 import { onTripCompleted } from "@/lib/claims/engine";
 import { getMarketplaceConfig, calculateMarketplaceFee } from "@/lib/utils/marketplace";
 import { emitEvent } from "@/lib/orchestrator/emitter";
+import { checkJobCompliance } from "@/lib/compliance/checkJobCompliance";
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   booked: ["assigned", "cancelled"],
@@ -81,6 +82,35 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       updates.cancelledAt = new Date();
       updates.cancelledBy = user.id;
       updates.cancellationReason = body.cancellationReason ?? null;
+    }
+  }
+
+  // Compliance gate: block assignment if driver/vehicle do not pass all checks
+  const isAssigning = body.status === "assigned";
+  const driverIdForCheck  = body.driverId  ?? order.driverId;
+  const vehicleIdForCheck = body.vehicleId ?? order.vehicleId;
+
+  if (isAssigning && driverIdForCheck && vehicleIdForCheck) {
+    const jobTime = order.pickupTime;
+    if (!jobTime) {
+      return NextResponse.json(
+        { error: "Order has no pickup time. Set the time before assigning a driver." },
+        { status: 400 }
+      );
+    }
+
+    const compliance = await checkJobCompliance(
+      driverIdForCheck,
+      vehicleIdForCheck,
+      jobTime,
+      prisma,
+    );
+
+    if (!compliance.passed) {
+      return NextResponse.json(
+        { error: "Compliance check failed", failures: compliance.failures },
+        { status: 422 }
+      );
     }
   }
 

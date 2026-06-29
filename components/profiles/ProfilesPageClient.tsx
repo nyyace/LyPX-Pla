@@ -22,7 +22,7 @@ export type DriverListItem = {
 
 export type InviteRequestItem = {
   id: string;
-  driverWhatsapp: string;
+  driverWhatsapp: string | null;
   driverName: string | null;
   status: string;
   createdAt: string;

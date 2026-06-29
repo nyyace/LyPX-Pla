@@ -2,6 +2,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { isAdminUser } from "@/lib/utils/admin";
+import { evaluateAndSyncDriverCompliance } from "@/lib/compliance/state-machine";
 
 export async function GET(
   _req: Request,
@@ -101,4 +102,73 @@ export async function GET(
     })),
     totalTrips: driver._count.orders,
   });
+}
+
+export async function PATCH(
+  req: Request,
+  { params }: { params: Promise<{ driverId: string }> }
+) {
+  const { user } = await withAuth({ ensureSignedIn: true });
+  if (!user || !(await isAdminUser(user.id))) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  const { driverId } = await params;
+
+  const driver = await prisma.driver.findUnique({ where: { id: driverId }, select: { id: true } });
+  if (!driver) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  const body = await req.json() as {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    licenseNumber?: string;
+    licenseIssuedDate?: string | null;
+    complianceStatus?: string;
+    statusOverrideReason?: string;
+    tier2Qualified?: boolean;
+  };
+
+  const updates: Record<string, unknown> = {};
+  if (body.firstName !== undefined)      updates.firstName      = body.firstName.trim();
+  if (body.lastName !== undefined)       updates.lastName       = body.lastName.trim();
+  if (body.phoneNumber !== undefined)    updates.phoneNumber    = body.phoneNumber.trim();
+  if (body.licenseNumber !== undefined)  updates.licenseNumber  = body.licenseNumber?.trim() || null;
+  if (body.licenseIssuedDate !== undefined) {
+    updates.licenseIssuedDate = body.licenseIssuedDate ? new Date(body.licenseIssuedDate) : null;
+  }
+  if (body.tier2Qualified !== undefined) updates.tier2Qualified = body.tier2Qualified;
+
+  const VALID_STATUSES = ["pending", "active", "expiring_soon", "suspended"];
+  if (body.complianceStatus !== undefined) {
+    if (!VALID_STATUSES.includes(body.complianceStatus)) {
+      return NextResponse.json({ error: "Invalid complianceStatus" }, { status: 400 });
+    }
+    updates.complianceStatus = body.complianceStatus;
+  }
+
+  if (!Object.keys(updates).length) {
+    return NextResponse.json({ error: "No fields to update" }, { status: 400 });
+  }
+
+  const updated = await prisma.driver.update({ where: { id: driverId }, data: updates });
+
+  await prisma.auditLog.create({
+    data: {
+      entityType: "driver",
+      entityId: driverId,
+      action: "driver_updated",
+      actorId: user.id,
+      metadata: {
+        changes: updates as object,
+        ...(body.statusOverrideReason ? { statusOverrideReason: body.statusOverrideReason } : {}),
+      } as object,
+    },
+  });
+
+  if (body.complianceStatus === undefined) {
+    await evaluateAndSyncDriverCompliance(driverId, user.id);
+  }
+
+  return NextResponse.json({ ok: true, complianceStatus: updated.complianceStatus });
 }
