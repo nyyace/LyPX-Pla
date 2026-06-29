@@ -58,6 +58,28 @@ export const WHATSAPP_TEMPLATES = {
     language: "en",
     description: "Notify requestor and passenger that the trip is complete",
   },
+  order_booking_received: {
+    name: "order_booking_received",
+    language: "en",
+    description: "Notify requestor that booking is received and being processed",
+  },
+  // ── Driver comms ──────────────────────────────────────────────────────
+  driver_onboard_invite: {
+    name: "driver_onboard_invite_v3",
+    language: "en",
+    description: "Invite driver to self-onboard via operator referral (UTILITY). v3 — prior versions in Meta deletion window.",
+  },
+  // ── Post-trip ─────────────────────────────────────────────────────────
+  job_driver_briefing: {
+    name: "job_driver_briefing",
+    language: "en",
+    description: "Brief driver on upcoming job details",
+  },
+  job_trip_feedback: {
+    name: "job_trip_feedback_v2",
+    language: "en",
+    description: "Request passenger feedback after trip completion. v2 — prior version in Meta deletion window.",
+  },
 } as const;
 
 export type TemplateKey = keyof typeof WHATSAPP_TEMPLATES;
