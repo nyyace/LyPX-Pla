@@ -7,6 +7,7 @@ import { TakeoverButton } from "@/components/accounts/TakeoverButton";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 import { formatTZDate, formatTZ, isExpired } from "@/lib/utils/date";
+import { PortalAccessSection } from "@/components/admin/PortalAccessSection";
 
 export default async function AccountDetailPage({
   params,
@@ -30,6 +31,7 @@ export default async function AccountDetailPage({
           vehicle: { select: { plateNumber: true } },
         },
       },
+      accountUsers: { orderBy: { createdAt: "asc" } },
     },
   });
 
@@ -194,7 +196,7 @@ export default async function AccountDetailPage({
 
       {/* Takeover History */}
       {account.takeoverRequests.length > 0 && (
-        <Card className="bg-gray-900 border-gray-800">
+        <Card className="bg-gray-900 border-gray-800 mb-6">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm text-gray-300">Takeover Requests</CardTitle>
           </CardHeader>
@@ -224,6 +226,12 @@ export default async function AccountDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Portal Access */}
+      <PortalAccessSection
+        accountId={account.id}
+        existingUsers={account.accountUsers}
+      />
     </div>
   );
 }

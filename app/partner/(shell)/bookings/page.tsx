@@ -82,7 +82,11 @@ export default async function PartnerBookingsPage() {
             )}
             {orders.map(o => (
               <TableRow key={o.id} className="border-gray-800 hover:bg-gray-900">
-                <TableCell className="text-xs font-mono text-gray-400">{o.jobReference ?? "—"}</TableCell>
+                <TableCell className="text-xs font-mono text-gray-400">
+                  <Link href={`/partner/bookings/${o.id}`} className="hover:text-yellow-400 transition-colors">
+                    {o.jobReference ?? "—"}
+                  </Link>
+                </TableCell>
                 <TableCell className="text-sm text-white whitespace-nowrap">{formatTZ(o.pickupTime, tz)}</TableCell>
                 <TableCell className="text-xs text-gray-400 max-w-[180px] truncate">{o.pickupLocation}</TableCell>
                 <TableCell className="text-xs text-gray-400 max-w-[180px] truncate">{o.dropoffLocation ?? "—"}</TableCell>
