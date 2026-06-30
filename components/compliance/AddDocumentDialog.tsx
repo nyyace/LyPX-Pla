@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Dialog,
@@ -19,6 +19,10 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Upload, FileText, X } from "lucide-react";
+
+const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
+const MAX_SIZE = 5 * 1024 * 1024;
 
 const driverDocTypes = ["license", "background_check", "insurance"];
 const vehicleDocTypes = ["registration", "inspection", "insurance"];
@@ -32,20 +36,51 @@ interface Props {
 
 export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props) {
   const router = useRouter();
+  const fileRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [docType, setDocType] = useState("");
+  const [file, setFile] = useState<File | null>(null);
 
   const docTypes = entityType === "driver" ? driverDocTypes : vehicleDocTypes;
 
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0] ?? null;
+    if (!f) return;
+    if (!ALLOWED_TYPES.includes(f.type)) {
+      setError("Only JPG, PNG, WEBP, HEIC and PDF files are accepted.");
+      e.target.value = "";
+      return;
+    }
+    if (f.size > MAX_SIZE) {
+      setError("File must be under 5 MB.");
+      e.target.value = "";
+      return;
+    }
+    setError(null);
+    setFile(f);
+  }
+
+  function handleClose() {
+    setDocType("");
+    setFile(null);
+    setError(null);
+    onClose();
+  }
+
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!file) {
+      setError("Please select a file to upload.");
+      return;
+    }
     setLoading(true);
     setError(null);
 
     const form = new FormData(e.currentTarget);
 
-    const res = await fetch("/api/compliance", {
+    // Step 1: create the compliance document record
+    const createRes = await fetch("/api/compliance", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
@@ -56,20 +91,36 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
       }),
     });
 
-    const data = await res.json();
-    setLoading(false);
-
-    if (!res.ok) {
-      setError(data.error ?? "Failed to upload document");
+    const createData = await createRes.json();
+    if (!createRes.ok) {
+      setError(createData.error ?? "Failed to create document record");
+      setLoading(false);
       return;
     }
 
+    // Step 2: upload the file to the newly created record
+    const uploadForm = new FormData();
+    uploadForm.append("file", file);
+
+    const uploadRes = await fetch(`/api/compliance/${createData.id}/upload`, {
+      method: "POST",
+      body: uploadForm,
+    });
+
+    if (!uploadRes.ok) {
+      const uploadData = await uploadRes.json().catch(() => ({}));
+      setError(uploadData.error ?? "File upload failed");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
     router.refresh();
-    onClose();
+    handleClose();
   }
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && handleClose()}>
       <DialogContent className="bg-gray-900 border-gray-800 text-white max-w-sm">
         <DialogHeader>
           <DialogTitle className="text-white">Upload Compliance Document</DialogTitle>
@@ -109,16 +160,52 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
             />
           </div>
 
+          <div className="space-y-1.5">
+            <Label className="text-gray-300">File <span className="text-red-400">*</span></Label>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,application/pdf"
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            {file ? (
+              <div className="flex items-center gap-2 px-3 py-2 rounded-md border border-green-800 bg-green-950">
+                <FileText size={14} className="text-green-400 flex-shrink-0" />
+                <span className="text-xs text-green-300 truncate flex-1">
+                  {file.name}{" "}
+                  <span className="text-green-600">({(file.size / 1024 / 1024).toFixed(1)} MB)</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={() => { setFile(null); if (fileRef.current) fileRef.current.value = ""; }}
+                  className="text-gray-500 hover:text-red-400 flex-shrink-0"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => fileRef.current?.click()}
+                className="w-full flex flex-col items-center gap-1 px-3 py-3 rounded-md border border-dashed border-gray-700 hover:border-gray-500 text-gray-500 hover:text-gray-300 transition-colors text-xs"
+              >
+                <span className="flex items-center gap-2"><Upload size={14} /> Click to browse</span>
+                <span className="text-gray-700">JPG · PNG · WEBP · HEIC · PDF · max 5 MB</span>
+              </button>
+            )}
+          </div>
+
           <div className="flex gap-3 pt-1">
-            <Button type="submit" disabled={loading} size="sm">
-              {loading ? "Saving..." : "Add Document"}
+            <Button type="submit" disabled={loading || !file} size="sm">
+              {loading ? "Uploading..." : "Upload Document"}
             </Button>
             <Button
               type="button"
               variant="outline"
               size="sm"
               className="border-gray-700 text-gray-300"
-              onClick={onClose}
+              onClick={handleClose}
             >
               Cancel
             </Button>
