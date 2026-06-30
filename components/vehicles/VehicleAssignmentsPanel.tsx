@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import Link from "next/link";
+import { VEHICLE_CLASS_LABELS } from "@/lib/constants/vehicleClasses";
 
 export interface AssignmentRow {
   id:              string;
@@ -56,17 +57,6 @@ interface VehicleResult {
   status:       string;
 }
 
-const VEHICLE_CLASS_LABELS: Record<string, string> = {
-  standard_sedan:           "Standard Sedan",
-  standard_mpv_nve:         "Standard MPV (NVE)",
-  executive_sedan_eclass:   "Executive Sedan (E-Class)",
-  luxury_sedan_sclass:      "Luxury Sedan (S-Class)",
-  executive_mpv_avf:        "Executive MPV (AVF)",
-  prestige_mpv_lexus:       "Prestige MPV (Lexus)",
-  luxury_executive_van_vvv: "Luxury Executive Van (VVV)",
-  group_van_combi:          "Group Van (Combi)",
-  prestige_collection:      "Prestige Collection (Rolls Royce, Maybach)",
-};
 
 const COMPLIANCE_COLORS: Record<string, string> = {
   active:        "text-green-400",

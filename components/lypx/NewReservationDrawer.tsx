@@ -14,7 +14,8 @@ const SERVICE_TYPES = [
   { value: "flexible",         label: "Flexible / Charter" },
 ];
 
-const NEEDS_FLIGHT  = new Set(["departure", "arrival_mng", "arrival_driveway"]);
+const SHOWS_FLIGHT    = new Set(["departure", "arrival_mng", "arrival_driveway"]);
+const REQUIRES_FLIGHT = new Set(["arrival_mng", "arrival_driveway"]); // departure is optional
 const NEEDS_BOARD   = new Set(["arrival_mng"]);
 const NEEDS_HOURS   = new Set(["disposal"]);
 const DROPOFF_OPT   = new Set(["disposal", "flexible"]);
@@ -69,8 +70,8 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
     if (!dropoffOptional && !form.dropoffLocation) {
       return setError("Dropoff location is required for this service type");
     }
-    if (NEEDS_FLIGHT.has(form.serviceType) && !form.flightNumber.trim()) {
-      return setError("Flight number is required for this service type");
+    if (REQUIRES_FLIGHT.has(form.serviceType) && !form.flightNumber.trim()) {
+      return setError("Flight number is required for arrival service types");
     }
     if (NEEDS_BOARD.has(form.serviceType) && !form.nameBoardText.trim()) {
       return setError("Name board text is required for MNG arrivals");
@@ -94,7 +95,7 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
         notes: form.notes || undefined,
         status: form.driverId ? "assigned" : "booked",
         serviceType: form.serviceType,
-        flightNumber: NEEDS_FLIGHT.has(form.serviceType) ? form.flightNumber.trim() || null : null,
+        flightNumber: SHOWS_FLIGHT.has(form.serviceType) ? form.flightNumber.trim() || null : null,
         nameBoardText: NEEDS_BOARD.has(form.serviceType) ? form.nameBoardText.trim() || null : null,
         disposalHours: NEEDS_HOURS.has(form.serviceType) ? parseInt(form.disposalHours) || null : null,
         fareAmount: parseFloat(form.fareAmount),
@@ -240,10 +241,19 @@ export function NewReservationDrawer({ tenantId, onClose }: Props) {
           </div>
 
           {/* Conditional: flight number */}
-          {NEEDS_FLIGHT.has(form.serviceType) && (
+          {SHOWS_FLIGHT.has(form.serviceType) && (
             <div>
-              <label style={labelStyle}>Flight Number *</label>
-              <input type="text" value={form.flightNumber} onChange={e => set("flightNumber", e.target.value)} style={inputStyle} placeholder="e.g. SQ123" required />
+              <label style={labelStyle}>
+                Flight Number{REQUIRES_FLIGHT.has(form.serviceType) ? " *" : " (optional)"}
+              </label>
+              <input
+                type="text"
+                value={form.flightNumber}
+                onChange={e => set("flightNumber", e.target.value)}
+                style={inputStyle}
+                placeholder="e.g. SQ123"
+                required={REQUIRES_FLIGHT.has(form.serviceType)}
+              />
             </div>
           )}
 

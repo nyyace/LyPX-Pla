@@ -4,6 +4,7 @@ import { useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { VEHICLE_CLASS_LABELS } from "@/lib/constants/vehicleClasses";
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -46,17 +47,6 @@ interface Props {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const VEHICLE_CLASS_LABELS: Record<string, string> = {
-  standard_sedan:           "Standard Sedan",
-  standard_mpv_nve:         "Standard MPV (NVE)",
-  executive_sedan_eclass:   "Executive Sedan (E-Class)",
-  luxury_sedan_sclass:      "Luxury Sedan (S-Class)",
-  executive_mpv_avf:        "Executive MPV (AVF)",
-  prestige_mpv_lexus:       "Prestige MPV (Lexus)",
-  luxury_executive_van_vvv: "Luxury Executive Van (VVV)",
-  group_van_combi:          "Group Van (Combi)",
-  prestige_collection:      "Prestige Collection",
-};
 
 type BondStatus = "none" | "unverified" | "expiring" | "expired" | "active";
 

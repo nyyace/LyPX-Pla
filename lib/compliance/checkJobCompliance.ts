@@ -1,4 +1,5 @@
 import { PrismaClient } from "@/lib/generated/prisma";
+import { VEHICLE_CLASS_LABELS } from "@/lib/constants/vehicleClasses";
 
 export interface ComplianceFailure {
   check: string;
@@ -9,18 +10,6 @@ export interface ComplianceResult {
   passed: boolean;
   failures: ComplianceFailure[];
 }
-
-const VEHICLE_CLASS_LABELS: Record<string, string> = {
-  standard_sedan:           "Standard Sedan",
-  standard_mpv_nve:         "Standard MPV (NVE)",
-  executive_sedan_eclass:   "Executive Sedan (E-Class)",
-  luxury_sedan_sclass:      "Luxury Sedan (S-Class)",
-  executive_mpv_avf:        "Executive MPV (AVF)",
-  prestige_mpv_lexus:       "Prestige MPV (Lexus)",
-  luxury_executive_van_vvv: "Luxury Executive Van (VVV)",
-  group_van_combi:          "Group Van (Combi)",
-  prestige_collection:      "Prestige Collection (Rolls Royce, MayBach)",
-};
 
 export async function checkJobCompliance(
   driverId: string,

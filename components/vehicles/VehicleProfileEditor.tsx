@@ -4,18 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
-const VEHICLE_CLASS_OPTIONS = [
-  { value: "standard_sedan",           label: "Standard Sedan" },
-  { value: "standard_mpv_nve",         label: "Standard MPV (NVE)" },
-  { value: "executive_sedan_eclass",   label: "Executive Sedan (E-Class)" },
-  { value: "luxury_sedan_sclass",      label: "Luxury Sedan (S-Class)" },
-  { value: "executive_mpv_avf",        label: "Executive MPV (AVF)" },
-  { value: "prestige_mpv_lexus",       label: "Prestige MPV (Lexus)" },
-  { value: "luxury_executive_van_vvv", label: "Luxury Executive Van (VVV)" },
-  { value: "group_van_combi",          label: "Group Van (Combi)" },
-  { value: "prestige_collection",      label: "Prestige Collection (Rolls Royce, MayBach)" },
-];
+import { VEHICLE_CLASSES } from "@/lib/constants/vehicleClasses";
 
 interface Props {
   vehicleId:        string;
@@ -152,7 +141,7 @@ export function VehicleProfileEditor({
             className="w-full bg-gray-800 border border-gray-700 text-white text-sm rounded px-3 py-1.5"
           >
             <option value="">— Select class —</option>
-            {VEHICLE_CLASS_OPTIONS.map((opt) => (
+            {VEHICLE_CLASSES.map((opt) => (
               <option key={opt.value} value={opt.value}>{opt.label}</option>
             ))}
           </select>
