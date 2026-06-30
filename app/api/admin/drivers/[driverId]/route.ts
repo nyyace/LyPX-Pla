@@ -126,6 +126,7 @@ export async function PATCH(
     licenseIssuedDate?: string | null;
     complianceStatus?: string;
     statusOverrideReason?: string;
+    clearStatusOverride?: boolean;
     tier2Qualified?: boolean;
   };
 
@@ -140,11 +141,19 @@ export async function PATCH(
   if (body.tier2Qualified !== undefined) updates.tier2Qualified = body.tier2Qualified;
 
   const VALID_STATUSES = ["pending", "active", "expiring_soon", "suspended"];
-  if (body.complianceStatus !== undefined) {
+
+  if (body.clearStatusOverride) {
+    // Clear the override and immediately re-derive from documents
+    updates.statusOverriddenAt = null;
+    updates.statusOverriddenBy = null;
+    // complianceStatus will be re-derived after the update (handled below)
+  } else if (body.complianceStatus !== undefined) {
     if (!VALID_STATUSES.includes(body.complianceStatus)) {
       return NextResponse.json({ error: "Invalid complianceStatus" }, { status: 400 });
     }
-    updates.complianceStatus = body.complianceStatus;
+    updates.complianceStatus   = body.complianceStatus;
+    updates.statusOverriddenAt = new Date();
+    updates.statusOverriddenBy = user.id;
   }
 
   if (!Object.keys(updates).length) {
@@ -157,7 +166,7 @@ export async function PATCH(
     data: {
       entityType: "driver",
       entityId: driverId,
-      action: "driver_updated",
+      action: body.clearStatusOverride ? "driver_override_cleared" : "driver_updated",
       actorId: user.id,
       metadata: {
         changes: updates as object,
@@ -166,7 +175,8 @@ export async function PATCH(
     },
   });
 
-  if (body.complianceStatus === undefined) {
+  // Re-derive compliance unless a new override was just set
+  if (!updates.statusOverriddenAt) {
     await evaluateAndSyncDriverCompliance(driverId, user.id);
   }
 

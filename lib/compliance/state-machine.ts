@@ -8,17 +8,18 @@ const EXPIRING_SOON_DAYS = 30;
 export function deriveDriverStatus(
   docs: Array<{ status: string; expiryDate: Date; docType: string }>
 ): "active" | "expiring_soon" | "suspended" | "pending" {
-  if (docs.length === 0) return "pending";
+  const active = docs.filter((d) => d.status !== "superseded");
+  if (active.length === 0) return "pending";
 
-  const hasExpired = docs.some(
+  const hasExpired = active.some(
     (d) => d.status === "verified" && isExpired(d.expiryDate)
   );
   if (hasExpired) return "suspended";
 
-  const hasRejected = docs.some((d) => d.status === "rejected");
+  const hasRejected = active.some((d) => d.status === "rejected");
   if (hasRejected) return "suspended";
 
-  const hasExpiringSoon = docs.some(
+  const hasExpiringSoon = active.some(
     (d) =>
       d.status === "verified" &&
       !isExpired(d.expiryDate) &&
@@ -26,7 +27,7 @@ export function deriveDriverStatus(
   );
   if (hasExpiringSoon) return "expiring_soon";
 
-  const allVerified = docs.every((d) => d.status === "verified");
+  const allVerified = active.every((d) => d.status === "verified");
   if (allVerified) return "active";
 
   return "pending";
@@ -37,16 +38,17 @@ export function deriveVehicleStatus(
   vehicleDocs: Array<{ status: string; expiryDate: Date }>,
   driverStatuses: string[]
 ): "active" | "inactive" | "suspended" {
-  const hasExpiredDoc = vehicleDocs.some(
+  const activeDocs = vehicleDocs.filter((d) => d.status !== "superseded");
+  const hasExpiredDoc = activeDocs.some(
     (d) => d.status === "verified" && isExpired(d.expiryDate)
   );
-  const hasRejectedDoc = vehicleDocs.some((d) => d.status === "rejected");
+  const hasRejectedDoc = activeDocs.some((d) => d.status === "rejected");
   const primaryDriverSuspended = driverStatuses.some((s) => s === "suspended");
 
   if (hasExpiredDoc || hasRejectedDoc || primaryDriverSuspended)
     return "suspended";
 
-  const allDocsVerified = vehicleDocs.every((d) => d.status === "verified");
+  const allDocsVerified = activeDocs.every((d) => d.status === "verified");
   const allDriversActive = driverStatuses.every(
     (s) => s === "active" || s === "expiring_soon"
   );
@@ -58,6 +60,7 @@ export function deriveVehicleStatus(
 
 // Re-evaluates a driver's compliance status and persists if changed.
 // Writes audit log on status change. Safe to call from scheduler or on-demand.
+// Skips if a manual status override is active (statusOverriddenAt is set).
 export async function evaluateAndSyncDriverCompliance(
   driverId: string,
   actorId = "system"
@@ -66,6 +69,8 @@ export async function evaluateAndSyncDriverCompliance(
     where: { id: driverId },
     include: { documents: true },
   });
+
+  if (driver.statusOverriddenAt) return;
 
   const newStatus = deriveDriverStatus(driver.documents);
 
@@ -100,6 +105,7 @@ export async function evaluateAndSyncDriverCompliance(
 }
 
 // Re-evaluates a vehicle's compliance status and persists if changed.
+// Skips if a manual status override is active (statusOverriddenAt is set).
 export async function evaluateAndSyncVehicleCompliance(
   vehicleId: string,
   actorId = "system"
@@ -113,6 +119,8 @@ export async function evaluateAndSyncVehicleCompliance(
       },
     },
   });
+
+  if (vehicle.statusOverriddenAt) return;
 
   const driverStatuses = vehicle.ownership.map((o) => o.driver.complianceStatus);
   const newStatus = deriveVehicleStatus(vehicle.documents, driverStatuses);

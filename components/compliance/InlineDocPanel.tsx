@@ -61,35 +61,43 @@ function isoToDateInput(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+function makeDocState(d: InlineDoc): DocState {
+  return {
+    status:       d.status,
+    expiryDate:   isoToDateInput(d.expiryDate),
+    issuedDate:   isoToDateInput(d.issuedDate),
+    expanded:     d.hasFile && d.status === "pending_review",
+    editMode:     false,
+    rejectMode:   false,
+    rejectReason: "",
+    loading:      false,
+    error:        null,
+  };
+}
+
 export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: UploadProps }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
 
   const [states, setStates] = useState<Record<string, DocState>>(() =>
-    Object.fromEntries(
-      docs.map((d) => [
-        d.id,
-        {
-          status:       d.status,
-          expiryDate:   isoToDateInput(d.expiryDate),
-          issuedDate:   isoToDateInput(d.issuedDate),
-          expanded:     d.hasFile && d.status === "pending_review",
-          editMode:     false,
-          rejectMode:   false,
-          rejectReason: "",
-          loading:      false,
-          error:        null,
-        },
-      ])
-    )
+    Object.fromEntries(docs.map((d) => [d.id, makeDocState(d)]))
   );
 
+  // When router.refresh() brings new docs (e.g. after manual entry), seed their state.
+  // useState initializer only runs once, so new items arriving via prop updates need this.
+  function resolveState(id: string): DocState {
+    const existing = states[id];
+    if (existing) return existing;
+    const doc = docs.find((d) => d.id === id);
+    return doc ? makeDocState(doc) : { status: "", expiryDate: "", issuedDate: "", expanded: false, editMode: false, rejectMode: false, rejectReason: "", loading: false, error: null };
+  }
+
   function patch(id: string, update: Partial<DocState>) {
-    setStates((prev) => ({ ...prev, [id]: { ...prev[id], ...update } }));
+    setStates((prev) => ({ ...prev, [id]: { ...resolveState(id), ...update } }));
   }
 
   async function saveEdit(docId: string) {
-    const s = states[docId];
+    const s = resolveState(docId);
     patch(docId, { loading: true, error: null });
 
     const res = await fetch(`/api/compliance/${docId}`, {
@@ -112,7 +120,7 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
   }
 
   async function submitReview(docId: string, action: "approve" | "reject") {
-    const s = states[docId];
+    const s = resolveState(docId);
     patch(docId, { loading: true, error: null });
 
     const res = await fetch(`/api/compliance/${docId}/review`, {
@@ -142,7 +150,7 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
         <p className="text-sm text-gray-600 py-2">No documents on file.</p>
       )}
       {docs.map((doc) => {
-        const s = states[doc.id];
+        const s = resolveState(doc.id);
         return (
           <div key={doc.id} className="border border-gray-800 rounded-md overflow-hidden">
             {/* Header */}

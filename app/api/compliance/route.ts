@@ -16,6 +16,9 @@ export async function GET() {
   return NextResponse.json(docs);
 }
 
+const DRIVER_DOC_TYPES = ["nric", "driving_licence", "vocational_licence"];
+const VEHICLE_DOC_TYPES = ["insurance", "rental_agreement"];
+
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
@@ -23,6 +26,12 @@ export async function POST(req: Request) {
 
   if (!entityType || !entityId || !docType || !expiryDate) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (entityType === "driver" && !DRIVER_DOC_TYPES.includes(docType)) {
+    return NextResponse.json({ error: `Invalid docType for driver. Allowed: ${DRIVER_DOC_TYPES.join(", ")}` }, { status: 400 });
+  }
+  if (entityType === "vehicle" && !VEHICLE_DOC_TYPES.includes(docType)) {
+    return NextResponse.json({ error: `Invalid docType for vehicle. Allowed: ${VEHICLE_DOC_TYPES.join(", ")}` }, { status: 400 });
   }
 
   const data: Parameters<typeof prisma.complianceDocument.create>[0]["data"] = {
@@ -37,6 +46,16 @@ export async function POST(req: Request) {
   else return NextResponse.json({ error: "Invalid entityType" }, { status: 400 });
 
   const doc = await prisma.$transaction(async (tx: TxClient) => {
+    // Supersede any existing active docs of the same type
+    await tx.complianceDocument.updateMany({
+      where: {
+        ...(entityType === "driver" ? { driverId: entityId } : { vehicleId: entityId }),
+        docType,
+        status: { in: ["pending_review", "verified"] },
+      },
+      data: { status: "superseded" },
+    });
+
     const d = await tx.complianceDocument.create({ data });
     await tx.auditLog.create({
       data: {

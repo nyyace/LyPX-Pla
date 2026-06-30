@@ -19,6 +19,33 @@ const statusColors: Record<string, string> = {
   pending:       "bg-gray-800 text-gray-400 border-gray-700",
 };
 
+const DRIVER_REQUIRED_DOCS = [
+  { type: "nric",               label: "NRIC / Passport" },
+  { type: "driving_licence",    label: "Driving Licence" },
+  { type: "vocational_licence", label: "Vocational Licence" },
+] as const;
+
+function getDocSummaryStatus(
+  docs: Array<{ docType: string; status: string; expiryDate: Date }>,
+  docType: string
+): "missing" | "pending_review" | "verified" | "expired" | "rejected" | "superseded" {
+  const active = docs
+    .filter((d) => d.docType === docType && d.status !== "superseded")
+    .sort((a, b) => b.expiryDate.getTime() - a.expiryDate.getTime());
+  if (!active.length) return "missing";
+  const d = active[0];
+  if (d.status === "verified" && d.expiryDate < new Date()) return "expired";
+  return d.status as ReturnType<typeof getDocSummaryStatus>;
+}
+
+const DOC_STATUS_CHIP: Record<string, string> = {
+  verified:       "text-green-300 border-green-800",
+  pending_review: "text-yellow-300 border-yellow-800",
+  expired:        "text-red-400 border-red-900",
+  rejected:       "text-red-400 border-red-900",
+  missing:        "text-gray-600 border-gray-700",
+};
+
 export default async function DriverDetailPage({
   params,
 }: {
@@ -159,6 +186,7 @@ export default async function DriverDetailPage({
             licenseNumber={driver.licenseNumber}
             licenseIssuedDate={driver.licenseIssuedDate?.toISOString() ?? null}
             complianceStatus={driver.complianceStatus}
+            statusOverriddenAt={driver.statusOverriddenAt?.toISOString() ?? null}
             tier2Qualified={driver.tier2Qualified}
           />
 
@@ -197,6 +225,31 @@ export default async function DriverDetailPage({
               <CardTitle className="text-sm text-gray-300">Compliance Documents</CardTitle>
             </CardHeader>
             <CardContent>
+              {/* Required docs checklist */}
+              {(() => {
+                const statuses = DRIVER_REQUIRED_DOCS.map((r) => ({
+                  ...r,
+                  status: getDocSummaryStatus(driver.documents, r.type),
+                }));
+                const allVerified = statuses.every((s) => s.status === "verified");
+                return (
+                  <div className={`mb-4 p-3 rounded border text-xs ${allVerified ? "border-green-900/40 bg-green-950/20" : "border-amber-800/50 bg-amber-950/20"}`}>
+                    <p className={`font-medium mb-2 ${allVerified ? "text-green-400" : "text-amber-400"}`}>
+                      {allVerified ? "✓ All required documents verified" : "⚠ Required documents"}
+                    </p>
+                    <div className="space-y-1">
+                      {statuses.map((s) => (
+                        <div key={s.type} className="flex items-center justify-between">
+                          <span className="text-gray-400">{s.label}</span>
+                          <span className={`border rounded px-1.5 py-0 text-xs ${DOC_STATUS_CHIP[s.status] ?? DOC_STATUS_CHIP.missing}`}>
+                            {s.status === "missing" ? "— missing" : s.status.replace("_", " ")}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
               <InlineDocPanel
                 docs={inlineDocs}
                 upload={{ entityType: "driver", entityId: driver.id }}

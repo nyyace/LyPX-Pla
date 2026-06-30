@@ -49,19 +49,21 @@ model Tenant {
 // ─────────────────────────────────────────────
 
 model Driver {
-  id               String   @id @default(cuid())
-  identityHash      String   @unique // hash of normalized license_number + national_id
-  firstName         String
-  lastName          String
-  phoneNumber       String
-  licenseNumber     String?
-  licenseIssuedDate DateTime?
-  complianceStatus  String   @default("pending") // pending | active | expiring_soon | suspended
-  tier2Qualified    Boolean  @default(false)
-  sourceType        String   @default("operator_added") // "operator_added" | "self_submitted"
-  deletedAt         DateTime?
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id                   String    @id @default(cuid())
+  identityHash          String    @unique // hash of normalized license_number + national_id
+  firstName             String
+  lastName              String
+  phoneNumber           String
+  licenseNumber         String?
+  licenseIssuedDate     DateTime?
+  complianceStatus      String    @default("pending") // pending | active | expiring_soon | suspended
+  statusOverriddenAt    DateTime?
+  statusOverriddenBy    String?   // WorkOS user ID
+  tier2Qualified        Boolean   @default(false)
+  sourceType            String    @default("operator_added") // "operator_added" | "self_submitted"
+  deletedAt             DateTime?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   documents         ComplianceDocument[]
   memberships       OperatorDriverMembership[]
@@ -85,20 +87,22 @@ model OperatorDriverMembership {
 }
 
 model Vehicle {
-  id                   String   @id @default(cuid())
+  id                   String    @id @default(cuid())
   registeredByTenantId String
   make                 String
   model                String
-  plateNumber          String   @unique
-  status               String   @default("inactive") // active | inactive | suspended — DERIVED
+  plateNumber          String    @unique
+  status               String    @default("inactive") // active | inactive | suspended — DERIVED
+  statusOverriddenAt   DateTime?
+  statusOverriddenBy   String?   // WorkOS user ID
   insuranceCompany     String?
-  vehicleClass         String?  // standard_sedan | standard_mpv_nve | executive_sedan_eclass | luxury_sedan_sclass | executive_mpv_avf | prestige_mpv_lexus | luxury_executive_van_vvv | group_van_combi | prestige_collection
+  vehicleClass         String?   // standard_sedan | standard_mpv_nve | executive_sedan_eclass | luxury_sedan_sclass | executive_mpv_avf | prestige_mpv_lexus | luxury_executive_van_vvv | group_van_combi | prestige_collection | electric_executive_mpv
   year                 Int?
   colour               String?
   seatingCapacity      Int?
   deletedAt            DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   registeredByTenant Tenant   @relation(fields: [registeredByTenantId], references: [id])
   documents          ComplianceDocument[]
@@ -130,10 +134,10 @@ model ComplianceDocument {
   entityType         String    // "driver" | "vehicle"
   driverId           String?
   vehicleId          String?
-  docType            String    // license | nric | insurance | registration | inspection | background_check | rental_agreement
+  docType            String    // nric | driving_licence | vocational_licence | insurance | rental_agreement
   expiryDate         DateTime
   issuedDate         DateTime?
-  status             String    @default("pending_review") // verified | pending_review | expired | rejected
+  status             String    @default("pending_review") // verified | pending_review | expired | rejected | superseded
   verificationMethod String    @default("manual")
   uploadedAt         DateTime  @default(now())
   reviewedBy         String?

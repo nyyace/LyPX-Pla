@@ -16,6 +16,27 @@ const statusColors: Record<string, string> = {
   suspended:"bg-red-900 text-red-300 border-red-700",
 };
 
+function getDocSummaryStatus(
+  docs: Array<{ docType: string; status: string; expiryDate: Date }>,
+  docType: string
+): "missing" | "pending_review" | "verified" | "expired" | "rejected" {
+  const active = docs
+    .filter((d) => d.docType === docType && d.status !== "superseded")
+    .sort((a, b) => b.expiryDate.getTime() - a.expiryDate.getTime());
+  if (!active.length) return "missing";
+  const d = active[0];
+  if (d.status === "verified" && d.expiryDate < new Date()) return "expired";
+  return d.status as ReturnType<typeof getDocSummaryStatus>;
+}
+
+const DOC_STATUS_CHIP: Record<string, string> = {
+  verified:       "text-green-300 border-green-800",
+  pending_review: "text-yellow-300 border-yellow-800",
+  expired:        "text-red-400 border-red-900",
+  rejected:       "text-red-400 border-red-900",
+  missing:        "text-gray-600 border-gray-700",
+};
+
 export default async function VehicleDetailPage({
   params,
 }: {
@@ -88,7 +109,7 @@ export default async function VehicleDetailPage({
           </Badge>
         </div>
         <p className="text-xs text-gray-600 mt-2">
-          Status is derived from compliance documents and driver status — not directly editable.
+          Status is auto-derived from compliance documents and driver status. Use the override below for manual corrections.
         </p>
       </div>
 
@@ -108,6 +129,8 @@ export default async function VehicleDetailPage({
             vehicleClass={vehicle.vehicleClass}
             seatingCapacity={vehicle.seatingCapacity}
             insuranceCompany={vehicle.insuranceCompany}
+            currentStatus={vehicle.status}
+            statusOverriddenAt={vehicle.statusOverriddenAt?.toISOString() ?? null}
           />
         </div>
 
@@ -115,6 +138,38 @@ export default async function VehicleDetailPage({
         <div className="space-y-6">
           <div className="bg-gray-900 border border-gray-800 rounded-lg p-4">
             <p className="text-sm font-medium text-gray-300 mb-3">Compliance Documents</p>
+            {/* Required docs checklist */}
+            {(() => {
+              const hasContractedBond = vehicle.ownership.some(
+                (o) => o.relationshipType === "contracted" && !o.terminatedAt
+              );
+              const required = [
+                { type: "insurance", label: "Insurance Certificate" },
+                ...(hasContractedBond ? [{ type: "rental_agreement", label: "Rental Agreement" }] : []),
+              ];
+              const statuses = required.map((r) => ({
+                ...r,
+                status: getDocSummaryStatus(vehicle.documents, r.type),
+              }));
+              const allVerified = statuses.every((s) => s.status === "verified");
+              return (
+                <div className={`mb-4 p-3 rounded border text-xs ${allVerified ? "border-green-900/40 bg-green-950/20" : "border-amber-800/50 bg-amber-950/20"}`}>
+                  <p className={`font-medium mb-2 ${allVerified ? "text-green-400" : "text-amber-400"}`}>
+                    {allVerified ? "✓ All required documents verified" : "⚠ Required documents"}
+                  </p>
+                  <div className="space-y-1">
+                    {statuses.map((s) => (
+                      <div key={s.type} className="flex items-center justify-between">
+                        <span className="text-gray-400">{s.label}</span>
+                        <span className={`border rounded px-1.5 py-0 text-xs ${DOC_STATUS_CHIP[s.status] ?? DOC_STATUS_CHIP.missing}`}>
+                          {s.status === "missing" ? "— missing" : s.status.replace("_", " ")}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
             <InlineDocPanel
               docs={inlineDocs}
               upload={{ entityType: "vehicle", entityId: vehicle.id }}

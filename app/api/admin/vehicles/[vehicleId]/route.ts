@@ -26,12 +26,15 @@ export async function PATCH(
     vehicleClass?: string | null;
     seatingCapacity?: number | null;
     insuranceCompany?: string | null;
+    status?: string;
+    clearStatusOverride?: boolean;
   };
 
   const VALID_CLASSES = [
     "standard_sedan", "standard_mpv_nve", "executive_sedan_eclass",
     "luxury_sedan_sclass", "executive_mpv_avf", "prestige_mpv_lexus",
     "luxury_executive_van_vvv", "group_van_combi", "prestige_collection",
+    "electric_executive_mpv",
   ];
 
   const updates: Record<string, unknown> = {};
@@ -49,6 +52,19 @@ export async function PATCH(
     updates.vehicleClass = body.vehicleClass;
   }
 
+  const VALID_VEHICLE_STATUSES = ["active", "inactive", "suspended"];
+  if (body.clearStatusOverride) {
+    updates.statusOverriddenAt = null;
+    updates.statusOverriddenBy = null;
+  } else if (body.status !== undefined) {
+    if (!VALID_VEHICLE_STATUSES.includes(body.status)) {
+      return NextResponse.json({ error: "Invalid status" }, { status: 400 });
+    }
+    updates.status             = body.status;
+    updates.statusOverriddenAt = new Date();
+    updates.statusOverriddenBy = user.id;
+  }
+
   if (!Object.keys(updates).length) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });
   }
@@ -59,13 +75,15 @@ export async function PATCH(
     data: {
       entityType: "vehicle",
       entityId: vehicleId,
-      action: "vehicle_updated",
+      action: body.clearStatusOverride ? "vehicle_override_cleared" : "vehicle_updated",
       actorId: user.id,
       metadata: { changes: updates as object } as object,
     },
   });
 
-  await evaluateAndSyncVehicleCompliance(vehicleId, user.id);
+  if (!updates.statusOverriddenAt) {
+    await evaluateAndSyncVehicleCompliance(vehicleId, user.id);
+  }
 
   return NextResponse.json({ ok: true });
 }

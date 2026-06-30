@@ -24,8 +24,16 @@ import { Upload, FileText, X, AlertTriangle } from "lucide-react";
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
 const MAX_SIZE = 5 * 1024 * 1024;
 
-const driverDocTypes = ["license", "background_check", "insurance"];
-const vehicleDocTypes = ["registration", "inspection", "insurance"];
+const driverDocTypes = ["nric", "driving_licence", "vocational_licence"];
+const vehicleDocTypes = ["insurance", "rental_agreement"];
+
+const DOC_TYPE_LABELS: Record<string, string> = {
+  nric:               "NRIC / Passport",
+  driving_licence:    "Driving Licence",
+  vocational_licence: "Vocational Licence",
+  insurance:          "Insurance Certificate",
+  rental_agreement:   "Rental Agreement",
+};
 
 interface Props {
   open: boolean;
@@ -206,7 +214,7 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
               <SelectContent className="bg-gray-800 border-gray-700">
                 {docTypes.map((t) => (
                   <SelectItem key={t} value={t}>
-                    {t.replace(/_/g, " ")}
+                    {DOC_TYPE_LABELS[t] ?? t.replace(/_/g, " ")}
                   </SelectItem>
                 ))}
               </SelectContent>

@@ -70,23 +70,22 @@ function isoToDateInput(iso: string | null): string {
   return iso.slice(0, 10);
 }
 
+function makeRowState(a: AssignmentRow): RowState {
+  return {
+    loading:    false,
+    error:      null,
+    editExpiry: false,
+    newExpiry:  isoToDateInput(a.contractExpiry),
+    editNotes:  false,
+    newNotes:   a.notes ?? "",
+  };
+}
+
 export function VehicleAssignmentsPanel({ assignments, entityType, entityId }: Props) {
   const router = useRouter();
 
   const [rowStates, setRowStates] = useState<Record<string, RowState>>(() =>
-    Object.fromEntries(
-      assignments.map((a) => [
-        a.id,
-        {
-          loading:    false,
-          error:      null,
-          editExpiry: false,
-          newExpiry:  isoToDateInput(a.contractExpiry),
-          editNotes:  false,
-          newNotes:   a.notes ?? "",
-        },
-      ])
-    )
+    Object.fromEntries(assignments.map((a) => [a.id, makeRowState(a)]))
   );
 
   // Add-assignment form
@@ -148,8 +147,15 @@ export function VehicleAssignmentsPanel({ assignments, entityType, entityId }: P
     setAddForm({ relationshipType: "owned", contractExpiry: "", notes: "" });
   }
 
+  function resolveRowState(id: string): RowState {
+    const existing = rowStates[id];
+    if (existing) return existing;
+    const a = assignments.find((r) => r.id === id);
+    return a ? makeRowState(a) : { loading: false, error: null, editExpiry: false, newExpiry: "", editNotes: false, newNotes: "" };
+  }
+
   function patchRow(id: string, update: Partial<RowState>) {
-    setRowStates((prev) => ({ ...prev, [id]: { ...prev[id], ...update } }));
+    setRowStates((prev) => ({ ...prev, [id]: { ...resolveRowState(id), ...update } }));
   }
 
   async function doAction(assignmentId: string, action: string, extra?: Record<string, unknown>) {
@@ -443,7 +449,7 @@ export function VehicleAssignmentsPanel({ assignments, entityType, entityId }: P
         )}
 
         {assignments.map((a) => {
-          const s            = rowStates[a.id];
+          const s            = resolveRowState(a.id);
           const isTerminated = !!a.terminatedAt;
 
           return (
