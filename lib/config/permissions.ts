@@ -13,6 +13,7 @@ export const ADMIN_TABS: TabDef[] = [
   { href: "/drivers",           label: "Drivers" },
   { href: "/vehicles",          label: "Vehicles" },
   { href: "/accounts",          label: "Accounts & Claims" },
+  { href: "/billing",           label: "Billing" },
   { href: "/takeover-requests", label: "Takeover Requests" },
   { href: "/orders",            label: "Reservations" },
   { href: "/marketplace",       label: "Marketplace" },
