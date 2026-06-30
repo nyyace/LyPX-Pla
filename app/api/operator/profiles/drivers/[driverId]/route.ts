@@ -25,6 +25,7 @@ export async function GET(
             orderBy: { expiryDate: "asc" },
           },
           vehicleOwnerships: {
+            where: { terminatedAt: null, vehicle: { deletedAt: null } },
             include: {
               vehicle: {
                 select: { id: true, plateNumber: true, make: true, model: true, vehicleClass: true },

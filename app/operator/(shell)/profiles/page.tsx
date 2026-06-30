@@ -21,6 +21,7 @@ export default async function OperatorProfilesPage() {
         driver: {
           include: {
             vehicleOwnerships: {
+              where: { terminatedAt: null, vehicle: { deletedAt: null } },
               include: {
                 vehicle: {
                   select: { plateNumber: true, make: true, model: true, vehicleClass: true },

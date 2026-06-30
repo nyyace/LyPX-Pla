@@ -77,16 +77,14 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
-function TierChip({ tier1, tier2 }: { tier1: boolean; tier2: boolean }) {
+function TierChip({ tier1, tier3 }: { tier1: boolean; tier3: boolean }) {
   if (tier1) return (
     <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#3d2f00", color: "#E5A93C", border: "1px solid #5a4500" }}>T1</span>
   );
-  if (tier2) return (
-    <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0f2535", color: "#7FC8F8", border: "1px solid #1a3a5f" }}>T2</span>
+  if (tier3) return (
+    <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
   );
-  return (
-    <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "var(--surface-raised)", color: "var(--text-faint)", border: "1px solid var(--border)" }}>T3</span>
-  );
+  return null;
 }
 
 const CLASS_STYLE: Record<string, React.CSSProperties> = {
@@ -355,7 +353,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                     {d.firstName} {d.lastName}
                   </span>
                   <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                    <TierChip tier1={d.tier1Member} tier2={d.tier2Qualified} />
+                    <TierChip tier1={d.tier1Member} tier3={d.tier2Qualified} />
                     <ClassChip cls={d.vehicleClass} />
                   </div>
                 </div>
@@ -558,8 +556,8 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                   </div>
                   {checkResult.driver.tier2Qualified && (
                     <div style={{ marginBottom: 10 }}>
-                      <TierChip tier1={false} tier2={true} />
-                      <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 6 }}>Tier 2 qualified</span>
+                      <TierChip tier1={false} tier3={true} />
+                      <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 6 }}>LyPX Central Pool eligible</span>
                     </div>
                   )}
                   <button
@@ -686,7 +684,7 @@ function DriverDetailView({
           <span style={{ fontSize: 12, color: STATUS_COLOUR[d.complianceStatus], fontWeight: 600 }}>
             ● {d.complianceStatus.replace(/_/g, " ").toUpperCase()}
           </span>
-          <TierChip tier1={d.tier1Member} tier2={d.tier2Qualified} />
+          <TierChip tier1={d.tier1Member} tier3={d.tier2Qualified} />
           <ClassChip cls={d.vehicle?.vehicleClass} />
         </div>
       </div>
@@ -724,7 +722,7 @@ function DriverDetailView({
       <div style={{ marginBottom: 24, display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <TierChip tier1={true} tier2={false} />
+            <TierChip tier1={true} tier3={false} />
             <span style={{ fontSize: 13, color: d.tier1Member ? "var(--text)" : "var(--text-faint)" }}>
               {d.tier1Member ? "Tier 1 — This operator" : "Not a Tier 1 member"}
             </span>
@@ -744,8 +742,8 @@ function DriverDetailView({
         </div>
         {d.tier2Qualified && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <TierChip tier1={false} tier2={true} />
-            <span style={{ fontSize: 13, color: "var(--text)" }}>Tier 2 — Platform premium</span>
+            <TierChip tier1={false} tier3={true} />
+            <span style={{ fontSize: 13, color: "var(--text)" }}>Tier 3 — LyPX Platform (Central Pool)</span>
           </div>
         )}
         {removeError && <p style={{ fontSize: 12, color: "#D9534F" }}>{removeError}</p>}
