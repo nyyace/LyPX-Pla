@@ -33,7 +33,6 @@ interface Props {
 }
 
 const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
-  booked:    { label: "UNASSIGNED", cls: "chip chip-amber" },
   assigned:  { label: "CONFIRMED",  cls: "chip chip-green" },
   en_route:  { label: "EN ROUTE",   cls: "chip chip-green" },
   arrived:   { label: "ON SCENE",   cls: "chip chip-green" },
@@ -41,6 +40,13 @@ const STATUS_CHIP: Record<string, { label: string; cls: string }> = {
   completed: { label: "COMPLETED",  cls: "chip chip-dim"   },
   cancelled: { label: "CANCELLED",  cls: "chip chip-red"   },
 };
+
+function statusChip(status: string, hasDriver: boolean) {
+  if (!hasDriver && ["booked", "assigned"].includes(status)) {
+    return { label: "UNASSIGNED", cls: "chip chip-amber" };
+  }
+  return STATUS_CHIP[status] ?? { label: status, cls: "chip chip-dim" };
+}
 
 const SERVICE_CHIP: Record<string, { label: string; color: string }> = {
   p2p:              { label: "P2P",      color: "var(--text-faint)" },
@@ -109,7 +115,7 @@ export function ReservationsTable({ orders, tenantId, timezone = DEFAULT_TIMEZON
           </thead>
           <tbody>
             {orders.map(o => {
-              const chip = STATUS_CHIP[o.status] ?? { label: o.status, cls: "chip chip-dim" };
+              const chip = statusChip(o.status, !!o.driver);
               const svc = o.serviceType ? (SERVICE_CHIP[o.serviceType] ?? { label: o.serviceType, color: "var(--text-faint)" }) : null;
               const isCancelled = o.status === "cancelled";
               return (

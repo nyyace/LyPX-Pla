@@ -272,9 +272,10 @@ model Order {
   floorRateSnapshot Float?    // floor SGD at time of order creation
 
   // Fare captured at reservation time
-  fareAmount        Float?
-  fareCurrency      String?   @default("SGD")
-  fareNote          String?
+  fareAmount           Float?
+  fareCurrency         String?   @default("SGD")
+  fareNote             String?
+  driverPayableAmount  Float?    // amount operator commits to pay driver for this trip
 
   // Passenger details (captured at reservation time)
   passengerName      String?

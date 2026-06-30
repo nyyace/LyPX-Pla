@@ -122,6 +122,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     updates.fareCurrency = body.fareCurrency ?? "SGD";
     updates.fareNote = body.fareNote ?? null;
   }
+  if (body.driverPayableAmount != null) {
+    updates.driverPayableAmount = parseFloat(body.driverPayableAmount);
+  }
 
   const updated = await prisma.$transaction(async (tx: TxClient) => {
     const o = await tx.order.update({ where: { id }, data: updates });
@@ -142,7 +145,11 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     await onTripCompleted(id);
   }
 
-  if (updates.status === "assigned")  await emitEvent("order.assigned",   { orderId: id }, prisma);
+  // Only fire order.assigned when a driver is actually present (being set now or already set)
+  const assignedDriverId = (updates.driverId as string | null | undefined) ?? order.driverId;
+  if (updates.status === "assigned" && assignedDriverId) {
+    await emitEvent("order.assigned", { orderId: id }, prisma);
+  }
   if (updates.status === "en_route")  await emitEvent("order.en_route",   { orderId: id }, prisma);
   if (updates.status === "arrived")   await emitEvent("order.arrived",    { orderId: id }, prisma);
   if (updates.status === "completed") await emitEvent("order.completed",  { orderId: id }, prisma);

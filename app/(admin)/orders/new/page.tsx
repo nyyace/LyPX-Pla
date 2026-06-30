@@ -52,11 +52,12 @@ export default function NewOrderPage() {
     passengerName:     "",
     passengerWhatsapp: "",
     sameAsRequestor:   false,
-    fareAmount:        "",
-    fareNote:          "",
-    driverId:          "",
-    vehicleId:         "",
-    notes:             "",
+    fareAmount:           "",
+    fareNote:             "",
+    driverPayableAmount:  "",
+    driverId:             "",
+    vehicleId:            "",
+    notes:                "",
   });
 
   function set<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
@@ -97,6 +98,10 @@ export default function NewOrderPage() {
       setError("Minimum hours is required for disposal");
       return;
     }
+    if (form.driverId && (!form.driverPayableAmount || parseFloat(form.driverPayableAmount) <= 0)) {
+      setError("Driver payable amount is required when assigning a driver");
+      return;
+    }
 
     setLoading(true);
     setError(null);
@@ -119,11 +124,12 @@ export default function NewOrderPage() {
         passengerName:     form.passengerName.trim() || null,
         passengerWhatsapp: form.sameAsRequestor ? null : (form.passengerWhatsapp || null),
         sameAsRequestor:   form.sameAsRequestor,
-        fareAmount:        form.fareAmount ? parseFloat(form.fareAmount) : null,
-        fareCurrency:      "SGD",
-        fareNote:          form.fareNote.trim() || null,
-        driverId:          form.driverId  || null,
-        vehicleId:         form.vehicleId || null,
+        fareAmount:           form.fareAmount ? parseFloat(form.fareAmount) : null,
+        fareCurrency:         "SGD",
+        fareNote:             form.fareNote.trim() || null,
+        driverPayableAmount:  form.driverId && form.driverPayableAmount ? parseFloat(form.driverPayableAmount) : null,
+        driverId:             form.driverId  || null,
+        vehicleId:            form.vehicleId || null,
         notes:             form.notes.trim() || null,
         timezone:          "Asia/Singapore",
       }),
@@ -346,6 +352,18 @@ export default function NewOrderPage() {
                 </Select>
               </div>
             </div>
+
+            {form.driverId && (
+              <div className="space-y-1.5">
+                <Label className={lbl}>
+                  Driver Payable (SGD) <span className="text-red-400">*</span>
+                </Label>
+                <Input type="number" min={0} step="0.01" className={inp} placeholder="0.00"
+                  value={form.driverPayableAmount}
+                  onChange={e => set("driverPayableAmount", e.target.value)} />
+                <p className="text-xs text-gray-600">Amount committed to driver — required when assigning</p>
+              </div>
+            )}
           </>
         )}
 

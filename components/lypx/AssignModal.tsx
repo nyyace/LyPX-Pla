@@ -28,6 +28,7 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
   const router = useRouter();
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [selected, setSelected] = useState<string>("");
+  const [driverPayable, setDriverPayable] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [assignError, setAssignError] = useState<string | null>(null);
@@ -42,13 +43,18 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
 
   async function assign() {
     if (!selected) return;
+    const payable = parseFloat(driverPayable);
+    if (!driverPayable || isNaN(payable) || payable <= 0) {
+      setAssignError("Driver payable amount is required before assigning.");
+      return;
+    }
     setSaving(true);
     setAssignError(null);
     setComplianceFailures([]);
     const res = await fetch(`/api/orders/${order.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ driverId: selected, status: "assigned" }),
+      body: JSON.stringify({ driverId: selected, status: "assigned", driverPayableAmount: payable }),
     });
     setSaving(false);
     if (!res.ok) {
@@ -177,6 +183,28 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
               ))}
             </div>
           )}
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ display: "block", fontSize: 11, fontWeight: 600, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: 6 }}>
+            Driver Payable (SGD) <span style={{ color: "#D9534F" }}>*</span>
+          </label>
+          <input
+            type="number"
+            min={0}
+            step="0.01"
+            placeholder="0.00"
+            value={driverPayable}
+            onChange={e => setDriverPayable(e.target.value)}
+            style={{
+              width: "100%", background: "var(--surface-raised)", border: "1px solid var(--border)",
+              borderRadius: 4, color: "var(--text)", fontSize: 13, padding: "7px 10px",
+              outline: "none", boxSizing: "border-box",
+            }}
+          />
+          <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 4 }}>
+            Amount committed to driver for this trip — required before assigning
+          </p>
         </div>
 
         <div style={{ display: "flex", gap: 8, justifyContent: "flex-end" }}>
