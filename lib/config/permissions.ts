@@ -28,6 +28,7 @@ export const OPERATOR_TABS: TabDef[] = [
   { href: "/operator/reservations", label: "Reservations" },
   { href: "/operator/accounts",     label: "Accounts" },
   { href: "/operator/profiles",     label: "Profiles" },
+  { href: "/operator/drivers",      label: "Roster" },
   { href: "/operator/gate-queue",   label: "Gate Queue", badge: "gate-queue" },
   { href: "/operator/billing",      label: "Billing Logs" },
   { href: "/operator/settings",     label: "Settings" },

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
+import { ExcelActions } from "@/components/admin/ExcelActions";
 import {
   Table,
   TableBody,
@@ -62,12 +63,15 @@ export default async function VehiclesPage() {
             {vehicles.length} vehicle{vehicles.length !== 1 ? "s" : ""} in registry
           </p>
         </div>
-        <Link href="/vehicles/new">
-          <Button size="sm" className="gap-1.5">
-            <Plus size={14} />
-            Add Vehicle
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExcelActions entityType="vehicles" />
+          <Link href="/vehicles/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus size={14} />
+              Add Vehicle
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <div className="rounded-md border border-gray-800 overflow-hidden">

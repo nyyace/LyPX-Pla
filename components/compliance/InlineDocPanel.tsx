@@ -157,6 +157,11 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
                 >
                   {s.status.replace("_", " ")}
                 </Badge>
+                {!doc.hasFile && (
+                  <span className="text-xs text-amber-400 border border-amber-700/60 rounded px-1.5 py-0 shrink-0">
+                    ⚠ No file
+                  </span>
+                )}
               </div>
               <div className="flex items-center gap-1 shrink-0">
                 <button

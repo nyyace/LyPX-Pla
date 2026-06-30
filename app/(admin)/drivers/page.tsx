@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { AdminDriversClient } from "@/components/profiles/AdminDriversClient";
+import { ExcelActions } from "@/components/admin/ExcelActions";
 
 export default async function DriversPage() {
   const drivers = await prisma.driver.findMany({
@@ -44,12 +45,15 @@ export default async function DriversPage() {
             {list.length} driver{list.length !== 1 ? "s" : ""} on platform
           </p>
         </div>
-        <Link href="/drivers/new">
-          <Button size="sm" className="gap-1.5">
-            <Plus size={14} />
-            Add Driver
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <ExcelActions entityType="drivers" />
+          <Link href="/drivers/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus size={14} />
+              Add Driver
+            </Button>
+          </Link>
+        </div>
       </div>
       <div style={{ flex: 1, overflow: "hidden" }}>
         <AdminDriversClient drivers={list} />
