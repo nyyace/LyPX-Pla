@@ -55,7 +55,7 @@ export function MarketplaceToggle({ tenantId, initialValue }: { tenantId: string
             Make my drivers available for LyPX Direct jobs
           </p>
           <p style={{ fontSize: 12, color: "var(--text-dim)", marginTop: 6, lineHeight: 1.6, margin: "6px 0 0" }}>
-            When enabled, your compliant Tier 2 and Tier 3 drivers will appear in the LyPX Direct driver pool
+            When enabled, your compliant LyPX Central Pool drivers will appear in the LyPX Direct driver pool
             and may be assigned to jobs sourced by LyPX on behalf of corporate clients.
             You will receive the trip fare minus LyPX's marketplace fee. Your Tier 1 drivers are not shared.
           </p>

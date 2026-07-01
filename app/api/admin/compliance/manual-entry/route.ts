@@ -18,17 +18,23 @@ export async function POST(req: Request) {
   if (!admin) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
   const body = await req.json();
-  const { entityType, entityId, docType, expiryDate, issuedDate, note } = body as {
+  const { entityType, entityId, docType, expiryDate, issuedDate, referenceNumber, note } = body as {
     entityType: string;
     entityId: string;
     docType: string;
-    expiryDate: string;
+    expiryDate?: string;
     issuedDate?: string;
+    referenceNumber?: string;
     note?: string;
   };
 
-  if (!entityType || !entityId || !docType || !expiryDate) {
+  const EXPIRY_REQUIRED = ["vocational_licence", "insurance", "rental_agreement"];
+
+  if (!entityType || !entityId || !docType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (EXPIRY_REQUIRED.includes(docType) && !expiryDate) {
+    return NextResponse.json({ error: `expiryDate is required for ${docType}` }, { status: 400 });
   }
   if (!["driver", "vehicle"].includes(entityType)) {
     return NextResponse.json({ error: "Invalid entityType" }, { status: 400 });
@@ -43,8 +49,9 @@ export async function POST(req: Request) {
   const createData: Parameters<typeof prisma.complianceDocument.create>[0]["data"] = {
     entityType,
     docType,
-    expiryDate: new Date(expiryDate),
-    issuedDate: issuedDate ? new Date(issuedDate) : null,
+    expiryDate:      expiryDate      ? new Date(expiryDate)  : null,
+    issuedDate:      issuedDate      ? new Date(issuedDate)  : null,
+    referenceNumber: referenceNumber ?? null,
     status: "verified",
     verificationMethod: "manual_no_file",
     reviewedBy: user.id,

@@ -9,7 +9,7 @@ type Doc = {
   id: string;
   docType: string;
   status: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
   driver?: { id: string; firstName: string; lastName: string; complianceStatus: string } | null;
   vehicle?: { id: string; plateNumber: string; make: string; model: string } | null;
   file?: { fileName: string; mimeType: string } | null;
@@ -81,6 +81,7 @@ function UploadDocCard({
     : doc.vehicle ? `/vehicles/${doc.vehicle.id}` : "#";
 
   const daysText = (() => {
+    if (!doc.expiryDate) return "No expiry date";
     const days = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000);
     if (days < 0) return `EXPIRED ${-days} day${-days !== 1 ? "s" : ""} ago`;
     if (days === 0) return "Expires today";
@@ -230,9 +231,12 @@ export function GateQueuePanel({
     router.refresh();
   };
 
-  const allDocs = [...driverDocs, ...vehicleDocs].sort(
-    (a, b) => new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime()
-  );
+  const allDocs = [...driverDocs, ...vehicleDocs].sort((a, b) => {
+    if (!a.expiryDate && !b.expiryDate) return 0;
+    if (!a.expiryDate) return 1;
+    if (!b.expiryDate) return -1;
+    return new Date(a.expiryDate).getTime() - new Date(b.expiryDate).getTime();
+  });
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "25% 75%", height: "100%" }}>

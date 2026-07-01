@@ -63,7 +63,7 @@ export async function GET(req: Request) {
 
         if (filterVehicleClass && vehicle?.vehicleClass !== filterVehicleClass) return null;
 
-        const tier = m.tier1Member ? "T1" : driver.tier2Qualified ? "T2" : "T3";
+        const tier = m.tier1Member ? "T1" : driver.tier2Qualified ? "T3" : null;
 
         let availability: "available" | "on_job" | "suspended";
         if (driver.complianceStatus === "suspended") {

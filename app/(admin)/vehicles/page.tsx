@@ -18,7 +18,8 @@ const STATUS_CHIP: Record<string, string> = {
   suspended: "chip chip-red",
 };
 
-function fmtDate(d: Date) {
+function fmtDate(d: Date | null | undefined) {
+  if (!d) return "—";
   return d.toLocaleDateString("en-SG", { year: "numeric", month: "short", day: "numeric" });
 }
 
@@ -99,7 +100,7 @@ export default async function VehiclesPage() {
               const driver    = v.ownership[0]?.driver;
               const insurance = v.documents[0];
 
-              const daysToExpiry = insurance
+              const daysToExpiry = insurance?.expiryDate
                 ? Math.floor(
                     (new Date(insurance.expiryDate).getTime() - Date.now()) /
                     (1000 * 60 * 60 * 24)

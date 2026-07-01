@@ -6,7 +6,7 @@ type Driver = {
   driverId: string;
   firstName: string;
   lastName: string;
-  tier: "T1" | "T2" | "T3";
+  tier: "T1" | "T3" | null;
   complianceStatus: string;
   vehicle: { plate: string; make: string; model: string; class: string | null } | null;
   availability: "available" | "on_job" | "suspended";
@@ -41,11 +41,10 @@ function StatusDot({ status }: { status: "available" | "on_job" | "suspended" })
   return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: colors[status], marginRight: 6 }} />;
 }
 
-function TierChip({ tier }: { tier: "T1" | "T2" | "T3" }) {
+function TierChip({ tier }: { tier: "T1" | "T3" }) {
   const styles: Record<string, React.CSSProperties> = {
     T1: { background: "#E5A93C22", color: "#E5A93C", border: "1px solid #E5A93C44" },
-    T2: { background: "#3b82f622", color: "#60a5fa", border: "1px solid #3b82f644" },
-    T3: { background: "var(--surface-raised)", color: "var(--text-dim)", border: "1px solid var(--border)" },
+    T3: { background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" },
   };
   return <span style={{ fontSize: 10, fontWeight: 700, padding: "2px 6px", borderRadius: 3, letterSpacing: "0.3px", ...styles[tier] }}>{tier}</span>;
 }
@@ -186,7 +185,7 @@ export function MarketplacePoolClient({ initialData }: { initialData: PoolData }
                   <tr key={d.driverId}
                     style={{ borderTop: i === 0 ? undefined : "1px solid var(--border)", opacity: d.availability === "suspended" ? 0.4 : 1 }}>
                     <td style={colStyle}>{d.firstName} {d.lastName}</td>
-                    <td style={colStyle}><TierChip tier={d.tier} /></td>
+                    <td style={colStyle}>{d.tier ? <TierChip tier={d.tier} /> : <span style={{ color: "var(--text-faint)", fontSize: 12 }}>—</span>}</td>
                     <td style={{ ...colStyle, fontFamily: "monospace", fontSize: 12 }}>
                       {d.vehicle ? `${d.vehicle.plate} · ${d.vehicle.make} ${d.vehicle.model}` : "—"}
                     </td>

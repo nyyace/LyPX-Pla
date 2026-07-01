@@ -19,7 +19,7 @@ interface Doc {
   id: string;
   docType: string;
   status: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
   entityType: string;
   reviewedAt: Date | null;
   driver: { id: string; firstName: string; lastName: string } | null;

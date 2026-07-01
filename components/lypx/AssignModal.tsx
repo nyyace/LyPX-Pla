@@ -166,9 +166,9 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
                       </span>
                       {d.tier2Qualified && (
                         <span style={{
-                          marginLeft: 8, fontSize: 10, fontWeight: 700, color: "#7FC8F8",
-                          border: "1px solid #23384a", borderRadius: 4, padding: "1px 5px",
-                        }}>T2</span>
+                          marginLeft: 8, fontSize: 10, fontWeight: 700, color: "#4eb8c9",
+                          border: "1px solid #1a4a55", borderRadius: 4, padding: "1px 5px",
+                        }}>T3</span>
                       )}
                     </div>
                     <span style={{ fontSize: 11, color: "var(--green)" }}>●</span>

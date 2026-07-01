@@ -35,6 +35,15 @@ export async function POST(
   }
 
   const ownership = await prisma.$transaction(async (tx) => {
+    await tx.vehicleOwnership.updateMany({
+      where: {
+        OR: [
+          { vehicleId, terminatedAt: null },
+          { driverId, terminatedAt: null },
+        ],
+      },
+      data: { terminatedAt: new Date() },
+    });
     const o = await tx.vehicleOwnership.create({
       data: {
         vehicleId,

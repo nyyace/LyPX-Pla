@@ -135,8 +135,9 @@ model ComplianceDocument {
   driverId           String?
   vehicleId          String?
   docType            String    // nric | driving_licence | vocational_licence | insurance | rental_agreement
-  expiryDate         DateTime
+  expiryDate         DateTime?
   issuedDate         DateTime?
+  referenceNumber    String?
   status             String    @default("pending_review") // verified | pending_review | expired | rejected | superseded
   verificationMethod String    @default("manual")
   uploadedAt         DateTime  @default(now())

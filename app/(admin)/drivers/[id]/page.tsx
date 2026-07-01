@@ -26,15 +26,20 @@ const DRIVER_REQUIRED_DOCS = [
 ] as const;
 
 function getDocSummaryStatus(
-  docs: Array<{ docType: string; status: string; expiryDate: Date }>,
+  docs: Array<{ docType: string; status: string; expiryDate: Date | null }>,
   docType: string
 ): "missing" | "pending_review" | "verified" | "expired" | "rejected" | "superseded" {
   const active = docs
     .filter((d) => d.docType === docType && d.status !== "superseded")
-    .sort((a, b) => b.expiryDate.getTime() - a.expiryDate.getTime());
+    .sort((a, b) => {
+      if (!a.expiryDate && !b.expiryDate) return 0;
+      if (!a.expiryDate) return 1;
+      if (!b.expiryDate) return -1;
+      return b.expiryDate.getTime() - a.expiryDate.getTime();
+    });
   if (!active.length) return "missing";
   const d = active[0];
-  if (d.status === "verified" && d.expiryDate < new Date()) return "expired";
+  if (d.status === "verified" && d.expiryDate && d.expiryDate < new Date()) return "expired";
   return d.status as ReturnType<typeof getDocSummaryStatus>;
 }
 
@@ -115,13 +120,14 @@ export default async function DriverDetailPage({
   }));
 
   const inlineDocs: InlineDoc[] = driver.documents.map((d) => ({
-    id:         d.id,
-    docType:    d.docType,
-    status:     d.status,
-    expiryDate: d.expiryDate.toISOString(),
-    issuedDate: d.issuedDate?.toISOString() ?? null,
-    hasFile:    !!d.file,
-    isPdf:      d.file?.mimeType === "application/pdf",
+    id:              d.id,
+    docType:         d.docType,
+    status:          d.status,
+    expiryDate:      d.expiryDate?.toISOString() ?? null,
+    issuedDate:      d.issuedDate?.toISOString() ?? null,
+    referenceNumber: d.referenceNumber ?? null,
+    hasFile:         !!d.file,
+    isPdf:           d.file?.mimeType === "application/pdf",
   }));
 
   return (
@@ -143,7 +149,7 @@ export default async function DriverDetailPage({
               {driver.complianceStatus.replace("_", " ")}
             </Badge>
             {driver.tier2Qualified && (
-              <Badge variant="outline" className="border-blue-700 text-blue-300">Tier 2</Badge>
+              <Badge variant="outline" className="border-cyan-800 text-cyan-400">Tier 3</Badge>
             )}
             {driver.sourceType === "self_submitted" && (
               <Badge variant="outline" className="border-purple-700 text-purple-300">Self-submitted</Badge>

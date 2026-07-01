@@ -62,6 +62,7 @@ export default async function OperatorGateQueuePage({
 
   const suspended = driverDocs.filter(d => d.driver?.complianceStatus === "suspended").length;
   const expiringSoon = [...driverDocs, ...vehicleDocs].filter(d => {
+    if (!d.expiryDate) return false;
     const days = Math.ceil((new Date(d.expiryDate).getTime() - Date.now()) / 86400000);
     return days >= 0 && days <= 7 && d.status === "verified";
   }).length;

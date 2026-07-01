@@ -23,7 +23,7 @@ const docTypeLabels: Record<string, string> = {
 interface Doc {
   id: string;
   docType: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
   status: string;
 }
 

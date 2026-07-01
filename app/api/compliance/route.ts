@@ -19,13 +19,19 @@ export async function GET() {
 const DRIVER_DOC_TYPES = ["nric", "driving_licence", "vocational_licence"];
 const VEHICLE_DOC_TYPES = ["insurance", "rental_agreement"];
 
+// Doc types that require expiryDate
+const EXPIRY_REQUIRED = ["vocational_licence", "insurance", "rental_agreement"];
+
 export async function POST(req: Request) {
   const { user } = await withAuth({ ensureSignedIn: true });
   const body = await req.json();
-  const { entityType, entityId, docType, expiryDate } = body;
+  const { entityType, entityId, docType, expiryDate, issuedDate, referenceNumber } = body;
 
-  if (!entityType || !entityId || !docType || !expiryDate) {
+  if (!entityType || !entityId || !docType) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+  if (EXPIRY_REQUIRED.includes(docType) && !expiryDate) {
+    return NextResponse.json({ error: `expiryDate is required for ${docType}` }, { status: 400 });
   }
   if (entityType === "driver" && !DRIVER_DOC_TYPES.includes(docType)) {
     return NextResponse.json({ error: `Invalid docType for driver. Allowed: ${DRIVER_DOC_TYPES.join(", ")}` }, { status: 400 });
@@ -37,7 +43,9 @@ export async function POST(req: Request) {
   const data: Parameters<typeof prisma.complianceDocument.create>[0]["data"] = {
     entityType,
     docType,
-    expiryDate: new Date(expiryDate),
+    expiryDate:      expiryDate      ? new Date(expiryDate)      : null,
+    issuedDate:      issuedDate      ? new Date(issuedDate)       : null,
+    referenceNumber: referenceNumber ?? null,
     status: "pending_review",
   };
 

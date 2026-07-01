@@ -75,10 +75,12 @@ export async function checkJobCompliance(
       check: "vocational_licence",
       message: "No verified vocational licence (PDVL/TDVL) on file.",
     });
-  } else if (vocLicence.expiryDate < scheduledAt) {
+  } else if (!vocLicence.expiryDate || vocLicence.expiryDate < scheduledAt) {
     failures.push({
       check: "vocational_licence",
-      message: `Vocational licence expired ${vocLicence.expiryDate.toLocaleDateString("en-SG")}. Job date: ${scheduledAt.toLocaleDateString("en-SG")}.`,
+      message: vocLicence.expiryDate
+        ? `Vocational licence expired ${vocLicence.expiryDate.toLocaleDateString("en-SG")}. Job date: ${scheduledAt.toLocaleDateString("en-SG")}.`
+        : "Vocational licence has no expiry date recorded.",
     });
   }
 
@@ -101,10 +103,12 @@ export async function checkJobCompliance(
       check: "insurance",
       message: "No verified insurance certificate on file for this vehicle.",
     });
-  } else if (insurance.expiryDate < scheduledAt) {
+  } else if (!insurance.expiryDate || insurance.expiryDate < scheduledAt) {
     failures.push({
       check: "insurance",
-      message: `Vehicle insurance expired ${insurance.expiryDate.toLocaleDateString("en-SG")}. Job date: ${scheduledAt.toLocaleDateString("en-SG")}.`,
+      message: insurance.expiryDate
+        ? `Vehicle insurance expired ${insurance.expiryDate.toLocaleDateString("en-SG")}. Job date: ${scheduledAt.toLocaleDateString("en-SG")}.`
+        : "Vehicle insurance has no expiry date recorded.",
     });
   }
 

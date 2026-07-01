@@ -11,7 +11,7 @@ type Driver = {
   phoneNumber: string;
   complianceStatus: string;
   tier2Qualified: boolean;
-  documents: { id: string; docType: string; status: string; expiryDate: Date }[];
+  documents: { id: string; docType: string; status: string; expiryDate: Date | null }[];
   vehicleOwnerships: { vehicle: { id: string; plateNumber: string; make: string; model: string } }[];
   orders: { id: string; completedAt: Date | null }[];
 };
@@ -47,7 +47,7 @@ export function ProfilesPanel({ sub, selectedDriverId, selectedAccountId, driver
   const selectedDriver = drivers.find(d => d.id === selectedDriverId) ?? drivers[0];
   const selectedAccount = accounts.find(a => a.id === selectedAccountId) ?? accounts[0];
 
-  function docStatus(doc: { status: string; expiryDate: Date }) {
+  function docStatus(doc: { status: string; expiryDate: Date | null }) {
     if (doc.status === "verified" && isExpired(doc.expiryDate)) return { label: "EXPIRED", cls: "chip chip-red" };
     if (doc.status === "verified" && isWithinDays(doc.expiryDate, 30)) return { label: "EXPIRING", cls: "chip chip-amber" };
     if (doc.status === "verified") return { label: "VALID", cls: "chip chip-green" };
@@ -163,7 +163,9 @@ export function ProfilesPanel({ sub, selectedDriverId, selectedAccountId, driver
                   <p style={{ fontSize: 12, color: "var(--text-faint)" }}>No documents</p>
                 ) : selectedDriver.documents.map(doc => {
                   const chip = docStatus(doc);
-                  const daysLeft = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000);
+                  const daysLeft = doc.expiryDate
+                    ? Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000)
+                    : null;
                   return (
                     <div key={doc.id} style={{
                       display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -174,10 +176,12 @@ export function ProfilesPanel({ sub, selectedDriverId, selectedAccountId, driver
                           {doc.docType.replace("_", " ")}
                         </p>
                         <p style={{ fontSize: 11, color: "var(--text-faint)", marginTop: 2 }}>
-                          {isExpired(doc.expiryDate)
-                            ? `Expired ${-daysLeft} days ago`
-                            : `Valid until ${formatTZDate(doc.expiryDate, timezone)}`}
-                          {!isExpired(doc.expiryDate) && daysLeft <= 60 && (
+                          {!doc.expiryDate
+                            ? "No expiry date"
+                            : isExpired(doc.expiryDate)
+                              ? `Expired ${daysLeft !== null ? -daysLeft : "?"} days ago`
+                              : `Valid until ${formatTZDate(doc.expiryDate, timezone)}`}
+                          {doc.expiryDate && !isExpired(doc.expiryDate) && daysLeft !== null && daysLeft <= 60 && (
                             <span style={{ color: "var(--red)", marginLeft: 8 }}>
                               [{daysLeft} days] UPLOAD NOW
                             </span>

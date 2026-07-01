@@ -20,7 +20,7 @@ export async function GET(
       driver: {
         include: {
           vehicleOwnerships: {
-            where: { contractStatus: { not: "expired" } },
+            where: { terminatedAt: null, vehicle: { deletedAt: null } },
             include: { vehicle: { select: { plateNumber: true, make: true, model: true } } },
             take: 1,
           },

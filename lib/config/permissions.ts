@@ -31,7 +31,7 @@ export const OPERATOR_TABS: TabDef[] = [
   { href: "/operator/profiles",     label: "Profiles" },
   { href: "/operator/drivers",      label: "Roster" },
   { href: "/operator/gate-queue",   label: "Gate Queue", badge: "gate-queue" },
-  { href: "/operator/billing",      label: "Billing Logs" },
+  { href: "/operator/billing",      label: "Billing" },
   { href: "/operator/settings",     label: "Settings" },
 ];
 

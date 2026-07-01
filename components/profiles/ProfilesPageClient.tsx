@@ -42,7 +42,7 @@ type DriverDetail = {
   licenceNumber: string | null;
   vocationalLicenceNumber: string | null;
   vocationalLicenceExpiry: string | null;
-  documents: { id: string; docType: string; status: string; expiryDate: string; issuedDate: string | null }[];
+  documents: { id: string; docType: string; status: string; expiryDate: string | null; issuedDate: string | null; referenceNumber?: string | null }[];
   vehicle: { id: string; plateNumber: string; make: string; model: string; vehicleClass: string | null } | null;
   recentOrders: { id: string; completedAt: string | null; pickupLocation: string; dropoffLocation: string; tripFare: number | null }[];
   tripCount30d: number;
@@ -101,12 +101,13 @@ function ClassChip({ cls }: { cls: string | null | undefined }) {
   );
 }
 
-function DocChip({ expiryDate, status }: { expiryDate: string; status: string }) {
-  const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
+function DocChip({ expiryDate, status }: { expiryDate: string | null; status: string }) {
   if (status !== "verified") {
     if (status === "pending_review") return <span className="chip chip-blue">PENDING</span>;
     return <span className="chip chip-dim">{status.toUpperCase()}</span>;
   }
+  if (!expiryDate) return <span className="chip chip-green">VERIFIED</span>;
+  const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
   if (daysLeft < 0) return <span className="chip chip-red">EXPIRED</span>;
   if (daysLeft <= 30) return <span className="chip chip-red">EXPIRING</span>;
   if (daysLeft <= 90) return <span className="chip chip-amber">EXPIRING</span>;
@@ -695,7 +696,16 @@ function DriverDetailView({
         {d.documents.length === 0 ? (
           <p style={{ fontSize: 12, color: "var(--text-faint)" }}>No documents on file</p>
         ) : d.documents.map((doc) => {
-          const daysLeft = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000);
+          const daysLeft = doc.expiryDate
+            ? Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000)
+            : null;
+          const subtitle = !doc.expiryDate
+            ? (doc.docType === "driving_licence" && doc.issuedDate
+                ? `Issued ${fmtDate(doc.issuedDate)}`
+                : "No expiry required")
+            : daysLeft !== null && daysLeft < 0
+              ? `Expired ${Math.abs(daysLeft)} days ago`
+              : `Expires ${fmtDate(doc.expiryDate)} · ${daysLeft}d`;
           return (
             <div key={doc.id} style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -705,11 +715,7 @@ function DriverDetailView({
                 <p style={{ fontSize: 13, color: "var(--text)", margin: 0, textTransform: "capitalize" }}>
                   {doc.docType.replace(/_/g, " ")}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "3px 0 0" }}>
-                  {daysLeft < 0
-                    ? `Expired ${Math.abs(daysLeft)} days ago`
-                    : `Expires ${fmtDate(doc.expiryDate)} · ${daysLeft}d`}
-                </p>
+                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "3px 0 0" }}>{subtitle}</p>
               </div>
               <DocChip expiryDate={doc.expiryDate} status={doc.status} />
             </div>

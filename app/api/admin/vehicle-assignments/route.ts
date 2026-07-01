@@ -33,15 +33,27 @@ export async function POST(req: Request) {
   if (!driver) return NextResponse.json({ error: "Driver not found" }, { status: 404 });
   if (!vehicle) return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
 
-  const assignment = await prisma.vehicleOwnership.create({
-    data: {
-      driverId: body.driverId,
-      vehicleId: body.vehicleId,
-      relationshipType: body.relationshipType,
-      contractStatus: body.relationshipType === "contracted" ? (body.contractStatus ?? "active") : null,
-      contractExpiry: body.contractExpiry ? new Date(body.contractExpiry) : null,
-      notes: body.notes?.trim() || null,
-    },
+  const now = new Date();
+  const assignment = await prisma.$transaction(async (tx) => {
+    await tx.vehicleOwnership.updateMany({
+      where: {
+        OR: [
+          { vehicleId: body.vehicleId, terminatedAt: null },
+          { driverId: body.driverId, terminatedAt: null },
+        ],
+      },
+      data: { terminatedAt: now },
+    });
+    return tx.vehicleOwnership.create({
+      data: {
+        driverId: body.driverId,
+        vehicleId: body.vehicleId,
+        relationshipType: body.relationshipType,
+        contractStatus: body.relationshipType === "contracted" ? (body.contractStatus ?? "active") : null,
+        contractExpiry: body.contractExpiry ? new Date(body.contractExpiry) : null,
+        notes: body.notes?.trim() || null,
+      },
+    });
   });
 
   await prisma.auditLog.create({

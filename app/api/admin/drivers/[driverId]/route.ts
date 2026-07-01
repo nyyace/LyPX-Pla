@@ -27,6 +27,7 @@ export async function GET(
         orderBy: { addedAt: "desc" },
       },
       vehicleOwnerships: {
+        where: { terminatedAt: null, vehicle: { deletedAt: null } },
         include: {
           vehicle: {
             select: { id: true, plateNumber: true, make: true, model: true, vehicleClass: true },
@@ -67,8 +68,9 @@ export async function GET(
       id: d.id,
       docType: d.docType,
       status: d.status,
-      expiryDate: d.expiryDate.toISOString(),
-      issuedDate: d.issuedDate?.toISOString() ?? null,
+      expiryDate:      d.expiryDate?.toISOString() ?? null,
+      issuedDate:      d.issuedDate?.toISOString() ?? null,
+      referenceNumber: d.referenceNumber ?? null,
     })),
     memberships: driver.memberships.map((m) => ({
       id: m.id,

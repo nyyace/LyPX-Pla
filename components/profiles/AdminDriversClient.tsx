@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 
 const STATUS_COLOUR: Record<string, string> = {
   active:        "#4CAF6D",
@@ -38,7 +39,7 @@ type DriverDetail = {
   tier2Qualified: boolean;
   sourceType: string;
   createdAt: string;
-  documents: { id: string; docType: string; status: string; expiryDate: string; issuedDate: string | null }[];
+  documents: { id: string; docType: string; status: string; expiryDate: string | null; issuedDate: string | null; referenceNumber?: string | null }[];
   memberships: { id: string; tenantId: string; tenantName: string; tier1Member: boolean; relationshipType: string; addedAt: string }[];
   vehicles: { plateNumber: string; make: string; model: string; vehicleClass: string | null }[];
   submission: {
@@ -60,12 +61,13 @@ function StatusDot({ status }: { status: string }) {
   );
 }
 
-function DocChip({ expiryDate, status }: { expiryDate: string; status: string }) {
-  const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
+function DocChip({ expiryDate, status }: { expiryDate: string | null; status: string }) {
   if (status !== "verified") {
     if (status === "pending_review") return <span className="chip chip-blue">PENDING</span>;
     return <span className="chip chip-dim">{status.toUpperCase()}</span>;
   }
+  if (!expiryDate) return <span className="chip chip-green">VERIFIED</span>;
+  const daysLeft = Math.ceil((new Date(expiryDate).getTime() - Date.now()) / 86400000);
   if (daysLeft < 0) return <span className="chip chip-red">EXPIRED</span>;
   if (daysLeft <= 30) return <span className="chip chip-red">EXPIRING</span>;
   if (daysLeft <= 90) return <span className="chip chip-amber">EXPIRING</span>;
@@ -177,7 +179,7 @@ export function AdminDriversClient({ drivers: initialDrivers }: Props) {
                   {d.firstName} {d.lastName}
                 </span>
                 {d.tier2Qualified && (
-                  <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0f2535", color: "#7FC8F8", border: "1px solid #1a3a5f" }}>T2</span>
+                  <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
                 )}
                 {d.vehicleClass && (
                   <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, ...(CLASS_STYLE[d.vehicleClass] ?? {}) }}>{d.vehicleClass}</span>
@@ -233,13 +235,22 @@ function DriverDetailPanel({ detail: d }: { detail: DriverDetail }) {
             {d.phoneNumber}
           </p>
         </div>
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
           <span style={{ fontSize: 12, color: STATUS_COLOUR[d.complianceStatus], fontWeight: 600 }}>
             ● {d.complianceStatus.replace(/_/g, " ").toUpperCase()}
           </span>
           <span style={{ fontSize: 11, color: "var(--text-faint)" }}>
             {d.sourceType === "self_submitted" ? "Self-onboarded" : "Operator-added"} · {fmtDate(d.createdAt)}
           </span>
+          <Link
+            href={`/drivers/${d.id}`}
+            style={{
+              fontSize: 11, color: "var(--accent)", textDecoration: "none",
+              border: "1px solid var(--accent)44", borderRadius: 4, padding: "2px 8px",
+            }}
+          >
+            Open full profile →
+          </Link>
         </div>
       </div>
 
@@ -267,7 +278,16 @@ function DriverDetailPanel({ detail: d }: { detail: DriverDetail }) {
         {d.documents.length === 0 ? (
           <p style={{ fontSize: 12, color: "var(--text-faint)" }}>No documents on file</p>
         ) : d.documents.map((doc) => {
-          const daysLeft = Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000);
+          const daysLeft = doc.expiryDate
+            ? Math.ceil((new Date(doc.expiryDate).getTime() - Date.now()) / 86400000)
+            : null;
+          const subtitle = !doc.expiryDate
+            ? (doc.docType === "driving_licence" && doc.issuedDate
+                ? `Issued ${fmtDate(doc.issuedDate)}`
+                : "No expiry required")
+            : daysLeft !== null && daysLeft < 0
+              ? `Expired ${Math.abs(daysLeft)} days ago`
+              : `Expires ${fmtDate(doc.expiryDate)} · ${daysLeft}d remaining`;
           return (
             <div key={doc.id} style={{
               display: "flex", alignItems: "center", justifyContent: "space-between",
@@ -277,11 +297,7 @@ function DriverDetailPanel({ detail: d }: { detail: DriverDetail }) {
                 <p style={{ fontSize: 13, color: "var(--text)", margin: 0, textTransform: "capitalize" }}>
                   {doc.docType.replace(/_/g, " ")}
                 </p>
-                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "3px 0 0" }}>
-                  {daysLeft < 0
-                    ? `Expired ${Math.abs(daysLeft)} days ago`
-                    : `Expires ${fmtDate(doc.expiryDate)} · ${daysLeft}d remaining`}
-                </p>
+                <p style={{ fontSize: 11, color: "var(--text-faint)", margin: "3px 0 0" }}>{subtitle}</p>
               </div>
               <DocChip expiryDate={doc.expiryDate} status={doc.status} />
             </div>
@@ -310,7 +326,7 @@ function DriverDetailPanel({ detail: d }: { detail: DriverDetail }) {
                 <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#3d2f00", color: "#E5A93C", border: "1px solid #5a4500" }}>T1</span>
               )}
               {d.tier2Qualified && (
-                <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#0f2535", color: "#7FC8F8", border: "1px solid #1a3a5f" }}>T2</span>
+                <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
               )}
             </div>
           </div>

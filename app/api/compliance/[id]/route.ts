@@ -8,13 +8,15 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
 
   const body = await req.json() as {
-    expiryDate?: string;
+    expiryDate?: string | null;
     issuedDate?: string | null;
+    referenceNumber?: string | null;
   };
 
   const updates: Record<string, unknown> = {};
-  if (body.expiryDate !== undefined) updates.expiryDate = new Date(body.expiryDate);
+  if (body.expiryDate !== undefined) updates.expiryDate = body.expiryDate ? new Date(body.expiryDate) : null;
   if (body.issuedDate !== undefined) updates.issuedDate = body.issuedDate ? new Date(body.issuedDate) : null;
+  if (body.referenceNumber !== undefined) updates.referenceNumber = body.referenceNumber ?? null;
 
   if (!Object.keys(updates).length) {
     return NextResponse.json({ error: "No fields to update" }, { status: 400 });

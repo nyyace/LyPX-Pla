@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react";
 import { AddDocumentDialog } from "./AddDocumentDialog";
+import { yearsSince } from "@/lib/utils/date";
 
 const DOC_TYPE_LABELS: Record<string, string> = {
   nric: "NRIC / Passport",
@@ -30,13 +31,14 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export interface InlineDoc {
-  id:          string;
-  docType:     string;
-  status:      string;
-  expiryDate:  string;   // ISO
-  issuedDate:  string | null;
-  hasFile:     boolean;
-  isPdf:       boolean;
+  id:              string;
+  docType:         string;
+  status:          string;
+  expiryDate:      string | null;   // ISO; null for NRIC and driving_licence
+  issuedDate:      string | null;
+  referenceNumber: string | null;
+  hasFile:         boolean;
+  isPdf:           boolean;
 }
 
 interface UploadProps {
@@ -45,33 +47,35 @@ interface UploadProps {
 }
 
 interface DocState {
-  status:      string;
-  expiryDate:  string;
-  issuedDate:  string;
-  expanded:    boolean;
-  editMode:    boolean;
-  rejectMode:  boolean;
-  rejectReason: string;
-  loading:     boolean;
-  error:       string | null;
+  status:          string;
+  expiryDate:      string;
+  issuedDate:      string;
+  referenceNumber: string;
+  expanded:        boolean;
+  editMode:        boolean;
+  rejectMode:      boolean;
+  rejectReason:    string;
+  loading:         boolean;
+  error:           string | null;
 }
 
-function isoToDateInput(iso: string | null): string {
+function isoToDateInput(iso: string | null | undefined): string {
   if (!iso) return "";
   return iso.slice(0, 10);
 }
 
 function makeDocState(d: InlineDoc): DocState {
   return {
-    status:       d.status,
-    expiryDate:   isoToDateInput(d.expiryDate),
-    issuedDate:   isoToDateInput(d.issuedDate),
-    expanded:     d.hasFile && d.status === "pending_review",
-    editMode:     false,
-    rejectMode:   false,
-    rejectReason: "",
-    loading:      false,
-    error:        null,
+    status:          d.status,
+    expiryDate:      isoToDateInput(d.expiryDate),
+    issuedDate:      isoToDateInput(d.issuedDate),
+    referenceNumber: d.referenceNumber ?? "",
+    expanded:        d.hasFile && d.status === "pending_review",
+    editMode:        false,
+    rejectMode:      false,
+    rejectReason:    "",
+    loading:         false,
+    error:           null,
   };
 }
 
@@ -89,7 +93,7 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
     const existing = states[id];
     if (existing) return existing;
     const doc = docs.find((d) => d.id === id);
-    return doc ? makeDocState(doc) : { status: "", expiryDate: "", issuedDate: "", expanded: false, editMode: false, rejectMode: false, rejectReason: "", loading: false, error: null };
+    return doc ? makeDocState(doc) : { status: "", expiryDate: "", issuedDate: "", referenceNumber: "", expanded: false, editMode: false, rejectMode: false, rejectReason: "", loading: false, error: null };
   }
 
   function patch(id: string, update: Partial<DocState>) {
@@ -98,15 +102,24 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
 
   async function saveEdit(docId: string) {
     const s = resolveState(docId);
+    const doc = docs.find((d) => d.id === docId);
     patch(docId, { loading: true, error: null });
+
+    const body: Record<string, unknown> = {};
+    if (doc?.docType === "vocational_licence" || doc?.docType === "insurance" || doc?.docType === "rental_agreement") {
+      body.expiryDate = s.expiryDate ? new Date(s.expiryDate).toISOString() : null;
+    }
+    if (doc?.docType === "driving_licence") {
+      body.issuedDate = s.issuedDate ? new Date(s.issuedDate).toISOString() : null;
+    }
+    if (doc?.docType === "vocational_licence") {
+      body.referenceNumber = s.referenceNumber.trim() || null;
+    }
 
     const res = await fetch(`/api/compliance/${docId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        expiryDate: s.expiryDate ? new Date(s.expiryDate).toISOString() : undefined,
-        issuedDate: s.issuedDate ? new Date(s.issuedDate).toISOString() : null,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) {
@@ -190,28 +203,62 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
               </div>
             </div>
 
-            {/* Date display / edit */}
+            {/* Date / metadata display / edit */}
             <div className="px-4 py-2 border-t border-gray-800 bg-gray-950/40">
               {s.editMode ? (
                 <div className="flex items-end gap-3 flex-wrap">
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Expiry date</label>
-                    <input
-                      type="date"
-                      value={s.expiryDate}
-                      onChange={(e) => patch(doc.id, { expiryDate: e.target.value })}
-                      className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs text-gray-500 block mb-1">Issued date</label>
-                    <input
-                      type="date"
-                      value={s.issuedDate}
-                      onChange={(e) => patch(doc.id, { issuedDate: e.target.value })}
-                      className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
-                    />
-                  </div>
+                  {/* Vocational licence: reference number + expiry */}
+                  {doc.docType === "vocational_licence" && (
+                    <>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Licence number</label>
+                        <input
+                          type="text"
+                          value={s.referenceNumber}
+                          onChange={(e) => patch(doc.id, { referenceNumber: e.target.value })}
+                          placeholder="e.g. VL-2024-123456"
+                          className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1 w-40"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs text-gray-500 block mb-1">Expiry date</label>
+                        <input
+                          type="date"
+                          value={s.expiryDate}
+                          onChange={(e) => patch(doc.id, { expiryDate: e.target.value })}
+                          className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
+                        />
+                      </div>
+                    </>
+                  )}
+                  {/* Driving licence: issued date only */}
+                  {doc.docType === "driving_licence" && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Issued date</label>
+                      <input
+                        type="date"
+                        value={s.issuedDate}
+                        onChange={(e) => patch(doc.id, { issuedDate: e.target.value })}
+                        className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
+                      />
+                    </div>
+                  )}
+                  {/* Vehicle docs: expiry only */}
+                  {(doc.docType === "insurance" || doc.docType === "rental_agreement") && (
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Expiry date</label>
+                      <input
+                        type="date"
+                        value={s.expiryDate}
+                        onChange={(e) => patch(doc.id, { expiryDate: e.target.value })}
+                        className="bg-gray-800 border border-gray-700 text-white text-xs rounded px-2 py-1"
+                      />
+                    </div>
+                  )}
+                  {/* NRIC: no editable date fields */}
+                  {doc.docType === "nric" && (
+                    <p className="text-xs text-gray-500">No date fields for identity documents.</p>
+                  )}
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -235,8 +282,31 @@ export function InlineDocPanel({ docs, upload }: { docs: InlineDoc[]; upload?: U
                 </div>
               ) : (
                 <p className="text-xs text-gray-500">
-                  {s.issuedDate && <>Issued: <span className="text-gray-400">{s.issuedDate}</span> · </>}
-                  Expires: <span className="text-gray-400">{s.expiryDate || "—"}</span>
+                  {doc.docType === "nric" && (
+                    <span className="text-gray-600">Identity document — no date verification</span>
+                  )}
+                  {doc.docType === "driving_licence" && s.issuedDate && (
+                    <>
+                      Issued: <span className="text-gray-400">{s.issuedDate}</span>
+                      {" · "}
+                      <span className="text-gray-400">{yearsSince(s.issuedDate).toFixed(1)} yrs experience</span>
+                    </>
+                  )}
+                  {doc.docType === "driving_licence" && !s.issuedDate && (
+                    <span className="text-amber-500">⚠ No issued date recorded</span>
+                  )}
+                  {doc.docType === "vocational_licence" && (
+                    <>
+                      {s.referenceNumber
+                        ? <>Ref: <span className="text-gray-400">{s.referenceNumber}</span> · </>
+                        : <span className="text-amber-500">⚠ No ref number · </span>
+                      }
+                      Expires: <span className="text-gray-400">{s.expiryDate || "—"}</span>
+                    </>
+                  )}
+                  {(doc.docType === "insurance" || doc.docType === "rental_agreement") && (
+                    <>Expires: <span className="text-gray-400">{s.expiryDate || "—"}</span></>
+                  )}
                 </p>
               )}
             </div>

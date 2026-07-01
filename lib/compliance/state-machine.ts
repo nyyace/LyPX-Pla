@@ -1,31 +1,46 @@
 import { prisma } from "@/lib/prisma";
-import { addDays, isExpired, isWithinDays } from "@/lib/utils/date";
+import { addDays, isExpired, isWithinDays, yearsSince } from "@/lib/utils/date";
 
 const EXPIRING_SOON_DAYS = 30;
 
 // Evaluates compliance status for a single driver based on their documents.
 // Returns the new status without writing — callers decide whether to persist.
+//
+// Per-document-type rules:
+//   nric             — identity only; no date-based checks
+//   driving_licence  — issuedDate must be >= 2 years ago (experience gate)
+//   vocational_licence — expiryDate must be future; expiring_soon within 30 days
 export function deriveDriverStatus(
-  docs: Array<{ status: string; expiryDate: Date; docType: string }>
+  docs: Array<{ status: string; expiryDate: Date | null; issuedDate: Date | null; docType: string }>
 ): "active" | "expiring_soon" | "suspended" | "pending" {
   const active = docs.filter((d) => d.status !== "superseded");
   if (active.length === 0) return "pending";
 
-  const hasExpired = active.some(
-    (d) => d.status === "verified" && isExpired(d.expiryDate)
+  // Any rejected document → suspended
+  if (active.some((d) => d.status === "rejected")) return "suspended";
+
+  // Driving licence: minimum 2 years of experience (issuedDate gate)
+  const hasInsufficientExperience = active.some(
+    (d) =>
+      d.docType === "driving_licence" &&
+      d.status === "verified" &&
+      yearsSince(d.issuedDate) < 2
   );
-  if (hasExpired) return "suspended";
+  if (hasInsufficientExperience) return "suspended";
 
-  const hasRejected = active.some((d) => d.status === "rejected");
-  if (hasRejected) return "suspended";
-
-  const hasExpiringSoon = active.some(
+  // Vocational licence: check expiry (NRIC and driving_licence excluded)
+  const vocLicences = active.filter((d) => d.docType === "vocational_licence");
+  if (vocLicences.some((d) => d.status === "verified" && isExpired(d.expiryDate))) {
+    return "suspended";
+  }
+  if (vocLicences.some(
     (d) =>
       d.status === "verified" &&
       !isExpired(d.expiryDate) &&
       isWithinDays(d.expiryDate, EXPIRING_SOON_DAYS)
-  );
-  if (hasExpiringSoon) return "expiring_soon";
+  )) {
+    return "expiring_soon";
+  }
 
   const allVerified = active.every((d) => d.status === "verified");
   if (allVerified) return "active";
@@ -35,7 +50,7 @@ export function deriveDriverStatus(
 
 // Derives vehicle status from its own docs and the compliance status of its primary driver(s).
 export function deriveVehicleStatus(
-  vehicleDocs: Array<{ status: string; expiryDate: Date }>,
+  vehicleDocs: Array<{ status: string; expiryDate: Date | null }>,
   driverStatuses: string[]
 ): "active" | "inactive" | "suspended" {
   const activeDocs = vehicleDocs.filter((d) => d.status !== "superseded");

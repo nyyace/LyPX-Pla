@@ -17,7 +17,7 @@ import { formatTZDate, DEFAULT_TIMEZONE } from "@/lib/utils/date";
 interface Doc {
   id: string;
   docType: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
 }
 
 interface Props {

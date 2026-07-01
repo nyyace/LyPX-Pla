@@ -94,6 +94,13 @@ export function isExpired(date: Date | string | null | undefined): boolean {
   return new Date(date).getTime() < Date.now();
 }
 
+// Years elapsed since a past date
+export function yearsSince(date: Date | string | null | undefined): number {
+  if (!date) return 0;
+  const diffMs = Date.now() - new Date(date).getTime();
+  return diffMs / (1000 * 60 * 60 * 24 * 365.25);
+}
+
 // Add days to a date (returns UTC Date — store directly in DB)
 export function addDays(date: Date | string, days: number): Date {
   const result = new Date(date);

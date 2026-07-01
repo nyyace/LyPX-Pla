@@ -14,6 +14,7 @@ export default async function DriversPage() {
         include: { tenant: { select: { name: true } } },
       },
       vehicleOwnerships: {
+        where: { terminatedAt: null, vehicle: { deletedAt: null } },
         include: {
           vehicle: { select: { plateNumber: true, vehicleClass: true } },
         },

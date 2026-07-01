@@ -32,7 +32,7 @@ interface Doc {
   id: string;
   docType: string;
   status: string;
-  expiryDate: Date;
+  expiryDate: Date | null;
   issuedDate?: Date | null;
   reviewedAt: Date | null;
   file?: { fileName: string; mimeType: string } | null;

@@ -17,15 +17,20 @@ const statusColors: Record<string, string> = {
 };
 
 function getDocSummaryStatus(
-  docs: Array<{ docType: string; status: string; expiryDate: Date }>,
+  docs: Array<{ docType: string; status: string; expiryDate: Date | null }>,
   docType: string
 ): "missing" | "pending_review" | "verified" | "expired" | "rejected" {
   const active = docs
     .filter((d) => d.docType === docType && d.status !== "superseded")
-    .sort((a, b) => b.expiryDate.getTime() - a.expiryDate.getTime());
+    .sort((a, b) => {
+      if (!a.expiryDate && !b.expiryDate) return 0;
+      if (!a.expiryDate) return 1;
+      if (!b.expiryDate) return -1;
+      return b.expiryDate.getTime() - a.expiryDate.getTime();
+    });
   if (!active.length) return "missing";
   const d = active[0];
-  if (d.status === "verified" && d.expiryDate < new Date()) return "expired";
+  if (d.status === "verified" && d.expiryDate && d.expiryDate < new Date()) return "expired";
   return d.status as ReturnType<typeof getDocSummaryStatus>;
 }
 
@@ -63,13 +68,14 @@ export default async function VehicleDetailPage({
   if (!vehicle) notFound();
 
   const inlineDocs: InlineDoc[] = vehicle.documents.map((d) => ({
-    id:         d.id,
-    docType:    d.docType,
-    status:     d.status,
-    expiryDate: d.expiryDate.toISOString(),
-    issuedDate: d.issuedDate?.toISOString() ?? null,
-    hasFile:    !!d.file,
-    isPdf:      d.file?.mimeType === "application/pdf",
+    id:              d.id,
+    docType:         d.docType,
+    status:          d.status,
+    expiryDate:      d.expiryDate?.toISOString() ?? null,
+    issuedDate:      d.issuedDate?.toISOString() ?? null,
+    referenceNumber: null,
+    hasFile:         !!d.file,
+    isPdf:           d.file?.mimeType === "application/pdf",
   }));
 
   const assignments: AssignmentRow[] = vehicle.ownership.map((o) => ({

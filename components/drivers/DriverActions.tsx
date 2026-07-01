@@ -88,7 +88,7 @@ export function DriverActions({ driverId, tier2Qualified }: Props) {
           onClick={toggleTier2}
           disabled={loading}
         >
-          {tier2Qualified ? "Revoke Tier 2" : "Grant Tier 2"}
+          {tier2Qualified ? "Revoke Central Pool" : "Grant Central Pool"}
         </Button>
         <Button
           size="sm"

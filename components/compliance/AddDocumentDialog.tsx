@@ -51,6 +51,7 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
   const [file, setFile] = useState<File | null>(null);
   const [uploadMode, setUploadMode] = useState<"file" | "manual">("file");
   const [note, setNote] = useState("");
+  const [referenceNumber, setReferenceNumber] = useState("");
 
   const docTypes = entityType === "driver" ? driverDocTypes : vehicleDocTypes;
 
@@ -71,12 +72,19 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
     setFile(f);
   }
 
+  // Which fields each doc type needs
+  const needsExpiry    = docType === "vocational_licence" || !docType;
+  const needsIssued    = docType === "driving_licence";
+  const needsReference = docType === "vocational_licence";
+  const needsExpiry_vehicle = entityType === "vehicle"; // insurance/rental_agreement always need expiry
+
   function handleClose() {
     setDocType("");
     setFile(null);
     setNote("");
     setError(null);
     setUploadMode("file");
+    setReferenceNumber("");
     onClose();
   }
 
@@ -94,18 +102,21 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
 
     const form = new FormData(e.currentTarget);
 
+    const dt = form.get("docType") as string;
+    const payload = {
+      entityType,
+      entityId,
+      docType:         dt,
+      expiryDate:      (form.get("expiryDate") as string) || undefined,
+      issuedDate:      (form.get("issuedDate") as string) || undefined,
+      referenceNumber: referenceNumber.trim() || undefined,
+    };
+
     if (uploadMode === "manual") {
       const res = await fetch("/api/admin/compliance/manual-entry", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entityType,
-          entityId,
-          docType: form.get("docType"),
-          expiryDate: form.get("expiryDate"),
-          issuedDate: form.get("issuedDate") || undefined,
-          note: note.trim() || undefined,
-        }),
+        body: JSON.stringify({ ...payload, note: note.trim() || undefined }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -123,12 +134,7 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
       const createRes = await fetch("/api/compliance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          entityType,
-          entityId,
-          docType: form.get("docType"),
-          expiryDate: form.get("expiryDate"),
-        }),
+        body: JSON.stringify(payload),
       });
       const createData = await createRes.json();
       if (!createRes.ok) {
@@ -221,26 +227,50 @@ export function AddDocumentDialog({ open, onClose, entityType, entityId }: Props
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <Label htmlFor="expiryDate" className="text-gray-300">Expiry date</Label>
-            <Input
-              id="expiryDate"
-              name="expiryDate"
-              type="date"
-              required
-              className="bg-gray-800 border-gray-700"
-            />
-          </div>
+          {/* Reference number — vocational licence only */}
+          {needsReference && (
+            <div className="space-y-1.5">
+              <Label htmlFor="referenceNumber" className="text-gray-300">
+                Vocational licence number <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="referenceNumber"
+                value={referenceNumber}
+                onChange={(e) => setReferenceNumber(e.target.value)}
+                placeholder="e.g. VL-2024-123456"
+                required
+                className="bg-gray-800 border-gray-700"
+              />
+            </div>
+          )}
 
-          {uploadMode === "manual" && (
+          {/* Issued date — driving licence only */}
+          {needsIssued && (
             <div className="space-y-1.5">
               <Label htmlFor="issuedDate" className="text-gray-300">
-                Issued date <span className="text-gray-600 font-normal">(optional)</span>
+                Issued date <span className="text-red-400">*</span>
               </Label>
               <Input
                 id="issuedDate"
                 name="issuedDate"
                 type="date"
+                required
+                className="bg-gray-800 border-gray-700"
+              />
+            </div>
+          )}
+
+          {/* Expiry date — vocational licence + vehicle docs; hidden for NRIC and driving_licence */}
+          {(needsExpiry || needsExpiry_vehicle) && (
+            <div className="space-y-1.5">
+              <Label htmlFor="expiryDate" className="text-gray-300">
+                Expiry date <span className="text-red-400">*</span>
+              </Label>
+              <Input
+                id="expiryDate"
+                name="expiryDate"
+                type="date"
+                required
                 className="bg-gray-800 border-gray-700"
               />
             </div>

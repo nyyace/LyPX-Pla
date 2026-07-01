@@ -184,7 +184,7 @@ export function DriverProfileEditor({
                 onChange={(e) => setForm({ ...form, tier2Qualified: e.target.checked })}
                 className="rounded"
               />
-              Tier 2 qualified
+              LyPX Central Pool eligible
             </label>
           </div>
         </div>

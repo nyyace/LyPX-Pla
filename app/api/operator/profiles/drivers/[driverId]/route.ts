@@ -89,8 +89,9 @@ export async function GET(
       id: doc.id,
       docType: doc.docType,
       status: doc.status,
-      expiryDate: doc.expiryDate.toISOString(),
-      issuedDate: doc.issuedDate?.toISOString() ?? null,
+      expiryDate:      doc.expiryDate?.toISOString() ?? null,
+      issuedDate:      doc.issuedDate?.toISOString() ?? null,
+      referenceNumber: doc.referenceNumber ?? null,
     })),
     vehicle: d.vehicleOwnerships[0]?.vehicle ?? null,
     recentOrders: recentOrders.map((o) => ({
