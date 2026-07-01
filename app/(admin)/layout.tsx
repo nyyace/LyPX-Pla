@@ -4,6 +4,9 @@ import { getOperatorTenant } from "@/lib/utils/operator";
 import { isAdminUser } from "@/lib/utils/admin";
 import { AppShell } from "@/components/lypx/AppShell";
 import { ADMIN_TABS } from "@/lib/config/permissions";
+import { ADMIN_NAV_VERSION } from "@/lib/config/adminNav";
+import { AdminNavV2 } from "@/components/admin/AdminNavV2";
+import { prisma } from "@/lib/prisma";
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const { user } = await withAuth({ ensureSignedIn: true });
@@ -20,6 +23,14 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     .join("")
     .toUpperCase() || "?";
 
+  let sidebarNav: React.ReactNode = undefined;
+  if (ADMIN_NAV_VERSION === "v2") {
+    const pendingComplianceCount = await prisma.complianceDocument.count({
+      where: { status: "pending_review" },
+    });
+    sidebarNav = <AdminNavV2 pendingComplianceCount={pendingComplianceCount} />;
+  }
+
   return (
     <AppShell
       role="admin"
@@ -29,6 +40,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
       userDisplay={user.firstName ?? user.email}
       userInitials={initials}
       accentColour="#E5A93C"
+      sidebarNav={sidebarNav}
     >
       {children}
     </AppShell>
