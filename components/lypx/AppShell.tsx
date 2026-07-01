@@ -21,6 +21,8 @@ interface Props {
   tenantName?: string;
   logoUrl?: string | null;
   whatsappEnabled?: boolean;
+  /** V2: when provided, renders a left sidebar instead of the horizontal tab bar */
+  sidebarNav?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -35,6 +37,7 @@ export function AppShell({
   tenantName,
   logoUrl,
   whatsappEnabled,
+  sidebarNav,
   children,
 }: Props) {
   const pathname = usePathname();
@@ -169,37 +172,47 @@ export function AppShell({
         </div>
       </div>
 
-      {/* ── Nav tabs ── */}
-      <nav className="lypx-navtabs">
-        {tabs.map(t => {
-          const active = pathname === t.href || pathname.startsWith(t.href + "/");
-          return (
-            <Link
-              key={t.href}
-              href={t.href}
-              className={`lypx-tab${active ? " active" : ""}`}
-              style={{ display: "flex", alignItems: "center", gap: 6 }}
-            >
-              {t.label}
-              {t.badge === "gate-queue" && gateCount > 0 && (
-                <span style={{
-                  background: "var(--red)", color: "#fff",
-                  fontSize: 10, fontWeight: 700, lineHeight: 1,
-                  padding: "2px 5px", borderRadius: 20,
-                  minWidth: 18, textAlign: "center",
-                }}>
-                  {gateCount > 99 ? "99+" : gateCount}
-                </span>
-              )}
-            </Link>
-          );
-        })}
-      </nav>
-
-      {/* ── Content ── */}
-      <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-primary)" }}>
-        {children}
-      </main>
+      {sidebarNav ? (
+        /* ── V2: sidebar + content ── */
+        <div style={{ flex: 1, display: "flex", overflow: "hidden" }}>
+          {sidebarNav}
+          <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-primary)" }}>
+            {children}
+          </main>
+        </div>
+      ) : (
+        /* ── V1: horizontal nav tabs + content ── */
+        <>
+          <nav className="lypx-navtabs">
+            {tabs.map(t => {
+              const active = pathname === t.href || pathname.startsWith(t.href + "/");
+              return (
+                <Link
+                  key={t.href}
+                  href={t.href}
+                  className={`lypx-tab${active ? " active" : ""}`}
+                  style={{ display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  {t.label}
+                  {t.badge === "gate-queue" && gateCount > 0 && (
+                    <span style={{
+                      background: "var(--red)", color: "#fff",
+                      fontSize: 10, fontWeight: 700, lineHeight: 1,
+                      padding: "2px 5px", borderRadius: 20,
+                      minWidth: 18, textAlign: "center",
+                    }}>
+                      {gateCount > 99 ? "99+" : gateCount}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+          <main style={{ flex: 1, overflowY: "auto", background: "var(--bg-primary)" }}>
+            {children}
+          </main>
+        </>
+      )}
 
       {role === "operator" && showInbox && whatsappEnabled && (
         <WhatsAppInboxPanel
