@@ -76,6 +76,7 @@ export default async function VehicleDetailPage({
     referenceNumber: null,
     hasFile:         !!d.file,
     isPdf:           d.file?.mimeType === "application/pdf",
+    supersededAt:    d.supersededAt?.toISOString() ?? null,
   }));
 
   const assignments: AssignmentRow[] = vehicle.ownership.map((o) => ({

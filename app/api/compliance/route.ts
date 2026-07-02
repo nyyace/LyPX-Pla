@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { withAuth } from "@workos-inc/authkit-nextjs";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { evaluateAndSyncDriverCompliance, evaluateAndSyncVehicleCompliance } from "@/lib/compliance/state-machine";
+import { supersedeAndPurgeActiveDocs } from "@/lib/compliance/supersede";
 
 export async function GET() {
   const docs = await prisma.complianceDocument.findMany({
@@ -54,15 +55,11 @@ export async function POST(req: Request) {
   else return NextResponse.json({ error: "Invalid entityType" }, { status: 400 });
 
   const doc = await prisma.$transaction(async (tx: TxClient) => {
-    // Supersede any existing active docs of the same type
-    await tx.complianceDocument.updateMany({
-      where: {
-        ...(entityType === "driver" ? { driverId: entityId } : { vehicleId: entityId }),
-        docType,
-        status: { in: ["pending_review", "verified"] },
-      },
-      data: { status: "superseded" },
-    });
+    await supersedeAndPurgeActiveDocs(
+      tx,
+      entityType === "driver" ? { driverId: entityId, docType } : { vehicleId: entityId, docType },
+      user.id
+    );
 
     const d = await tx.complianceDocument.create({ data });
     await tx.auditLog.create({

@@ -1,9 +1,10 @@
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, type TxClient } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getOperatorTenant } from "@/lib/utils/operator";
 import { uploadToR2, makeR2Key, deleteFromR2 } from "@/lib/r2";
 import { evaluateAndSyncVehicleCompliance } from "@/lib/compliance/state-machine";
+import { supersedeAndPurgeActiveDocs } from "@/lib/compliance/supersede";
 
 const ALLOWED_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/heic", "application/pdf"];
 const MAX_SIZE = 5 * 1024 * 1024;
@@ -43,7 +44,9 @@ export async function POST(
   await uploadToR2(storageKey, buffer, file.type);
 
   try {
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: TxClient) => {
+      await supersedeAndPurgeActiveDocs(tx, { vehicleId, docType }, user.id);
+
       const doc = await tx.complianceDocument.create({
         data: {
           entityType: "vehicle",

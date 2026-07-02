@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
 import { uploadToR2, makeR2Key } from "@/lib/r2";
+import { supersedeAndPurgeActiveDocs } from "@/lib/compliance/supersede";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
 import { processDocumentUpload, DocumentUploadError, type ProcessResult } from "@/lib/documents/processUpload";
 import { sendEmail, ADMIN_EMAIL } from "@/lib/email/client";
@@ -183,6 +184,14 @@ export async function POST(req: Request) {
       fileResult: ProcessResult | null,
       storageKey: string | null
     ) {
+      await supersedeAndPurgeActiveDocs(
+        tx,
+        docData.driverId
+          ? { driverId: docData.driverId, docType: docData.docType as string }
+          : { vehicleId: docData.vehicleId as string, docType: docData.docType as string },
+        "self"
+      );
+
       const doc = await tx.complianceDocument.create({ data: docData });
       if (fileResult && storageKey) {
         await tx.documentFile.create({

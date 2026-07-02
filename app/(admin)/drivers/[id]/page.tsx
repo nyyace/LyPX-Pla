@@ -128,6 +128,7 @@ export default async function DriverDetailPage({
     referenceNumber: d.referenceNumber ?? null,
     hasFile:         !!d.file,
     isPdf:           d.file?.mimeType === "application/pdf",
+    supersededAt:    d.supersededAt?.toISOString() ?? null,
   }));
 
   return (

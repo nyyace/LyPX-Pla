@@ -6,6 +6,7 @@ import {
   evaluateAndSyncDriverCompliance,
   evaluateAndSyncVehicleCompliance,
 } from "@/lib/compliance/state-machine";
+import { supersedeAndPurgeActiveDocs } from "@/lib/compliance/supersede";
 
 const DRIVER_DOC_TYPES = ["nric", "driving_licence", "vocational_licence"];
 const VEHICLE_DOC_TYPES = ["insurance", "rental_agreement"];
@@ -61,15 +62,11 @@ export async function POST(req: Request) {
   else createData.vehicleId = entityId;
 
   const doc = await prisma.$transaction(async (tx: TxClient) => {
-    // Supersede any existing active docs of the same type
-    await tx.complianceDocument.updateMany({
-      where: {
-        ...(entityType === "driver" ? { driverId: entityId } : { vehicleId: entityId }),
-        docType,
-        status: { in: ["pending_review", "verified"] },
-      },
-      data: { status: "superseded" },
-    });
+    await supersedeAndPurgeActiveDocs(
+      tx,
+      entityType === "driver" ? { driverId: entityId, docType } : { vehicleId: entityId, docType },
+      user.id
+    );
 
     const d = await tx.complianceDocument.create({ data: createData });
     await tx.auditLog.create({
