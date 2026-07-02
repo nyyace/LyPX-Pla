@@ -36,7 +36,10 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json();
 
-  const order = await prisma.order.findUnique({ where: { id } });
+  const order = await prisma.order.findUnique({
+    where: { id },
+    include: { account: { select: { tier2PartnerAccount: true } } },
+  });
   if (!order) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const updates: Record<string, unknown> = {};
@@ -111,6 +114,22 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         { error: "Compliance check failed", failures: compliance.failures },
         { status: 422 }
       );
+    }
+
+    // Fix 3: accounts with a dedicated Tier 2 driver arrangement require the
+    // assigned driver to be tier2PartnerEligible — independent of the general
+    // Central Pool (Tier 3) eligibility check above.
+    if (order.account.tier2PartnerAccount) {
+      const driver = await prisma.driver.findUnique({
+        where: { id: driverIdForCheck },
+        select: { tier2PartnerEligible: true },
+      });
+      if (!driver?.tier2PartnerEligible) {
+        return NextResponse.json(
+          { error: "This account requires a Tier 2 Partner-eligible driver" },
+          { status: 422 }
+        );
+      }
     }
   }
 

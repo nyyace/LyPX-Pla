@@ -183,6 +183,7 @@ model Account {
   picName         String?  // Person in Charge / liaise contact
   picWhatsapp     String?  // PIC WhatsApp number for trip status updates
   picEmail        String?  // PIC email, optional, for invoice delivery
+  tier2PartnerAccount Boolean @default(false) // dedicated Tier 2 driver arrangement — job assignment requires driver.tier2PartnerEligible
   createdAt       DateTime @default(now())
 
   claims           AccountClaim[]
