@@ -51,10 +51,16 @@ export async function POST(req: Request) {
 
   const identityHash = makeIdentityHash(licenseNumber, nationalId);
 
-  const existing = await prisma.driver.findUnique({ where: { identityHash } });
-  if (existing) {
+  const existing = await prisma.driver.findFirst({ where: { identityHash } });
+  if (existing && !existing.deletedAt) {
     return NextResponse.json(
       { error: "Driver already exists in registry", existingId: existing.id },
+      { status: 409 }
+    );
+  }
+  if (existing && existing.deletedAt) {
+    return NextResponse.json(
+      { error: "A driver with this identity was previously removed", reactivatable: true, driverId: existing.id },
       { status: 409 }
     );
   }

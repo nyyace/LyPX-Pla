@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, type TxClient } from "@/lib/prisma";
 import { isAdminUser } from "@/lib/utils/admin";
 import { createHash } from "crypto";
+import { reactivateDriver } from "@/lib/entities/reactivation";
 import * as XLSX from "xlsx";
 
 function makeIdentityHash(licenseNumber: string, nationalId: string): string {
@@ -26,7 +27,7 @@ export async function POST(req: Request) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
 
-  const results: { row: number; action: "created" | "updated" | "skipped"; name: string; reason?: string }[] = [];
+  const results: { row: number; action: "created" | "updated" | "reactivated" | "skipped"; name: string; reason?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -52,11 +53,20 @@ export async function POST(req: Request) {
     const sourceType = row["sourceType"]?.toString().trim() || "operator_added";
 
     try {
-      const existing = await prisma.driver.findUnique({ where: { identityHash } });
+      const existing = await prisma.driver.findFirst({ where: { identityHash } });
 
-      if (existing) {
+      if (existing && existing.deletedAt) {
+        await prisma.$transaction((tx: TxClient) =>
+          reactivateDriver(tx, existing.id, user.id, {
+            firstName, lastName, phoneNumber, licenseNumber,
+            licenseIssuedDate: licenseIssuedDate ?? null,
+            tier2Qualified, sourceType,
+          })
+        );
+        results.push({ row: rowNum, action: "reactivated", name });
+      } else if (existing) {
         await prisma.driver.update({
-          where: { identityHash },
+          where: { id: existing.id },
           data: {
             firstName,
             lastName,

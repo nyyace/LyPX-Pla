@@ -3,6 +3,7 @@ import { prisma, type TxClient } from "@/lib/prisma";
 import { createHash } from "crypto";
 import { uploadToR2, makeR2Key } from "@/lib/r2";
 import { supersedeAndPurgeActiveDocs } from "@/lib/compliance/supersede";
+import { reactivateDriver, reactivateVehicle } from "@/lib/entities/reactivation";
 import { sendWhatsAppTemplate } from "@/lib/whatsapp/client";
 import { processDocumentUpload, DocumentUploadError, type ProcessResult } from "@/lib/documents/processUpload";
 import { sendEmail, ADMIN_EMAIL } from "@/lib/email/client";
@@ -126,8 +127,9 @@ export async function POST(req: Request) {
   const phone = verification.phone;
   const identityHash = makeIdentityHash(drivingLicenceNumber!, nricNumber!);
 
-  const existingDriver = await prisma.driver.findUnique({ where: { identityHash } });
+  const existingDriver = await prisma.driver.findFirst({ where: { identityHash } });
   const isResubmission = !!existingDriver;
+  const isReactivation = !!existingDriver?.deletedAt;
 
   // ── Upload driver files to R2 before transaction ──────────────────────────
   const driverPrefix = existingDriver?.id ?? `pending/${identityHash.slice(0, 12)}`;
@@ -149,7 +151,15 @@ export async function POST(req: Request) {
   await prisma.$transaction(async (tx: TxClient) => {
     let driver;
 
-    if (isResubmission && existingDriver) {
+    if (isReactivation && existingDriver) {
+      driver = await reactivateDriver(tx, existingDriver.id, "self", {
+        firstName: firstName!,
+        lastName: lastName!,
+        phoneNumber: phone,
+        licenseNumber: drivingLicenceNumber,
+        licenseIssuedDate: drivingLicenceIssuedDate,
+      });
+    } else if (isResubmission && existingDriver) {
       driver = await tx.driver.update({
         where: { id: existingDriver.id },
         data: {
@@ -242,7 +252,7 @@ export async function POST(req: Request) {
 
     // 5+6. Vehicle documents (optional)
     if (hasVehicle && vehiclePlate) {
-      let vehicle = await tx.vehicle.findUnique({ where: { plateNumber: vehiclePlate } });
+      let vehicle = await tx.vehicle.findFirst({ where: { plateNumber: vehiclePlate } });
       if (!vehicle) {
         vehicle = await tx.vehicle.create({
           data: {
@@ -251,6 +261,11 @@ export async function POST(req: Request) {
             model: vehicleModel ?? "—",
             plateNumber: vehiclePlate,
           },
+        });
+      } else if (vehicle.deletedAt) {
+        vehicle = await reactivateVehicle(tx, vehicle.id, "self", {
+          ...(vehicleMake && vehicleMake !== "" ? { make: vehicleMake } : {}),
+          ...(vehicleModel && vehicleModel !== "" ? { model: vehicleModel } : {}),
         });
       } else {
         vehicle = await tx.vehicle.update({

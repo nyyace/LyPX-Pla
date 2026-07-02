@@ -50,7 +50,7 @@ model Tenant {
 
 model Driver {
   id                   String    @id @default(cuid())
-  identityHash          String    @unique // hash of normalized license_number + national_id
+  identityHash          String    // hash of normalized license_number + national_id — unique among active (deletedAt IS NULL) rows only, enforced via partial index migration, not here
   firstName             String
   lastName              String
   phoneNumber           String
@@ -91,7 +91,7 @@ model Vehicle {
   registeredByTenantId String
   make                 String
   model                String
-  plateNumber          String    @unique
+  plateNumber          String    // unique among active (deletedAt IS NULL) rows only, enforced via partial index migration, not here
   status               String    @default("inactive") // active | inactive | suspended — DERIVED
   statusOverriddenAt   DateTime?
   statusOverriddenBy   String?   // WorkOS user ID

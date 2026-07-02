@@ -21,6 +21,9 @@ export default function NewVehiclePage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [reactivateVehicleId, setReactivateVehicleId] = useState<string | null>(null);
+  const [reactivating, setReactivating] = useState(false);
+  const [lastSubmitted, setLastSubmitted] = useState<{ make: string; model: string } | null>(null);
 
   useEffect(() => {
     fetch("/api/drivers").then((r) => r.json()).then(setDrivers);
@@ -30,16 +33,19 @@ export default function NewVehiclePage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
+    setReactivateVehicleId(null);
 
     const form = new FormData(e.currentTarget);
+    const make = form.get("make") as string;
+    const model = form.get("model") as string;
 
     // Create vehicle
     const vehicleRes = await fetch("/api/vehicles", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        make: form.get("make"),
-        model: form.get("model"),
+        make,
+        model,
         plateNumber: form.get("plateNumber"),
       }),
     });
@@ -48,11 +54,39 @@ export default function NewVehiclePage() {
     setLoading(false);
 
     if (!vehicleRes.ok) {
+      if (vehicleData.reactivatable && vehicleData.vehicleId) {
+        setReactivateVehicleId(vehicleData.vehicleId);
+        setLastSubmitted({ make, model });
+        return;
+      }
       setError(vehicleData.error ?? "Failed to create vehicle");
       return;
     }
 
     router.push(`/vehicles/${vehicleData.id}`);
+  }
+
+  async function handleReactivate() {
+    if (!reactivateVehicleId) return;
+    setReactivating(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/vehicles/${reactivateVehicleId}/reactivate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(lastSubmitted ?? {}),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to reactivate vehicle");
+        return;
+      }
+      router.push(`/vehicles/${data.id}`);
+    } catch {
+      setError("Unexpected error — please try again");
+    } finally {
+      setReactivating(false);
+    }
   }
 
   return (
@@ -68,6 +102,32 @@ export default function NewVehiclePage() {
         </Alert>
       )}
 
+      {reactivateVehicleId ? (
+        <div style={{
+          background: "rgba(212, 160, 23, 0.08)",
+          border: "1px solid rgba(212, 160, 23, 0.3)",
+          borderRadius: 8,
+          padding: "20px 24px",
+        }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--gold)" }}>
+            This vehicle was previously removed
+          </p>
+          <p className="text-gray-400 text-sm mb-4">
+            A vehicle with this plate number already exists but was removed from the platform.
+            Reactivating preserves its compliance document history and audit trail — it will need
+            fresh document verification before going active again. No previous driver bond is restored.
+          </p>
+          <div className="flex gap-3">
+            <Button size="sm" disabled={reactivating} onClick={handleReactivate}>
+              {reactivating ? "Reactivating…" : "Reactivate This Vehicle"}
+            </Button>
+            <Button size="sm" variant="outline" className="border-gray-700 text-gray-300"
+              onClick={() => setReactivateVehicleId(null)}>
+              Use Different Plate
+            </Button>
+          </div>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="plateNumber" className="text-gray-300">Plate number</Label>
@@ -105,6 +165,7 @@ export default function NewVehiclePage() {
           </Button>
         </div>
       </form>
+      )}
     </div>
   );
 }

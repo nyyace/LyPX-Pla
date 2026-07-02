@@ -37,10 +37,16 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
-  const existing = await prisma.vehicle.findUnique({ where: { plateNumber: plateNumber.toUpperCase() } });
-  if (existing) {
+  const existing = await prisma.vehicle.findFirst({ where: { plateNumber: plateNumber.toUpperCase() } });
+  if (existing && !existing.deletedAt) {
     return NextResponse.json(
       { error: "Vehicle with this plate number already exists", existingId: existing.id },
+      { status: 409 }
+    );
+  }
+  if (existing && existing.deletedAt) {
+    return NextResponse.json(
+      { error: "A vehicle with this plate number was previously removed", reactivatable: true, vehicleId: existing.id },
       { status: 409 }
     );
   }

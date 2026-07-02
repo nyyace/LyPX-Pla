@@ -42,8 +42,20 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "make, model, and plateNumber are required" }, { status: 400 });
   }
 
-  const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
-  if (existing) {
+  const existing = await prisma.vehicle.findFirst({ where: { plateNumber } });
+  if (existing && !existing.deletedAt) {
+    return NextResponse.json({ error: "A vehicle with this plate number already exists" }, { status: 409 });
+  }
+  // plateNumber is unique platform-wide, not per-tenant — only offer reactivation if
+  // this operator is the one who originally registered (and removed) it. Otherwise
+  // it's a genuine conflict with another tenant's record, not something to surface.
+  if (existing && existing.deletedAt && existing.registeredByTenantId === tenant.id) {
+    return NextResponse.json(
+      { error: "A vehicle with this plate number was previously removed", reactivatable: true, vehicleId: existing.id },
+      { status: 409 }
+    );
+  }
+  if (existing && existing.deletedAt) {
     return NextResponse.json({ error: "A vehicle with this plate number already exists" }, { status: 409 });
   }
 

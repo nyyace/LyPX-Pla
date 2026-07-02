@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import { withAuth } from "@workos-inc/authkit-nextjs";
-import { prisma } from "@/lib/prisma";
+import { prisma, type TxClient } from "@/lib/prisma";
 import { isAdminUser } from "@/lib/utils/admin";
 import { VEHICLE_CLASSES } from "@/lib/constants/vehicleClasses";
+import { reactivateVehicle } from "@/lib/entities/reactivation";
 import * as XLSX from "xlsx";
 
 const VALID_CLASSES = new Set<string>(VEHICLE_CLASSES.map((c) => c.value));
@@ -27,7 +28,7 @@ export async function POST(req: Request) {
   const ws = wb.Sheets[wb.SheetNames[0]];
   const rows = XLSX.utils.sheet_to_json<Record<string, string>>(ws);
 
-  const results: { row: number; action: "created" | "updated" | "skipped"; plate: string; reason?: string }[] = [];
+  const results: { row: number; action: "created" | "updated" | "reactivated" | "skipped"; plate: string; reason?: string }[] = [];
 
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i];
@@ -57,11 +58,23 @@ export async function POST(req: Request) {
     const insuranceCompany = row["insuranceCompany"]?.toString().trim() || null;
 
     try {
-      const existing = await prisma.vehicle.findUnique({ where: { plateNumber } });
+      const existing = await prisma.vehicle.findFirst({ where: { plateNumber } });
 
-      if (existing) {
+      if (existing && existing.deletedAt) {
+        await prisma.$transaction((tx: TxClient) =>
+          reactivateVehicle(tx, existing.id, user.id, {
+            make, model,
+            year: year ?? null,
+            colour: colour ?? null,
+            vehicleClass: vehicleClass ?? null,
+            seatingCapacity: seatingCapacity ?? null,
+            insuranceCompany: insuranceCompany ?? null,
+          })
+        );
+        results.push({ row: rowNum, action: "reactivated", plate });
+      } else if (existing) {
         await prisma.vehicle.update({
-          where: { plateNumber },
+          where: { id: existing.id },
           data: {
             make,
             model,

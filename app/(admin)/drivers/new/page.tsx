@@ -19,6 +19,8 @@ export default function NewDriverPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError]   = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [reactivateDriverId, setReactivateDriverId] = useState<string | null>(null);
+  const [reactivating, setReactivating] = useState(false);
 
   const [inviteName,  setInviteName]  = useState("");
   const [invitePhone, setInvitePhone] = useState("");
@@ -81,6 +83,7 @@ export default function NewDriverPage() {
     }
     setLoading(true);
     setError(null);
+    setReactivateDriverId(null);
     try {
       const res = await fetch("/api/drivers", {
         method: "POST",
@@ -96,6 +99,10 @@ export default function NewDriverPage() {
       });
       const data = await res.json();
       if (!res.ok) {
+        if (data.reactivatable && data.driverId) {
+          setReactivateDriverId(data.driverId);
+          return;
+        }
         setError(data.error ?? "Failed to create driver");
         return;
       }
@@ -114,6 +121,34 @@ export default function NewDriverPage() {
       setError("Unexpected error — please try again");
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleReactivate() {
+    if (!reactivateDriverId) return;
+    setReactivating(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/drivers/${reactivateDriverId}/reactivate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName:     manualFirst.trim(),
+          lastName:      manualLast.trim(),
+          phoneNumber:   manualPhone,
+          licenseNumber: manualLicense.trim(),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setError(data.error ?? "Failed to reactivate driver");
+        return;
+      }
+      router.push(`/drivers/${data.id}`);
+    } catch {
+      setError("Unexpected error — please try again");
+    } finally {
+      setReactivating(false);
     }
   }
 
@@ -239,7 +274,34 @@ export default function NewDriverPage() {
         )
       )}
 
-      {tab === "manual" && (
+      {tab === "manual" && reactivateDriverId && (
+        <div style={{
+          background: "rgba(212, 160, 23, 0.08)",
+          border: "1px solid rgba(212, 160, 23, 0.3)",
+          borderRadius: 8,
+          padding: "20px 24px",
+        }}>
+          <p className="text-sm font-semibold mb-1" style={{ color: "var(--gold)" }}>
+            This driver was previously removed
+          </p>
+          <p className="text-gray-400 text-sm mb-4">
+            A driver with this license/NRIC combination already exists but was removed from the platform.
+            Reactivating preserves their compliance document history and audit trail — they&apos;ll need
+            fresh document verification before going active again.
+          </p>
+          <div className="flex gap-3">
+            <Button size="sm" disabled={reactivating} onClick={handleReactivate}>
+              {reactivating ? "Reactivating…" : "Reactivate This Driver"}
+            </Button>
+            <Button size="sm" variant="outline" className="border-gray-700 text-gray-300"
+              onClick={() => setReactivateDriverId(null)}>
+              Use Different Identity
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {tab === "manual" && !reactivateDriverId && (
         <form onSubmit={handleManual} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-1.5">
