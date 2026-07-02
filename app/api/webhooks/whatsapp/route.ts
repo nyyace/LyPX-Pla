@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { resolveWhatsAppCredentials } from "@/lib/orchestrator/whatsapp";
 import { handleInboundDriverMessage } from "@/lib/whatsapp/handleInboundDriver";
+import { verifyMetaWebhookSignature } from "@/lib/whatsapp/verifySignature";
+import { parseWhatsAppWebhookPayload } from "@/lib/whatsapp/webhookPayload";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -17,16 +19,29 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const body = await req.json().catch(() => null);
+  const rawBody = await req.text();
+
+  // Fail closed: missing/unset secret, missing header, or a mismatch all
+  // reject with 403 — there is no path that skips verification and continues.
+  const signatureValid = verifyMetaWebhookSignature(
+    rawBody,
+    req.headers.get("x-hub-signature-256"),
+    process.env.META_APP_SECRET
+  );
+  if (!signatureValid) {
+    return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+  }
+
+  const body = parseWhatsAppWebhookPayload(rawBody);
   if (!body) return NextResponse.json({ ok: true });
 
-  const entries = body?.entry ?? [];
+  const entries = body.entry ?? [];
 
   for (const entry of entries) {
-    for (const change of entry?.changes ?? []) {
-      if (change?.field !== "messages") continue;
+    for (const change of entry.changes ?? []) {
+      if (change.field !== "messages") continue;
 
-      const value = change?.value;
+      const value = change.value;
 
       // ── Resolve tenantId from the receiving phone number ──────────────────
       const receivingPhoneId: string | null = value?.metadata?.phone_number_id ?? null;
@@ -39,15 +54,8 @@ export async function POST(req: NextRequest) {
       const tenantId = tenantWhatsApp?.tenantId ?? null;
 
       // ── Inbound messages (driver commands) ───────────────────────────────
-      const messages: unknown[] = value?.messages ?? [];
-      for (const m of messages) {
-        const message = m as {
-          from?: string;
-          id?: string;
-          type?: string;
-          text?: { body?: string };
-        };
-
+      const messages = value?.messages ?? [];
+      for (const message of messages) {
         if (message.type !== "text") continue;
 
         const result = await handleInboundDriverMessage(
@@ -87,20 +95,14 @@ export async function POST(req: NextRequest) {
       }
 
       // ── Outbound delivery status updates (unchanged) ─────────────────────
-      const statuses: unknown[] = value?.statuses ?? [];
+      const statuses = value?.statuses ?? [];
 
-      for (const s of statuses) {
-        const update = s as {
-          id?: string;
-          status?: string;
-          pricing?: { billable?: boolean; pricing_model?: string; category?: string };
-        };
-
-        const wamid  = update?.id;
-        const status = update?.status;
+      for (const update of statuses) {
+        const wamid  = update.id;
+        const status = update.status;
         if (!wamid || !status) continue;
 
-        const pricing = update?.pricing;
+        const pricing = update.pricing;
 
         try {
           await prisma.whatsAppMessageLog.upsert({
