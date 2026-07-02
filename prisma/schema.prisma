@@ -334,6 +334,7 @@ model PhoneVerification {
   code       String
   expiresAt  DateTime
   verifiedAt DateTime?
+  attempts   Int       @default(0)
   createdAt  DateTime  @default(now())
 
   @@index([phone])

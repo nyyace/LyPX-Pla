@@ -22,7 +22,19 @@ export async function POST(req: Request) {
   if (new Date() > record.expiresAt) {
     return NextResponse.json({ error: "Code expired" }, { status: 400 });
   }
+  // Checked before comparing the code — once 5 wrong attempts have been made,
+  // this session is dead even if the correct code is supplied afterward.
+  if (record.attempts >= 5) {
+    return NextResponse.json(
+      { error: "Too many incorrect attempts. Please request a new code." },
+      { status: 429 }
+    );
+  }
   if (record.code !== code.trim()) {
+    await prisma.phoneVerification.update({
+      where: { id: verificationId },
+      data: { attempts: { increment: 1 } },
+    });
     return NextResponse.json({ error: "Incorrect code" }, { status: 400 });
   }
 
