@@ -17,7 +17,7 @@ interface RosterDriver {
   phoneNumber: string;
   licenseNumber: string | null;
   complianceStatus: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   relationshipType: string;
   tier1Member: boolean;
   addedAt: string;

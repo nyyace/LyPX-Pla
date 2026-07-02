@@ -40,7 +40,7 @@ async function getPoolData() {
       const driver = m.driver;
       const vehicle = driver.vehicleOwnerships[0]?.vehicle ?? null;
       const activeOrder = driver.orders[0] ?? null;
-      const tier = m.tier1Member ? "T1" : driver.tier2Qualified ? "T3" : null;
+      const tier = m.tier1Member ? "T1" : driver.centralPoolEligible ? "T3" : null;
       const availability: "available" | "on_job" | "suspended" =
         driver.complianceStatus === "suspended" ? "suspended"
         : activeOrder ? "on_job"

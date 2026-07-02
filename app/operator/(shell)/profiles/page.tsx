@@ -54,7 +54,7 @@ export default async function OperatorProfilesPage() {
     phoneNumber: m.driver.phoneNumber,
     complianceStatus: m.driver.complianceStatus,
     tier1Member: m.tier1Member,
-    tier2Qualified: m.driver.tier2Qualified,
+    centralPoolEligible: m.driver.centralPoolEligible,
     vehicleClass: m.driver.vehicleOwnerships[0]?.vehicle.vehicleClass ?? null,
     vehicle: m.driver.vehicleOwnerships[0]?.vehicle ?? null,
     vocationalLicenceExpiry:

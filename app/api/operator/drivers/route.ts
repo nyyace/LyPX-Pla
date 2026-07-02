@@ -23,7 +23,7 @@ export async function GET() {
           phoneNumber: true,
           licenseNumber: true,
           complianceStatus: true,
-          tier2Qualified: true,
+          centralPoolEligible: true,
           _count: {
             select: {
               orders: {
@@ -44,7 +44,7 @@ export async function GET() {
     phoneNumber: m.driver.phoneNumber,
     licenseNumber: m.driver.licenseNumber,
     complianceStatus: m.driver.complianceStatus,
-    tier2Qualified: m.driver.tier2Qualified,
+    centralPoolEligible: m.driver.centralPoolEligible,
     relationshipType: m.relationshipType,
     tier1Member: m.tier1Member,
     addedAt: m.addedAt.toISOString(),

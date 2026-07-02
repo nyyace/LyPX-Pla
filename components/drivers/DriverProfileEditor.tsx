@@ -29,7 +29,8 @@ interface Props {
   licenseIssuedDate:  string | null; // ISO
   complianceStatus:   string;
   statusOverriddenAt: string | null; // ISO
-  tier2Qualified:     boolean;
+  centralPoolEligible:     boolean;
+  tier2PartnerEligible:    boolean;
 }
 
 function isoToDateInput(iso: string | null): string {
@@ -49,7 +50,7 @@ function yearsMonths(dateStr: string): string {
 
 export function DriverProfileEditor({
   driverId, firstName, lastName, phoneNumber,
-  licenseNumber, licenseIssuedDate, complianceStatus, statusOverriddenAt, tier2Qualified,
+  licenseNumber, licenseIssuedDate, complianceStatus, statusOverriddenAt, centralPoolEligible, tier2PartnerEligible,
 }: Props) {
   const router = useRouter();
 
@@ -60,7 +61,8 @@ export function DriverProfileEditor({
     licenseNumber: licenseNumber ?? "",
     licenseIssuedDate: isoToDateInput(licenseIssuedDate),
     complianceStatus,
-    tier2Qualified,
+    centralPoolEligible,
+    tier2PartnerEligible,
     statusOverrideReason: "",
   });
 
@@ -82,7 +84,8 @@ export function DriverProfileEditor({
       phoneNumber:       form.phoneNumber.trim(),
       licenseNumber:     form.licenseNumber.trim() || null,
       licenseIssuedDate: form.licenseIssuedDate ? new Date(form.licenseIssuedDate).toISOString() : null,
-      tier2Qualified:    form.tier2Qualified,
+      centralPoolEligible:    form.centralPoolEligible,
+      tier2PartnerEligible:   form.tier2PartnerEligible,
     };
     // Only include complianceStatus if the admin explicitly changed it
     if (statusChanged) {
@@ -180,11 +183,22 @@ export function DriverProfileEditor({
             <label className="text-xs text-gray-500 block mb-1 flex items-center gap-2">
               <input
                 type="checkbox"
-                checked={form.tier2Qualified}
-                onChange={(e) => setForm({ ...form, tier2Qualified: e.target.checked })}
+                checked={form.centralPoolEligible}
+                onChange={(e) => setForm({ ...form, centralPoolEligible: e.target.checked })}
                 className="rounded"
               />
               LyPX Central Pool eligible
+            </label>
+          </div>
+          <div className="flex items-end gap-2">
+            <label className="text-xs text-gray-500 block mb-1 flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={form.tier2PartnerEligible}
+                onChange={(e) => setForm({ ...form, tier2PartnerEligible: e.target.checked })}
+                className="rounded"
+              />
+              Partner (Tier 2) eligible
             </label>
           </div>
         </div>

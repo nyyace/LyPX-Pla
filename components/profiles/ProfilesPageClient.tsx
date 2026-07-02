@@ -13,7 +13,7 @@ export type DriverListItem = {
   phoneNumber: string;
   complianceStatus: string;
   tier1Member: boolean;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   vehicleClass: string | null;
   vehicle: { plateNumber: string; make: string; model: string; vehicleClass?: string | null } | null;
   vocationalLicenceExpiry: string | null;
@@ -37,7 +37,7 @@ type DriverDetail = {
   phoneNumber: string;
   complianceStatus: string;
   tier1Member: boolean;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   addedAt: string;
   licenceNumber: string | null;
   vocationalLicenceNumber: string | null;
@@ -54,7 +54,7 @@ type CheckResult = {
   driver?: {
     firstName: string;
     lastName: string;
-    tier2Qualified: boolean;
+    centralPoolEligible: boolean;
   };
 };
 
@@ -354,7 +354,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                     {d.firstName} {d.lastName}
                   </span>
                   <div style={{ display: "flex", gap: 3, alignItems: "center" }}>
-                    <TierChip tier1={d.tier1Member} tier3={d.tier2Qualified} />
+                    <TierChip tier1={d.tier1Member} tier3={d.centralPoolEligible} />
                     <ClassChip cls={d.vehicleClass} />
                   </div>
                 </div>
@@ -555,7 +555,7 @@ export function ProfilesPageClient({ initialDrivers, initialInviteRequests, time
                       {checkResult.driver.firstName} {checkResult.driver.lastName} is already verified on LyPX.
                     </span>
                   </div>
-                  {checkResult.driver.tier2Qualified && (
+                  {checkResult.driver.centralPoolEligible && (
                     <div style={{ marginBottom: 10 }}>
                       <TierChip tier1={false} tier3={true} />
                       <span style={{ fontSize: 12, color: "var(--text-dim)", marginLeft: 6 }}>LyPX Central Pool eligible</span>
@@ -685,7 +685,7 @@ function DriverDetailView({
           <span style={{ fontSize: 12, color: STATUS_COLOUR[d.complianceStatus], fontWeight: 600 }}>
             ● {d.complianceStatus.replace(/_/g, " ").toUpperCase()}
           </span>
-          <TierChip tier1={d.tier1Member} tier3={d.tier2Qualified} />
+          <TierChip tier1={d.tier1Member} tier3={d.centralPoolEligible} />
           <ClassChip cls={d.vehicle?.vehicleClass} />
         </div>
       </div>
@@ -746,7 +746,7 @@ function DriverDetailView({
             </button>
           )}
         </div>
-        {d.tier2Qualified && (
+        {d.centralPoolEligible && (
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <TierChip tier1={false} tier3={true} />
             <span style={{ fontSize: 13, color: "var(--text)" }}>Tier 3 — LyPX Platform (Central Pool)</span>

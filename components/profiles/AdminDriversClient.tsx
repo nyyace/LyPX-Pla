@@ -22,7 +22,7 @@ type DriverListItem = {
   lastName: string;
   phoneNumber: string;
   complianceStatus: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   vehicleClass: string | null;
   plateNumber: string | null;
   operatorNames: string[];
@@ -36,7 +36,7 @@ type DriverDetail = {
   phoneNumber: string;
   licenseNumber: string | null;
   complianceStatus: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   sourceType: string;
   createdAt: string;
   documents: { id: string; docType: string; status: string; expiryDate: string | null; issuedDate: string | null; referenceNumber?: string | null }[];
@@ -178,7 +178,7 @@ export function AdminDriversClient({ drivers: initialDrivers }: Props) {
                 <span style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", flex: 1 }}>
                   {d.firstName} {d.lastName}
                 </span>
-                {d.tier2Qualified && (
+                {d.centralPoolEligible && (
                   <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
                 )}
                 {d.vehicleClass && (
@@ -325,7 +325,7 @@ function DriverDetailPanel({ detail: d }: { detail: DriverDetail }) {
               {m.tier1Member && (
                 <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#3d2f00", color: "#E5A93C", border: "1px solid #5a4500" }}>T1</span>
               )}
-              {d.tier2Qualified && (
+              {d.centralPoolEligible && (
                 <span style={{ fontSize: 9, fontWeight: 700, padding: "2px 6px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
               )}
             </div>

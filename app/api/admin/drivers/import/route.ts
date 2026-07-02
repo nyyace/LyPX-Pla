@@ -49,7 +49,7 @@ export async function POST(req: Request) {
 
     const licenseIssuedRaw = row["licenseIssuedDate"]?.toString().trim();
     const licenseIssuedDate = licenseIssuedRaw ? new Date(licenseIssuedRaw) : null;
-    const tier2Qualified = row["tier2Qualified"]?.toString().trim().toLowerCase() === "yes";
+    const centralPoolEligible = row["centralPoolEligible"]?.toString().trim().toLowerCase() === "yes";
     const sourceType = row["sourceType"]?.toString().trim() || "operator_added";
 
     try {
@@ -60,7 +60,7 @@ export async function POST(req: Request) {
           reactivateDriver(tx, existing.id, user.id, {
             firstName, lastName, phoneNumber, licenseNumber,
             licenseIssuedDate: licenseIssuedDate ?? null,
-            tier2Qualified, sourceType,
+            centralPoolEligible, sourceType,
           })
         );
         results.push({ row: rowNum, action: "reactivated", name });
@@ -73,7 +73,7 @@ export async function POST(req: Request) {
             phoneNumber,
             licenseNumber,
             licenseIssuedDate: licenseIssuedDate ?? undefined,
-            tier2Qualified,
+            centralPoolEligible,
             sourceType,
             complianceStatus: "pending",
           },
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
             phoneNumber,
             licenseNumber,
             licenseIssuedDate: licenseIssuedDate ?? undefined,
-            tier2Qualified,
+            centralPoolEligible,
             sourceType,
             complianceStatus: "pending",
           },

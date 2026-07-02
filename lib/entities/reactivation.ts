@@ -10,7 +10,7 @@ export async function reactivateDriver(
   tx: TxClient,
   driverId: string,
   actorId: string,
-  updates: Partial<{ firstName: string; lastName: string; phoneNumber: string; licenseNumber: string; licenseIssuedDate: Date | null; tier2Qualified: boolean; sourceType: string }>
+  updates: Partial<{ firstName: string; lastName: string; phoneNumber: string; licenseNumber: string; licenseIssuedDate: Date | null; centralPoolEligible: boolean; sourceType: string }>
 ) {
   const driver = await tx.driver.update({
     where: { id: driverId },

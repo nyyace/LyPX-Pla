@@ -59,7 +59,8 @@ model Driver {
   complianceStatus      String    @default("pending") // pending | active | expiring_soon | suspended
   statusOverriddenAt    DateTime?
   statusOverriddenBy    String?   // WorkOS user ID
-  tier2Qualified        Boolean   @default(false)
+  centralPoolEligible   Boolean   @default(false) // Tier 3 — renamed from tier2Qualified, legacy misnomer from an earlier design phase
+  tier2PartnerEligible  Boolean   @default(false) // Tier 2 — direct-assign to a Partner relationship, independent of centralPoolEligible
   sourceType            String    @default("operator_added") // "operator_added" | "self_submitted"
   deletedAt             DateTime?
   createdAt             DateTime  @default(now())

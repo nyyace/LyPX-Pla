@@ -30,7 +30,7 @@ export default async function DriversPage() {
     lastName: d.lastName,
     phoneNumber: d.phoneNumber,
     complianceStatus: d.complianceStatus,
-    tier2Qualified: d.tier2Qualified,
+    centralPoolEligible: d.centralPoolEligible,
     vehicleClass: d.vehicleOwnerships[0]?.vehicle.vehicleClass ?? null,
     plateNumber: d.vehicleOwnerships[0]?.vehicle.plateNumber ?? null,
     operatorNames: d.memberships.map((m) => m.tenant.name),

@@ -80,7 +80,7 @@ export async function GET(
     phoneNumber: d.phoneNumber,
     complianceStatus: d.complianceStatus,
     tier1Member: membership.tier1Member,
-    tier2Qualified: d.tier2Qualified,
+    centralPoolEligible: d.centralPoolEligible,
     addedAt: membership.addedAt.toISOString(),
     licenceNumber: d.submission?.drivingLicenceNumber ?? d.licenseNumber ?? null,
     vocationalLicenceNumber: d.submission?.vocationalLicenceNumber ?? null,

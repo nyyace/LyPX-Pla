@@ -22,7 +22,7 @@ export async function GET(req: Request) {
   const STATUS_PRIORITY = ["active", "expiring_soon", "pending", "suspended"];
   const allMatches = await prisma.driver.findMany({
     where: { phoneNumber: normalized, deletedAt: null },
-    select: { complianceStatus: true, firstName: true, lastName: true, tier2Qualified: true },
+    select: { complianceStatus: true, firstName: true, lastName: true, centralPoolEligible: true },
   });
   const driver = allMatches.sort(
     (a, b) => STATUS_PRIORITY.indexOf(a.complianceStatus) - STATUS_PRIORITY.indexOf(b.complianceStatus)
@@ -47,7 +47,7 @@ export async function GET(req: Request) {
     driver: {
       firstName: driver.firstName,
       lastName: driver.lastName,
-      tier2Qualified: driver.tier2Qualified,
+      centralPoolEligible: driver.centralPoolEligible,
     },
   });
 }

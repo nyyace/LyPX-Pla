@@ -10,7 +10,7 @@ type Driver = {
   lastName: string;
   phoneNumber: string;
   complianceStatus: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   documents: { id: string; docType: string; status: string; expiryDate: Date | null }[];
   vehicleOwnerships: { vehicle: { id: string; plateNumber: string; make: string; model: string } }[];
   orders: { id: string; completedAt: Date | null }[];
@@ -101,7 +101,7 @@ export function ProfilesPanel({ sub, selectedDriverId, selectedAccountId, driver
                   {d.firstName} {d.lastName}
                 </span>
                 <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                  {d.tier2Qualified && (
+                  {d.centralPoolEligible && (
                     <span style={{ fontSize: 9, fontWeight: 700, color: "#7FC8F8", border: "1px solid #23384a", borderRadius: 3, padding: "1px 4px" }}>T2</span>
                   )}
                   <span style={{ fontSize: 9, color: STATUS_COLOURS[d.complianceStatus] ?? "var(--text-faint)" }}>●</span>
@@ -197,7 +197,7 @@ export function ProfilesPanel({ sub, selectedDriverId, selectedAccountId, driver
               <p className="panel-title" style={{ marginBottom: 12 }}>Tier Membership</p>
               <div style={{ marginBottom: 24 }}>
                 <p style={{ fontSize: 13, color: "var(--text)", marginBottom: 6 }}>● Tier 1 (This operator)</p>
-                {selectedDriver.tier2Qualified && (
+                {selectedDriver.centralPoolEligible && (
                   <p style={{ fontSize: 13, color: "var(--text)" }}>● Tier 2 (Platform premium)</p>
                 )}
               </div>

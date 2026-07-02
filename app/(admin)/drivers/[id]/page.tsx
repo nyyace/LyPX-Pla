@@ -149,7 +149,7 @@ export default async function DriverDetailPage({
             <Badge variant="outline" className={statusColors[driver.complianceStatus]}>
               {driver.complianceStatus.replace("_", " ")}
             </Badge>
-            {driver.tier2Qualified && (
+            {driver.centralPoolEligible && (
               <Badge variant="outline" className="border-cyan-800 text-cyan-400">Tier 3</Badge>
             )}
             {driver.sourceType === "self_submitted" && (
@@ -159,7 +159,7 @@ export default async function DriverDetailPage({
         </div>
       </div>
 
-      <DriverActions driverId={driver.id} tier2Qualified={driver.tier2Qualified} />
+      <DriverActions driverId={driver.id} centralPoolEligible={driver.centralPoolEligible} />
 
       {driver.sourceType === "self_submitted" && (
         <Card className="bg-gray-900 border-purple-900 mt-4">
@@ -194,7 +194,8 @@ export default async function DriverDetailPage({
             licenseIssuedDate={driver.licenseIssuedDate?.toISOString() ?? null}
             complianceStatus={driver.complianceStatus}
             statusOverriddenAt={driver.statusOverriddenAt?.toISOString() ?? null}
-            tier2Qualified={driver.tier2Qualified}
+            centralPoolEligible={driver.centralPoolEligible}
+            tier2PartnerEligible={driver.tier2PartnerEligible}
           />
 
           {driver.memberships.length > 0 && (

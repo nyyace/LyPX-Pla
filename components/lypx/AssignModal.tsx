@@ -6,7 +6,7 @@ interface Driver {
   id: string;
   firstName: string;
   lastName: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
   complianceStatus: string;
   vehicleOwnerships: { vehicle: { plateNumber: string; make: string; model: string } }[];
 }
@@ -164,7 +164,7 @@ export function AssignModal({ order, tenantId, onClose }: Props) {
                       <span style={{ fontSize: 14, fontWeight: 600, color: "var(--text)" }}>
                         {d.firstName} {d.lastName}
                       </span>
-                      {d.tier2Qualified && (
+                      {d.centralPoolEligible && (
                         <span style={{
                           marginLeft: 8, fontSize: 10, fontWeight: 700, color: "#4eb8c9",
                           border: "1px solid #1a4a55", borderRadius: 4, padding: "1px 5px",

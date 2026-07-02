@@ -7,10 +7,10 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface Props {
   driverId: string;
-  tier2Qualified: boolean;
+  centralPoolEligible: boolean;
 }
 
-export function DriverActions({ driverId, tier2Qualified }: Props) {
+export function DriverActions({ driverId, centralPoolEligible }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +22,7 @@ export function DriverActions({ driverId, tier2Qualified }: Props) {
     const res = await fetch(`/api/drivers/${driverId}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ tier2Qualified: !tier2Qualified }),
+      body: JSON.stringify({ centralPoolEligible: !centralPoolEligible }),
     });
 
     const data = await res.json();
@@ -88,7 +88,7 @@ export function DriverActions({ driverId, tier2Qualified }: Props) {
           onClick={toggleTier2}
           disabled={loading}
         >
-          {tier2Qualified ? "Revoke Central Pool" : "Grant Central Pool"}
+          {centralPoolEligible ? "Revoke Central Pool" : "Grant Central Pool"}
         </Button>
         <Button
           size="sm"

@@ -28,7 +28,7 @@ export async function GET() {
       ? d.licenseIssuedDate.toISOString().slice(0, 10)
       : "",
     complianceStatus: d.complianceStatus,
-    tier2Qualified: d.tier2Qualified ? "yes" : "no",
+    centralPoolEligible: d.centralPoolEligible ? "yes" : "no",
     sourceType: d.sourceType,
     // nationalId cannot be recovered from identityHash
     nationalId: "",

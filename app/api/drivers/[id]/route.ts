@@ -21,7 +21,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { user } = await withAuth({ ensureSignedIn: true });
   const { id } = await params;
   const body = await req.json();
-  const allowedFields = ["tier2Qualified", "phoneNumber", "firstName", "lastName"];
+  const allowedFields = ["centralPoolEligible", "tier2PartnerEligible", "phoneNumber", "firstName", "lastName"];
   const updates: Record<string, unknown> = {};
 
   for (const field of allowedFields) {

@@ -61,7 +61,8 @@ export async function GET(
     phoneNumber: driver.phoneNumber,
     licenseNumber: driver.licenseNumber,
     complianceStatus: driver.complianceStatus,
-    tier2Qualified: driver.tier2Qualified,
+    centralPoolEligible: driver.centralPoolEligible,
+    tier2PartnerEligible: driver.tier2PartnerEligible,
     sourceType: driver.sourceType,
     createdAt: driver.createdAt.toISOString(),
     documents: driver.documents.map((d) => ({
@@ -129,7 +130,8 @@ export async function PATCH(
     complianceStatus?: string;
     statusOverrideReason?: string;
     clearStatusOverride?: boolean;
-    tier2Qualified?: boolean;
+    centralPoolEligible?: boolean;
+    tier2PartnerEligible?: boolean;
   };
 
   const updates: Record<string, unknown> = {};
@@ -140,7 +142,8 @@ export async function PATCH(
   if (body.licenseIssuedDate !== undefined) {
     updates.licenseIssuedDate = body.licenseIssuedDate ? new Date(body.licenseIssuedDate) : null;
   }
-  if (body.tier2Qualified !== undefined) updates.tier2Qualified = body.tier2Qualified;
+  if (body.centralPoolEligible !== undefined) updates.centralPoolEligible = body.centralPoolEligible;
+  if (body.tier2PartnerEligible !== undefined) updates.tier2PartnerEligible = body.tier2PartnerEligible;
 
   const VALID_STATUSES = ["pending", "active", "expiring_soon", "suspended"];
 

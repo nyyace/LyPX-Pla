@@ -28,7 +28,7 @@ export async function GET(
       },
     },
     orderBy: [
-      { driver: { tier2Qualified: "desc" } },
+      { driver: { centralPoolEligible: "desc" } },
       { driver: { lastName: "asc" } },
     ],
   });
@@ -37,7 +37,7 @@ export async function GET(
     id: m.driver.id,
     firstName: m.driver.firstName,
     lastName: m.driver.lastName,
-    tier2Qualified: m.driver.tier2Qualified,
+    centralPoolEligible: m.driver.centralPoolEligible,
     complianceStatus: m.driver.complianceStatus,
     vehicleOwnerships: m.driver.vehicleOwnerships,
   }));
