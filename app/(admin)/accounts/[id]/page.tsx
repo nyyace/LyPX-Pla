@@ -8,6 +8,7 @@ import { withAuth } from "@workos-inc/authkit-nextjs";
 import { getUserTimezone } from "@/lib/utils/timezone";
 import { formatTZDate, formatTZ, isExpired } from "@/lib/utils/date";
 import { PortalAccessSection } from "@/components/admin/PortalAccessSection";
+import { AccountSettingsSection } from "@/components/accounts/AccountSettingsSection";
 
 export default async function AccountDetailPage({
   params,
@@ -226,6 +227,12 @@ export default async function AccountDetailPage({
           </CardContent>
         </Card>
       )}
+
+      {/* Settings */}
+      <AccountSettingsSection
+        accountId={account.id}
+        tier2PartnerAccount={account.tier2PartnerAccount}
+      />
 
       {/* Portal Access */}
       <PortalAccessSection
