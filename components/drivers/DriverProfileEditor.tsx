@@ -72,6 +72,7 @@ export function DriverProfileEditor({
   const [saved, setSaved]   = useState(false);
 
   const statusChanged = form.complianceStatus !== complianceStatus;
+  const noTierSelected = !form.centralPoolEligible && !form.tier2PartnerEligible;
 
   async function handleSave() {
     setLoading(true);
@@ -202,6 +203,11 @@ export function DriverProfileEditor({
             </label>
           </div>
         </div>
+        {noTierSelected && (
+          <p className="text-xs text-amber-500">
+            At least one tier is required — a driver with neither checked is invisible to all dispatch.
+          </p>
+        )}
 
         {/* Compliance status override */}
         <div className="border-t border-gray-800 pt-4">
@@ -260,7 +266,7 @@ export function DriverProfileEditor({
 
         <Button
           size="sm"
-          disabled={loading}
+          disabled={loading || noTierSelected}
           onClick={handleSave}
           className="bg-gray-700 hover:bg-gray-600"
         >

@@ -32,6 +32,24 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
   }
 
+  // At least one tier must be assigned — a driver with neither is invisible
+  // to all dispatch, which is never the intent of an explicit tier edit.
+  if ("centralPoolEligible" in updates || "tier2PartnerEligible" in updates) {
+    const existing = await prisma.driver.findUnique({
+      where: { id },
+      select: { centralPoolEligible: true, tier2PartnerEligible: true },
+    });
+    if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+    const resultingCentralPool  = (updates.centralPoolEligible  as boolean | undefined) ?? existing.centralPoolEligible;
+    const resultingTier2Partner = (updates.tier2PartnerEligible as boolean | undefined) ?? existing.tier2PartnerEligible;
+    if (!resultingCentralPool && !resultingTier2Partner) {
+      return NextResponse.json(
+        { error: "Driver must have at least one tier assigned (Central Pool or Partner)" },
+        { status: 400 }
+      );
+    }
+  }
+
   const driver = await prisma.$transaction(async (tx: TxClient) => {
     const d = await tx.driver.update({ where: { id }, data: updates });
     await tx.auditLog.create({

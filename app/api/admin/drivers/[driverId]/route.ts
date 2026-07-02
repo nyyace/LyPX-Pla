@@ -118,7 +118,10 @@ export async function PATCH(
 
   const { driverId } = await params;
 
-  const driver = await prisma.driver.findUnique({ where: { id: driverId }, select: { id: true } });
+  const driver = await prisma.driver.findUnique({
+    where: { id: driverId },
+    select: { id: true, centralPoolEligible: true, tier2PartnerEligible: true },
+  });
   if (!driver) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   const body = await req.json() as {
@@ -144,6 +147,19 @@ export async function PATCH(
   }
   if (body.centralPoolEligible !== undefined) updates.centralPoolEligible = body.centralPoolEligible;
   if (body.tier2PartnerEligible !== undefined) updates.tier2PartnerEligible = body.tier2PartnerEligible;
+
+  // At least one tier must be assigned — a driver with neither is invisible
+  // to all dispatch, which is never the intent of an explicit tier edit.
+  if (body.centralPoolEligible !== undefined || body.tier2PartnerEligible !== undefined) {
+    const resultingCentralPool  = body.centralPoolEligible  ?? driver.centralPoolEligible;
+    const resultingTier2Partner = body.tier2PartnerEligible ?? driver.tier2PartnerEligible;
+    if (!resultingCentralPool && !resultingTier2Partner) {
+      return NextResponse.json(
+        { error: "Driver must have at least one tier assigned (Central Pool or Partner)" },
+        { status: 400 }
+      );
+    }
+  }
 
   const VALID_STATUSES = ["pending", "active", "expiring_soon", "suspended"];
 
