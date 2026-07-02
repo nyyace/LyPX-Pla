@@ -181,9 +181,6 @@ export function AdminDriversClient({ drivers: initialDrivers }: Props) {
                 {d.centralPoolEligible && (
                   <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#0d2e30", color: "#4eb8c9", border: "1px solid #1a4a55" }}>T3</span>
                 )}
-                {d.vehicleClass && (
-                  <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, ...(CLASS_STYLE[d.vehicleClass] ?? {}) }}>{d.vehicleClass}</span>
-                )}
               </div>
               <p className="mono" style={{ fontSize: 11, color: "var(--text-faint)", margin: "0 0 2px 13px" }}>
                 {d.plateNumber ?? "No vehicle"}
